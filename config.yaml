@@ -1,7 +1,0 @@
-model_path: /root/qwen3_0_6b_snapshot
-checkpoint_path: /tmp/checkpoint-2500
-output_dir: /tmp/meshtrainer-release
-workers: 2
-rounds: 2
-seed: 42
-tgfs: true

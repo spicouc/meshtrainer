@@ -1,0 +1,2 @@
+model,avg_loss,avg_perplexity,avg_fwd_time_s,avg_tok_per_sec,samples
+base,4.9279,420.58,3.767,34.0,10

@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Virtual env
+venv/
+.env
+*.venv
+
+# Node
+browser-worker/node_modules/
+browser-worker/dist/
+
+# Test caches
+.pytest_cache/
+browser-worker/test-results/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp DBs
+*.db
+*.db-shm
+*.db-wal
+
+# Checkpoints / models (too large for git)
+*.safetensors
+*.pt
+*.bin
+checkpoint-*/
+
+# Build artifacts
+*.tar.gz
+
+# IDE
+.vscode/
+.idea/

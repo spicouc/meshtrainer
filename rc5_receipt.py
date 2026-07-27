@@ -60,6 +60,7 @@ def generate_receipt(
     loss_definition_hash, precision_profile, data_shard_hash,
     effective_trainable_tokens, optimizer_steps,
     first_step_id, last_step_id,
+    delta_sha256,
     receipt_key_id="k1",
     expiry_s=3600,
 ):
@@ -88,6 +89,7 @@ def generate_receipt(
         "expires_at": time.time() + expiry_s,
         "receipt_nonce": hashlib.sha256(os.urandom(16)).hexdigest()[:16],
         "receipt_key_id": receipt_key_id,
+        "delta_sha256": delta_sha256,
     }
     payload = canonical_json(receipt)
     key = get_active_key(receipt_key_id)

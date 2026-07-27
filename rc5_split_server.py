@@ -252,20 +252,19 @@ def handle_step_cut_gradient(params, worker_id):
 
     # ---- REAL BACKWARD on server side ----
     ss_state.server_model.train()
+    # Capture LoRA weights BEFORE optimizer step
+    lora_before = ss_state.server_model.get_lora_weight().detach().clone()
     ss_state.optimizer.zero_grad()
     # Server forward again with requires_grad
     tokens = ss_state.tokenizer.encode(unit["text"])[0]
     output_with_lora, _ = ss_state.server_model(tokens)
-    # Hook gradient from client through cut activation ref
+    # Simplified: compute loss using gradient direction
     if unit.get("cut_activation_ref") is not None:
-        # Simplified: compute loss on server side using the gradient direction
         loss = (output_with_lora * grad).sum()
         loss.backward()
         ss_state.optimizer.step()
-
-    # Compute LoRA delta
-    lora_before = ss_state.server_model.get_lora_weight().detach().clone()
-    lora_after = ss_state.server_model.get_lora_weight().detach()
+    # Compute LoRA delta from captured weights
+    lora_after = ss_state.server_model.get_lora_weight().detach().clone()
     lora_delta = lora_after - lora_before
     unit["lora_delta"] = lora_delta
     unit["loss"] = loss.item() if isinstance(loss, torch.Tensor) else 0.0
@@ -293,6 +292,7 @@ def handle_step_commit(params, worker_id):
 
         ett = ss_state.count_effective_tokens(unit.get("text", ""))
         delta_bytes = unit["lora_delta"].numpy().tobytes()
+        delta_sha256_val = hashlib.sha256(delta_bytes).hexdigest()
         receipt = generate_receipt(
             run_id=ss_state.run_id,
             round_id=ss_state.round_id,
@@ -310,6 +310,7 @@ def handle_step_commit(params, worker_id):
             optimizer_steps=1,
             first_step_id=f"{unit_id}-s0",
             last_step_id=f"{unit_id}-s0",
+            delta_sha256=delta_sha256_val,
             receipt_key_id="k1",
         )
         unit["state"] = "COMMITTED"

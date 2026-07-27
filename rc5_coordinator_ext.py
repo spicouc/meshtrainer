@@ -123,27 +123,36 @@ def patch_coordinator(coord):
         ett = receipt.get("effective_trainable_tokens", 0)
         if ett <= 0:
             return _reject("effective_trainable_tokens must be > 0")
+        # 18. delta_sha256 present in receipt
+        if "delta_sha256" not in receipt:
+            return _reject("delta_sha256 missing from receipt")
+        # 19. delta_sha256 format (64 hex lowercase chars)
+        ds = receipt["delta_sha256"]
+        if not isinstance(ds, str) or len(ds) != 64 or not all(c in "0123456789abcdef" for c in ds):
+            return _reject("delta_sha256 must be 64 hex lowercase chars")
+        # 20. delta_sha256 in receipt matches params
+        if receipt.get("delta_sha256", "") != delta_sha256:
+            return _reject("delta_sha256 mismatch between receipt and upload params")
 
         # All checks passed
         coord._rc5_nonces.add(nonce)
         key = (run_id, round_id, assignment_id, worker_id)
 
-        # Check existing active contribution
-        existing = None
+        # Find previous contribution for this key (if any)
+        # DO NOT supersede yet — only mark SUPERSEDED when new one reaches ACTIVE
+        previous = None
         for c in coord._rc5_ledger:
             if (c["run_id"] == run_id and c["round_id"] == round_id
                     and c["assignment_id"] == assignment_id
-                    and c["worker_id"] == worker_id
-                    and c["status"] in ("RECEIVED", "VALIDATED", "ACTIVE")):
-                existing = c
-                break
+                    and c["worker_id"] == worker_id):
+                previous = c  # keep reference but don't change status
 
-        revision = (existing["revision"] + 1) if existing else 1
+        revision = (previous["revision"] + 1) if previous else 1
         contrib = {
             "contribution_id": hashlib.sha256(f"{assignment_id}:{time.time()}:{nonce}".encode()).hexdigest()[:16],
             "revision": revision,
-            "supersedes_contribution_id": existing["contribution_id"] if existing else None,
-            "status": "RECEIVED",
+            "supersedes_contribution_id": previous["contribution_id"] if previous else None,
+            "status": "RECEIVED",  # new contribution starts as RECEIVED
             "receipt": receipt,
             "delta_sha256": delta_sha256,
             "worker_id": worker_id,
@@ -156,9 +165,8 @@ def patch_coordinator(coord):
         coord._rc5_ledger.append(contrib)
         coord._rc5_contrib_index[key] = contrib["contribution_id"]
 
-        # Supersede previous
-        if existing:
-            existing["status"] = "SUPERSEDED"
+        # Previous contribution REMAINS in its current state
+        # It will be SUPERSEDED only when the new one reaches ACTIVE
 
         return {"jsonrpc":"2.0","result":{"contribution_id":contrib["contribution_id"],
                 "revision":revision,"status":"RECEIVED"},"id":"1"}
@@ -173,11 +181,11 @@ def patch_coordinator(coord):
         return {"jsonrpc":"2.0","error":{"code":-32020,"message":"contribution not found or not RECEIVED"},"id":"1"}
 
     def handle_activate_contribution(params, worker_id=""):
-        """Explicit activation step: VALIDATED -> ACTIVE. Previous becomes SUPERSEDED."""
+        """Explicit activation step: VALIDATED -> ACTIVE. Previous ACTIVE becomes SUPERSEDED."""
         cid = params.get("contribution_id")
         for c in coord._rc5_ledger:
             if c["contribution_id"] == cid and c["status"] == "VALIDATED":
-                # Supersede any other ACTIVE for same key
+                # Only supersede the PREVIOUS ACTIVE for same key
                 for c2 in coord._rc5_ledger:
                     if (c2["run_id"] == c["run_id"] and c2["round_id"] == c["round_id"]
                             and c2["assignment_id"] == c["assignment_id"]
@@ -185,7 +193,8 @@ def patch_coordinator(coord):
                             and c2["status"] == "ACTIVE"):
                         c2["status"] = "SUPERSEDED"
                 c["status"] = "ACTIVE"
-                return {"jsonrpc":"2.0","result":{"contribution_id":cid,"status":"ACTIVE"},"id":"1"}
+                return {"jsonrpc":"2.0","result":{"contribution_id":cid,"status":"ACTIVE",
+                        "superseded": c.get("supersedes_contribution_id")},"id":"1"}
         return {"jsonrpc":"2.0","error":{"code":-32020,"message":"contribution not found or not VALIDATED"},"id":"1"}
 
     def handle_round_close(params, worker_id=""):

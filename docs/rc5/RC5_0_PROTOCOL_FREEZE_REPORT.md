@@ -34,7 +34,7 @@
 
 | Risc | Probabilitat | Impacte | Mitigacio |
 |---|---|---|---|
-| WebGPU no disponible | Mitjana | Alt | Fallback CPU pla |
+| WebGPU no disponible | Mitjana | Alt | Worker incompatible es rebutjat (UNSUPPORTED). No hi ha canvi automatic WebGPU→CPU dins la ronda. Perfil congelat: fp32, sense quantitzacio adaptativa. Fallback CPU es una possibilitat futura fora de l'abast del gate RC5. |
 | Latencia Split Server → Worker | Mitjana | Mig | Batching d'embeddings |
 | Receipt replay | Baixa | Alt | Nonce + key_id + expiracio |
 | Ledger inconsistent | Baixa | Alt | Coordinator unic, base de dades |

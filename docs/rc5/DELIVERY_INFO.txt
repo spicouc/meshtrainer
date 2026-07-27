@@ -1,0 +1,34 @@
+Repositori: https://github.com/spicouc/meshtrainer
+Branca: rc5.0-protocol-freeze
+Commit final: f0ddef5
+Data: 2026-07-27
+Gate: RC5.0 ARCHITECTURE AND PROTOCOL FREEZE — PASS (provisional)
+
+## Fitxers inclosos
+
+1. docs/rc5/README.md
+2. docs/rc5/RC5_ARCHITECTURE.md
+3. docs/rc5/RC5_WORK_UNIT_MODEL.md
+4. docs/rc5/RC5_PROTOCOL_SPEC.md
+5. docs/rc5/RC5_SPLIT_SERVER_SPEC.md
+6. docs/rc5/RC5_SECURITY_MODEL.md
+7. docs/rc5/RC5_NUMERICAL_VALIDATION_PLAN.md
+8. docs/rc5/RC5_GATE_SPECIFICATION.md
+9. RC5_0_PROTOCOL_FREEZE_REPORT.md
+10. RC5_0_DOCUMENT_REVIEW_REPORT.md
+11. MANIFEST.sha256
+12. DELIVERY_INFO.txt
+
+## Ubicacio a TGFS
+
+Canal: -1003770431908 (TGFSbackup)
+Paquet: meshtrainer_rc5_0_protocol_freeze_f0ddef5/
+Messages: 10859-10862
+
+## Ordre de verificacio
+
+1. sha256sum -c MANIFEST.sha256
+2. Verificar que cada document conte la informacio esperada
+3. Confirmar que Split Server NO agrega (RC5_SPLIT_SERVER_SPEC.md)
+4. Confirmar que Coordinator fa FedAvg (RC5_ARCHITECTURE.md)
+5. Confirmar que els receipts son del Split Server (RC5_PROTOCOL_SPEC.md)

@@ -73,13 +73,19 @@
 Cada run te una topologia fixa. No es poden afegir ni treure components
 durant l'execucio. El perfil numeric es congela al inici de la ronda:
 
-- precision_profile
-- compute_dtype
-- quantization_scheme
-- quantization_hash
-- loss_definition_hash
-- optimizer (incloent learning_rate, betas, weight_decay)
-- scheduler
+| Parametre | Valor RC5.1 |
+|---|---|
+| precision_profile | fp32 |
+| compute_dtype | fp32 |
+| quantization_scheme | cap (no adaptativa) |
+| backend | navegador fixat per la prova |
+| loss_definition_hash | congelat |
+| optimizer (lr, betas, weight_decay) | congelat |
+| scheduler | congelat |
+
+**Regla:** Un worker incompatible amb el perfil es rebutja (UNSUPPORTED).
+No hi ha canvi automatic de backend dins d'una ronda.
+Fallback CPU es una possibilitat futura, fora de l'abast del gate RC5.
 
 ## 4. Flux alt nivell
 

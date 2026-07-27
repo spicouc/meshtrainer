@@ -1,66 +1,116 @@
 # RC5 — Architecture v1.1
 
-**Document:** RC5_ARCHITECTURE.md
-**Versio:** 1.1.0-draft
+**Versio:** 1.1.0-draft (corregit)
 **Base:** v1.0 (meshtrainer classic)
-**Estat:** Protocol Freeze — documentacio, no implementacio
+**Estat:** Protocol Freeze
 
 ---
 
-## 1. Visio general
-
-RC5 introdueix el **Split Server** com a nou component central, convertint
-l'arquitectura coordinator + workers en una topologia de tres capes:
+## 1. Topologia
 
 ```
-Browser Worker 1 ──┐
-Browser Worker 2 ──┼── Split Server ── Coordinator
-Browser Worker N ──┘
+                                      ┌──────────────────┐
+                                      │   Coordinator    │
+                                      │  (identitat,     │
+                                      │   calibratge,    │
+                                      │   assignacio,    │
+                                      │   ledger,        │
+                                      │   FedAvg,        │
+                                      │   checkpoint)    │
+                                      └────────┬─────────┘
+                                               │
+                          JSON-RPC (control)    │
+                          + binari (tensors)    │
+                                               │
+                    ┌───────────────────────────┼──────────────────────────┐
+                    │                           │                          │
+         ┌─────────▼──────────┐     ┌──────────▼─────────┐    ┌──────────▼─────────┐
+         │   Split Server     │     │  Browser Worker 1   │    │  Browser Worker N   │
+         │  (embeddings,      │     │  (control → Coord,  │    │  (control → Coord,  │
+         │   forward, loss,   │     │   activacions → SS, │    │   activacions → SS, │
+         │   backward, cut,   │     │   gradients → SS)   │    │   gradients → SS)   │
+         │   receipts, queue, │     └─────────────────────┘    └─────────────────────┘
+         │   backpressure)    │
+         └────────────────────┘
 ```
 
-El Coordinator delega la gestio dels workers al Split Server, que actua com
-a intermediari especialitzat en la fragmentacio i distribucio de micro-unitats
-de treball.
+## 2. Responsabilitats
 
-## 2. Components
+### Coordinator (unic responsable de:)
 
-| Component | Rol | Novetat v1.1 |
-|---|---|---|
-| Coordinator | Orquestracio global, FedAvg, checkpoint | Mateix que v1.0 |
-| Split Server | Fragmentacio, assignacio, receipts, backpressure | **Nou** |
-| Browser Worker | Execucio de micro-unitats al navegador | Substituix el worker Python |
+| Funcio | Descripcio |
+|---|---|
+| Registre i identitat dels workers | `worker.join`, `worker.leave` |
+| Calibratge | `worker.calibration.start`, `.result` |
+| Assignacio de treball | `work.request`, `work.assignment`, `work.accept` |
+| Ledger de contribucions | RECEIVED → VALIDATED → ACTIVE → AGGREGATED |
+| Validacio de checkpoints | `checkpoint.upload`, `.accept`, `.reject` |
+| Seleccio de contribucions ACTIVE | Una per (run, round, assignment, worker) |
+| FedAvg al tancament de ronda | Δ ponderat per effective_trainable_tokens |
+| Checkpoint global | Generacio i verificacio |
+
+### Split Server (limitat a:)
+
+| Funcio | Descripcio |
+|---|---|
+| Embeddings | Tram servidor del model |
+| Forward + loss | Computacio de forward i loss |
+| Backward + cut gradient | Propagacio i emissio del gradient del cut |
+| Recompte de tokens entrenables | Certificacio de effective_trainable_tokens |
+| Generacio de receipts autenticats | HMAC, vinculats a run/round/unit/worker |
+| Scheduler de micro-unitats | Cua i backpressure |
+| Receipts contextuals | Autenticats, amb nonce i key_id |
+
+**El Split Server NO agrega deltes ni tanca FedAvg.**
+
+### Browser Worker (es comunica amb:)
+
+- **Coordinator:** control, assignacions, checkpoints, contribucions
+- **Split Server:** embeddings, activacions, gradients, receipts
 
 ## 3. Topologia congelada per run
 
-Cada run te una topologia fixa que no canvia durant l'execucio:
+Cada run te una topologia fixa. No es poden afegir ni treure components
+durant l'execucio. El perfil numeric es congela al inici de la ronda:
 
-- 1 Coordinator
-- 1 Split Server (per run)
-- N Browser Workers (registrats al inici)
-
-Un cop comencen les rondes, no es poden afegir ni treure workers.
+- precision_profile
+- compute_dtype
+- quantization_scheme
+- quantization_hash
+- loss_definition_hash
+- optimizer (incloent learning_rate, betas, weight_decay)
+- scheduler
 
 ## 4. Flux alt nivell
 
 ```
-1. Coordinator inicia run
-2. Split Server es conecta al Coordinator
-3. Browser Workers es registren al Split Server
-4. Split Server fragmenta el dataset en micro-unitats
-5. Split Server assigna micro-unitats als workers
-6. Workers executen i retornen resultats
-7. Split Server agrega receipts i retorna deltes al Coordinator
-8. Coordinator aplica FedAvg
-9. Coordinator genera checkpoint
+1. Worker join → Coordinator (worker.join)
+2. Coordinator inicia calibratge (worker.calibration.start/result)
+3. Worker sol·licita treball (work.request)
+4. Coordinator assigna (work.assignment)
+5. Worker accepta (work.accept)
+6. Per cada step:
+   a. Worker obre step (step.open)
+   b. Worker envia text → Split Server (step.embedding)
+   c. Split Server retorna embeddings
+   d. Worker fa forward parcial
+   e. Split Server fa cut_activation (step.cut_activation)
+   f. Worker fa backward parcial
+   g. SplitServer fa cut_gradient (step.cut_gradient)
+   h. Ambdós fan commit (step.commit)
+7. Worker completa (work.complete)
+8. Split Server emet receipt autenticat
+9. Worker envia contribucio → Coordinator (checkpoint.upload)
+10. Coordinator valida i afegeix al ledger (checkpoint.accept/reject)
+11. Al tancament de ronda: FedAvg sobre contribucions ACTIVE
+12. Coordinator genera checkpoint global
 ```
 
-## 5. Canvis respecte v1.0
+## 5. Transport
 
-| Aspecte | v1.0 | v1.1 |
+| Tipus | Protocol | Us |
 |---|---|---|
-| Workers | Python (sequencial) | Navegador (paral·lel) |
-| Fragmentacio | Batch sencer | Micro-unitats |
-| Intermediari | Coordinator directe | Split Server |
-| Transaccionalitat | Per batch | Per micro-unitat |
-| Receipts | No | Si, contextuals |
-| Backpressure | No | Si (des de Split Server) |
+| Control | JSON-RPC 2.0 | Tots els missatges de protocol |
+| Tensors | Binari sobre HTTP | Embeddings, activacions, gradients |
+
+Per RC5.1 Tiny Split PoC: nomes JSON-RPC + base64 per tensors petits.

@@ -1,81 +1,93 @@
 # RC5 — Protocol Specification
 
-**Document:** RC5_PROTOCOL_SPEC.md
-**Versio:** 1.1.0-draft
+**Versio:** 1.1.0-draft (corregit)
 
 ---
 
-## 1. Canal de comunicacio
+## 1. Transport
 
-Totes les comunicacions son JSON-RPC 2.0 sobre HTTP.
-
-| Origen | Desti | Protocol |
+| Tipus | Protocol | Us |
 |---|---|---|
-| Browser Worker | Split Server | JSON-RPC HTTP |
-| Split Server | Coordinator | JSON-RPC HTTP |
+| Control | JSON-RPC 2.0 sobre HTTP | Tots els missatges de protocol |
+| Tensors | Binari sobre HTTP (Content-Type: application/octet-stream) | Embeddings, activacions, gradients |
 
-## 2. Metodes
+Per RC5.1 Tiny Split PoC: JSON-RPC + base64 per tensors petits.
 
-### Coordinator → Split Server
+## 2. Metodes de protocol
 
-| Metode | Descripcio |
-|---|---|
-| `split.run.start` | Inicia un run, retorna run_id |
-| `split.run.stop` | Atura un run |
-| `split.round.start` | Inicia una ronda |
-| `split.round.end` | Finalitza una ronda, retorna deltes |
-| `split.worker.register` | Notifica registre d'un worker |
-| `split.worker.unregister` | Notifica baixa d'un worker |
+### Cicle de vida del worker
 
-### Split Server → Coordinator
+| Metode | Origen → Desti | Descripcio |
+|---|---|---|
+| `worker.join` | Worker → Coordinator | Registra worker, retorna worker_id + token |
+| `worker.leave` | Worker → Coordinator | Baixa voluntaria del worker |
+| `worker.calibration.start` | Coordinator → Worker | Inicia calibratge |
+| `worker.calibration.result` | Worker → Coordinator | Resultat del calibratge |
 
-| Metode | Descripcio |
-|---|---|
-| `coord.run.ready` | Split Server preparat per rebre workers |
-| `coord.round.complete` | Ronda completada, envía deltes agregats |
-| `coord.worker.status` | Canvi d'estat d'un worker |
+### Cicle de treball
 
-### Browser Worker → Split Server
+| Metode | Origen → Desti | Descripcio |
+|---|---|---|
+| `work.request` | Worker → Coordinator | Sol·licita una assignment |
+| `work.assignment` | Coordinator → Worker | Assigna micro-unitat |
+| `work.accept` | Worker → Coordinator | Accepta l'assignacio (entra ACTIVE) |
+| `work.pause` | Coordinator → Worker | Pausa temporal |
+| `work.resume` | Coordinator → Worker | Represa |
+| `work.complete` | Worker → Coordinator | Worker completa l'assignacio |
+| `work.abort` | Coordinator → Worker | Cancel·la l'assignacio |
 
-| Metode | Descripcio |
-|---|---|
-| `worker.register` | Registra worker, retorna worker_id |
-| `worker.heartbeat` | Heartbeat amb estat i progrés |
-| `worker.request_unit` | Sol·licita micro-unitat |
-| `worker.submit_unit` | Envia resultat + receipt de micro-unitat |
+### Steps (dins d'una micro-unitat)
+
+| Metode | Origen → Desti | Descripcio |
+|---|---|---|
+| `step.open` | Worker → Split Server | Obre un step dins la micro-unitat |
+| `step.embedding` | Worker → Split Server | Envia text, rep embeddings |
+| `step.cut_activation` | Split Server → Worker | Envia activacio del cut al worker |
+| `step.cut_gradient` | Worker → Split Server | Envia gradient del cut |
+| `step.commit` | Ambdos | Confirmacio bilateral del step |
+
+### Checkpoint i contribucions
+
+| Metode | Origen → Desti | Descripcio |
+|---|---|---|
+| `checkpoint.prepare` | Coordinator → Worker | Prepara checkpoint per pujar |
+| `checkpoint.upload` | Worker → Coordinator | Puja contribucio (delta + receipt) |
+| `checkpoint.accept` | Coordinator → Worker | Contribucio validada, entra al ledger |
+| `checkpoint.reject` | Coordinator → Worker | Contribucio rebutjada, worker pot reintentar |
 
 ## 3. Receipt contextual
 
-Cada micro-unitat completada genera un receipt amb:
+Generat i **autenticat pel Split Server** (no pel worker).
 
-```json
-{
-  "worker_id": "w-abc123",
-  "unit_id": "u-000042",
-  "assignment_id": "a-001",
-  "run_id": "run-xyz",
-  "round": 3,
-  "tokens_processed": 512,
-  "delta_sha256": "abc...",
-  "loss": 2.45,
-  "grad_norm": 1.23,
-  "timestamp": "...",
-  "signature": "..."  (firma opcional del worker)
-}
-```
+### Camps obligatoris
 
-El Coordinator utilitza els receipts per:
-- Verificar completesa de la ronda
-- Calcular tokens efectius totals
-- Detectar workers maliciosos o erronics
-- Generar el manifest final
+| Camp | Descripcio |
+|---|---|
+| protocol_version | Versio del protocol |
+| run_id | Identificador del run |
+| round_id | Identificador de la ronda |
+| assignment_id | Identificador de l'assignacio |
+| micro_unit_id | Identificador de la micro-unitat |
+| worker_id | Worker que ha executat |
+| session_id | Sesio del worker |
+| base_adapter_hash | Hash de l'adapter base |
+| model_hash | Hash del model |
+| adapter_schema_hash | Hash del schema de l'adapter |
+| loss_definition_hash | Hash de la definicio de loss |
+| precision_profile | Perfil de precisio usat |
+| data_shard_hash | Hash del fragment de dades |
+| effective_trainable_tokens | **Tokens entrenables certificats** |
+| optimizer_steps | Nombre d'optimizer steps executats |
+| first_step_id | Primer step de la micro-unitat |
+| last_step_id | Ultim step de la micro-unitat |
+| issued_at | Timestamp d'emissio |
+| receipt_nonce | Nonce per protegir contra replay |
+| receipt_key_id | Identificador de la clau usada per signar |
 
-## 4. Calibratge declarat vs observat
+### Seguretat
 
-El Split Server compara:
-
-- **Declarat:** tokens que el worker diu haver processat
-- **Observat:** tokens mesurats per la micro-unitat (longitud del text)
-
-Si la diferencia supera un llindar, el worker es marca com a sospitos
-i la micro-unitat es re-assigna.
+- Serialitzacio canonica (JSON, keys sorted)
+- HMAC o signatura digital sobre la serialitzacio
+- Rotacio de claus (key_id permet canviar clau sense invalidar receipts anteriors)
+- Expiracio (timestamp + finestra de validesa configurable)
+- Proteccio contra replay: receipt_nonce + worker_id + round_id

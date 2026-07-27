@@ -1,8 +1,12 @@
 # meshtrainer
 
+![meshtrainer](logo.jpg)
+
 **Qwen3 Distributed LoRA Trainer** — Plataforma d'entrenament federat LoRA per a Qwen3 amb agregacio FedAvg.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![GitHub top language](https://img.shields.io/github/languages/top/spicouc/meshtrainer)
+[![GitHub repo size](https://img.shields.io/github/repo-size/spicouc/meshtrainer)](https://github.com/spicouc/meshtrainer)
 
 ---
 

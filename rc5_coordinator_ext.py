@@ -7,6 +7,10 @@ from rc5_db import Rc5Db
 
 DELTA_STORE = os.environ.get("RC5_DELTA_STORE", "/tmp/rc5_delta_store")
 
+def sha256_file(path):
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
 def patch_coordinator(coord, db_path=None):
     if db_path is None:
         import tempfile
@@ -14,6 +18,7 @@ def patch_coordinator(coord, db_path=None):
         os.close(fd)
     coord._rc5_db = Rc5Db(db_path)
     coord._rc5_db_path = db_path
+    coord._rc5_workers = {}
     os.makedirs(DELTA_STORE, exist_ok=True)
 
     # ---- worker.join (hardened, RC3 validated) ----
@@ -24,7 +29,7 @@ def patch_coordinator(coord, db_path=None):
         if not auth_token:
             return _error(-32031, "auth_token required")
         # Validate against RC3 StateStore
-        import hashlib as _hl
+        import hmac as _hmac
         rc3_workers = getattr(coord, '_workers', {})
         rc3_worker = rc3_workers.get(worker_id)
         if rc3_worker is None:
@@ -32,8 +37,8 @@ def patch_coordinator(coord, db_path=None):
         rc3_token = rc3_worker.get("auth_token", rc3_worker.get("token", ""))
         if not rc3_token:
             return _error(-32034, "RC3 worker has no auth_token configured")
-        # Constant-time comparison
-        if not _hl.compare_digest(auth_token, rc3_token):
+        # Constant-time comparison (use hmac, more portable than hashlib.compare_digest)
+        if not _hmac.compare_digest(auth_token, rc3_token):
             return _error(-32035, "auth_token mismatch")
         # Check protocol version
         protocol = params.get("protocol_version", "")
@@ -43,9 +48,9 @@ def patch_coordinator(coord, db_path=None):
         if capabilities.get("precision", "fp32") != "fp32":
             return _error(-32032, "fp32 required for RC5.1")
         # Generate unique session_id
-        session_id = _hl.sha256(f"{worker_id}:{time.time()}:{os.urandom(8).hex()}".encode()).hexdigest()[:16]
+        session_id = hashlib.sha256(f"{worker_id}:{time.time()}:{os.urandom(8).hex()}".encode()).hexdigest()[:16]
         # Persist (store hash of token, not raw)
-        token_hash = _hl.sha256(auth_token.encode()).hexdigest()[:16]
+        token_hash = hashlib.sha256(auth_token.encode()).hexdigest()[:16]
         coord._rc5_db.upsert_worker(worker_id, session_id, token_hash, capabilities)
         coord._rc5_workers[worker_id] = {"session_id": session_id, "status": "REGISTERED", "joined_at": time.time()}
         return _ok({"worker_id": worker_id, "session_id": session_id, "status": "REGISTERED"})
@@ -359,53 +364,101 @@ def patch_coordinator(coord, db_path=None):
         }
         manifest["manifest_sha256"] = hashlib.sha256(json.dumps(manifest, sort_keys=True, default=str).encode()).hexdigest()
 
-        # Atomic write: temp files -> verify -> SQLite -> rename -> mark contributions
+        # Atomic write with proper NPZ handling
         ckpt_dir = os.path.join(DELTA_STORE, run_id, round_id)
         os.makedirs(ckpt_dir, exist_ok=True)
-        tmp_delta = os.path.join(ckpt_dir, f"global_delta_{ckpt_id}.tmp")
-        tmp_adapter = os.path.join(ckpt_dir, f"global_adapter_{ckpt_id}.tmp")
+        base_delta_path = os.path.join(ckpt_dir, f"global_delta_{ckpt_id}.npz")
+        base_adapter_path = os.path.join(ckpt_dir, f"global_adapter_{ckpt_id}.npz")
+        tmp_delta = base_delta_path + ".tmp.npz"
+        tmp_adapter = base_adapter_path + ".tmp.npz"
 
         try:
-            np.savez_compressed(tmp_delta, **global_delta)
-            # Base adapter + delta = global adapter (PoC: just delta as adapter)
-            global_adapter = {k: v.copy() for k, v in global_delta.items()}
-            np.savez_compressed(tmp_adapter, **global_adapter)
+            # Write temp files
+            with open(tmp_delta, "wb") as f:
+                np.savez_compressed(f, **global_delta)
+            # Load base adapter
+            base_adapter_data = {}
+            round_row = coord._rc5_db.get_round(run_id, round_id)
+            if round_row and round_row.get("base_adapter_path"):
+                ba_path = round_row["base_adapter_path"]
+                if os.path.exists(ba_path):
+                    ba = np.load(ba_path)
+                    for k in ba.files:
+                        base_adapter_data[k] = ba[k]
+            # Compute global adapter
+            global_adapter_tensors = {}
+            for k in sorted(adapter_schema):
+                base = base_adapter_data.get(k, np.zeros(shapes[k], dtype=np.float32))
+                global_adapter_tensors[k] = (
+                    base.astype(np.float64) + global_delta[k].astype(np.float64)
+                ).astype(np.float32)
 
-            # Verify temp files
+            with open(tmp_adapter, "wb") as f:
+                np.savez_compressed(f, **global_adapter_tensors)
+
+            # Verify temp files exist and have content
             for tmpf in [tmp_delta, tmp_adapter]:
-                with open(tmpf, "rb") as f:
-                    _ = hashlib.sha256(f.read()).hexdigest()
+                if not os.path.exists(tmpf) or os.path.getsize(tmpf) == 0:
+                    raise RuntimeError(f"temp file empty or missing: {tmpf}")
+
+            # SHA-256 of actual files
+            global_delta_sha256_f = sha256_file(tmp_delta)
+            global_adapter_sha256_f = sha256_file(tmp_adapter)
 
             with DB_LOCK:
-                # Mark round as AGGREGATING
-                coord._rc5_db.open_round(run_id, round_id, "", "", "fp32")
-                # Rename temp files to final
-                delta_final = tmp_delta.replace(".tmp", ".npz")
-                adapter_final = tmp_adapter.replace(".tmp", ".npz")
-                os.replace(tmp_delta, delta_final)
-                os.replace(tmp_adapter, adapter_final)
-                # Write checkpoint to SQLite
-                coord._rc5_db.save_checkpoint(ckpt_id, run_id, round_id, delta_sha, adapter_sha, manifest)
-                # Mark contributions AGGREGATED
-                for c in active.values():
-                    coord._rc5_db.conn.execute(
-                        "UPDATE rc5_contribution SET status='AGGREGATED' WHERE contribution_id=?",
-                        (c["contribution_id"],))
-                # Mark round COMPLETED
-                coord._rc5_db.close_round(run_id, round_id, ckpt_id, "COMPLETED")
-                coord._rc5_db.conn.commit()
+                conn = coord._rc5_db.conn
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    # Validate round is OPEN
+                    rnd = coord._rc5_db.get_round(run_id, round_id)
+                    if rnd and rnd["status"] in ("COMPLETED", "FAILED"):
+                        conn.execute("ROLLBACK")
+                        return _error(-32050, f"round already {rnd['status']}")
+                    # Mark round as AGGREGATING
+                    conn.execute(
+                        "INSERT OR REPLACE INTO rc5_round (run_id, round_id, status, base_adapter_path, base_adapter_sha256, precision_profile, opened_at, closed_at, checkpoint_id) VALUES (?, ?, 'AGGREGATING', ?, ?, ?, ?, ?, ?)",
+                        (run_id, round_id,
+                         round_row.get("base_adapter_path","") if round_row else "",
+                         round_row.get("base_adapter_sha256","") if round_row else "",
+                         "fp32", time.time(), None, None))
+                    # Rename temp files
+                    os.replace(tmp_delta, base_delta_path)
+                    os.replace(tmp_adapter, base_adapter_path)
+                    # Write checkpoint
+                    conn.execute(
+                        "INSERT INTO rc5_checkpoint (checkpoint_id, run_id, round_id, global_delta_sha256, global_adapter_sha256, manifest_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (ckpt_id, run_id, round_id, global_delta_sha256_f, global_adapter_sha256_f,
+                         json.dumps(manifest, default=str), time.time()))
+                    # Mark contributions AGGREGATED
+                    for c in active.values():
+                        conn.execute(
+                            "UPDATE rc5_contribution SET status='AGGREGATED' WHERE contribution_id=?",
+                            (c["contribution_id"],))
+                    # Mark round COMPLETED
+                    conn.execute(
+                        "UPDATE rc5_round SET status='COMPLETED', closed_at=?, checkpoint_id=? WHERE run_id=? AND round_id=?",
+                        (time.time(), ckpt_id, run_id, round_id))
+                    conn.execute("COMMIT")
+                except Exception:
+                    conn.execute("ROLLBACK")
+                    # Clean up temp files
+                    for tmpf in [tmp_delta, tmp_adapter]:
+                        if os.path.exists(tmpf):
+                            os.unlink(tmpf)
+                    # Clean up renamed files if commit failed after rename
+                    for f in [base_delta_path, base_adapter_path]:
+                        if os.path.exists(f):
+                            os.unlink(f)
+                    raise
         except Exception as e:
-            for tmpf in [tmp_delta, tmp_adapter]:
-                if os.path.exists(tmpf):
-                    os.unlink(tmpf)
             return _error(-32046, f"round close atomic transaction failed: {e}")
 
         return _ok({
             "checkpoint_id": ckpt_id,
             "contributions_aggregated": len(active),
             "total_ett": total_ett,
-            "global_delta_sha256": delta_sha,
-            "global_adapter_sha256": adapter_sha,
+            "global_delta_sha256": global_delta_sha256_f,
+            "global_adapter_sha256": global_adapter_sha256_f,
             "manifest_sha256": manifest["manifest_sha256"],
             "status": "COMPLETED",
         })

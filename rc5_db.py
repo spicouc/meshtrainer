@@ -5,7 +5,7 @@ import time
 import os
 import threading
 
-DB_LOCK = threading.Lock()
+DB_LOCK = threading.RLock()
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS rc5_worker_session (
@@ -86,6 +86,21 @@ CREATE TABLE IF NOT EXISTS rc5_checkpoint (
     created_at REAL NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS rc5_round (
+    run_id TEXT,
+    round_id TEXT,
+    status TEXT NOT NULL DEFAULT 'OPEN',
+    base_adapter_path TEXT,
+    base_adapter_sha256 TEXT,
+    precision_profile TEXT DEFAULT 'fp32',
+    opened_at REAL NOT NULL,
+    closed_at REAL,
+    checkpoint_id TEXT,
+    PRIMARY KEY(run_id, round_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_contribution_active ON rc5_contribution(run_id, round_id, assignment_id, worker_id) WHERE status='ACTIVE';
+
 CREATE INDEX IF NOT EXISTS idx_contribution_key ON rc5_contribution(run_id, round_id, assignment_id, worker_id);
 CREATE INDEX IF NOT EXISTS idx_contribution_status ON rc5_contribution(status);
 CREATE INDEX IF NOT EXISTS idx_assignment_worker ON rc5_assignment(worker_id, status);
@@ -152,6 +167,27 @@ class Rc5Db:
         with DB_LOCK:
             self.conn.execute("UPDATE rc5_assignment SET status=? WHERE assignment_id=?",
                            (status, assignment_id))
+            self.conn.commit()
+
+    # ---- round ----
+    def open_round(self, run_id, round_id, base_adapter_path="", base_adapter_sha256="", precision_profile="fp32"):
+        with DB_LOCK:
+            self.conn.execute("""INSERT OR IGNORE INTO rc5_round
+                (run_id, round_id, status, base_adapter_path, base_adapter_sha256, precision_profile, opened_at)
+                VALUES (?, ?, 'OPEN', ?, ?, ?, ?)""",
+                (run_id, round_id, base_adapter_path, base_adapter_sha256, precision_profile, time.time()))
+            self.conn.commit()
+
+    def get_round(self, run_id, round_id):
+        with DB_LOCK:
+            c = self.conn.execute("SELECT * FROM rc5_round WHERE run_id=? AND round_id=?", (run_id, round_id))
+            return c.fetchone()
+
+    def close_round(self, run_id, round_id, checkpoint_id, status="COMPLETED"):
+        with DB_LOCK:
+            self.conn.execute("""UPDATE rc5_round SET status=?, closed_at=?, checkpoint_id=?
+                WHERE run_id=? AND round_id=?""",
+                (status, time.time(), checkpoint_id, run_id, round_id))
             self.conn.commit()
 
     # ---- contribution ----

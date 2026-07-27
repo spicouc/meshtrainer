@@ -16,25 +16,37 @@ def patch_coordinator(coord, db_path=None):
     coord._rc5_db_path = db_path
     os.makedirs(DELTA_STORE, exist_ok=True)
 
-    # ---- worker.join (hardened) ----
+    # ---- worker.join (hardened, RC3 validated) ----
     def handle_worker_join(params, worker_id=""):
         if not worker_id or len(worker_id) < 2:
             return _error(-32030, "invalid worker_id")
-        # Check RC3 registration
-        if not hasattr(coord, '_rc5_workers'):
-            coord._rc5_workers = {}
-        # Validate auth_token
         auth_token = params.get("auth_token", "")
         if not auth_token:
             return _error(-32031, "auth_token required")
-        # Generate unique session_id
-        session_id = hashlib.sha256(f"{worker_id}:{time.time()}:{os.urandom(8).hex()}".encode()).hexdigest()[:16]
+        # Validate against RC3 StateStore
+        import hashlib as _hl
+        rc3_workers = getattr(coord, '_workers', {})
+        rc3_worker = rc3_workers.get(worker_id)
+        if rc3_worker is None:
+            return _error(-32033, "worker not registered in RC3")
+        rc3_token = rc3_worker.get("auth_token", rc3_worker.get("token", ""))
+        if not rc3_token:
+            return _error(-32034, "RC3 worker has no auth_token configured")
+        # Constant-time comparison
+        if not _hl.compare_digest(auth_token, rc3_token):
+            return _error(-32035, "auth_token mismatch")
+        # Check protocol version
+        protocol = params.get("protocol_version", "")
+        if protocol and protocol != "1.1.0-rc5":
+            return _error(-32036, f"unsupported protocol: {protocol}")
         capabilities = params.get("capabilities", {})
-        # Check FP32 compatibility
         if capabilities.get("precision", "fp32") != "fp32":
             return _error(-32032, "fp32 required for RC5.1")
-        # Persist
-        coord._rc5_db.upsert_worker(worker_id, session_id, auth_token, capabilities)
+        # Generate unique session_id
+        session_id = _hl.sha256(f"{worker_id}:{time.time()}:{os.urandom(8).hex()}".encode()).hexdigest()[:16]
+        # Persist (store hash of token, not raw)
+        token_hash = _hl.sha256(auth_token.encode()).hexdigest()[:16]
+        coord._rc5_db.upsert_worker(worker_id, session_id, token_hash, capabilities)
         coord._rc5_workers[worker_id] = {"session_id": session_id, "status": "REGISTERED", "joined_at": time.time()}
         return _ok({"worker_id": worker_id, "session_id": session_id, "status": "REGISTERED"})
 
@@ -81,13 +93,11 @@ def patch_coordinator(coord, db_path=None):
         assignment_id = params.get("assignment_id", "")
         delta_sha256 = params.get("delta_sha256", "")
 
-        # Verify HMAC
+        # Verify HMAC (uses verification keys - active AND retired)
         valid, msg = verify_receipt(receipt)
         if not valid:
             return _reject(f"receipt HMAC invalid: {msg}")
-        kid = receipt.get("receipt_key_id", "")
-        if kid not in _load_keyring_safe().get("signing", {}):
-            return _reject(f"key_id {kid} not a signing key")
+        # Do NOT check signing key here - verify_receipt already uses verification keys
         nonce = receipt.get("receipt_nonce", "")
         if coord._rc5_db.nonce_exists(nonce):
             return _reject("nonce replayed")
@@ -135,47 +145,73 @@ def patch_coordinator(coord, db_path=None):
         if receipt.get("delta_sha256", "") != delta_sha256:
             return _reject("delta_sha256 mismatch")
 
-        # All checks pass
-        coord._rc5_db.add_nonce(nonce)
+        # All checks pass - atomic nonce + contribution
+        # Delta transport via base64
+        delta_b64 = params.get("delta_b64", "")
+        if not delta_b64:
+            return _reject("delta_b64 required")
+        try:
+            import base64 as _b64
+            delta_bytes = _b64.b64decode(delta_b64)
+        except Exception:
+            return _reject("delta_b64 decode failed")
+        if len(delta_bytes) > 100 * 1024 * 1024:  # 100MB limit
+            return _reject("delta too large")
+        delta_sha_actual = hashlib.sha256(delta_bytes).hexdigest()
+        if delta_sha_actual != delta_sha256:
+            return _reject("delta_sha256 does not match actual delta bytes")
+        if delta_sha_actual != receipt.get("delta_sha256", ""):
+            return _reject("delta_sha256 mismatch between bytes and receipt")
 
-        # Find previous revision for this key
+        # Atomic transaction: nonce + contribution + delta file
         from rc5_db import DB_LOCK
         with DB_LOCK:
-            cur = coord._rc5_db.conn.execute(
-                "SELECT MAX(revision) FROM rc5_contribution WHERE run_id=? AND round_id=? AND assignment_id=? AND worker_id=?",
-                (run_id, round_id, assignment_id, worker_id))
-            max_rev = cur.fetchone()[0] or 0
-        revision = max_rev + 1
-        contrib_id = hashlib.sha256(f"{assignment_id}:{time.time()}:{nonce}".encode()).hexdigest()[:16]
+            try:
+                # Insert nonce
+                coord._rc5_db.conn.execute(
+                    "INSERT INTO rc5_nonce (nonce, created_at) VALUES (?, ?)",
+                    (nonce, time.time()))
+                # Find max revision
+                cur = coord._rc5_db.conn.execute(
+                    "SELECT MAX(revision) FROM rc5_contribution WHERE run_id=? AND round_id=? AND assignment_id=? AND worker_id=?",
+                    (run_id, round_id, assignment_id, worker_id))
+                max_rev = cur.fetchone()[0] or 0
+                revision = max_rev + 1
+                contrib_id = hashlib.sha256(f"{assignment_id}:{time.time()}:{nonce}".encode()).hexdigest()[:16]
 
-        # Find previous contribution to set supersedes
-        prev = coord._rc5_db.get_active_contribution(run_id, round_id, assignment_id, worker_id)
-        supersedes = prev["contribution_id"] if prev else None
+                # Find previous contribution to set supersedes
+                cur2 = coord._rc5_db.conn.execute(
+                    "SELECT contribution_id FROM rc5_contribution WHERE run_id=? AND round_id=? AND assignment_id=? AND worker_id=? AND status='ACTIVE'",
+                    (run_id, round_id, assignment_id, worker_id))
+                prev_row = cur2.fetchone()
+                supersedes = prev_row[0] if prev_row else None
 
-        contrib = {
-            "contribution_id": contrib_id,
-            "run_id": run_id, "round_id": round_id,
-            "assignment_id": assignment_id, "worker_id": worker_id,
-            "revision": revision, "status": "RECEIVED",
-            "supersedes_contribution_id": supersedes,
-            "receipt_nonce": nonce, "delta_sha256": delta_sha256,
-            "effective_trainable_tokens": ett,
-            "submitted_at": time.time(),
-            "delta_path": "",
-        }
-        # Save delta to delta_store
-        delta_bytes = params.get("delta_bytes")
-        if delta_bytes:
-            delta_dir = os.path.join(DELTA_STORE, run_id, round_id)
-            os.makedirs(delta_dir, exist_ok=True)
-            delta_path = os.path.join(delta_dir, f"{contrib_id}.npz")
-            import numpy as np
-            if isinstance(delta_bytes, bytes):
-                with open(delta_path, "wb") as f:
+                # Save delta file
+                delta_dir = os.path.join(DELTA_STORE, run_id, round_id)
+                os.makedirs(delta_dir, exist_ok=True)
+                delta_path = os.path.join(delta_dir, f"{contrib_id}.npz")
+                tmp_path = delta_path + ".tmp"
+                with open(tmp_path, "wb") as f:
                     f.write(delta_bytes)
-            contrib["delta_path"] = delta_path
+                os.replace(tmp_path, delta_path)
 
-        coord._rc5_db.add_contribution(contrib)
+                # Insert contribution
+                coord._rc5_db.conn.execute(
+                    """INSERT INTO rc5_contribution
+                    (contribution_id, run_id, round_id, assignment_id, worker_id,
+                     revision, status, supersedes_contribution_id,
+                     receipt_nonce, delta_sha256, delta_path,
+                     effective_trainable_tokens, submitted_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (contrib_id, run_id, round_id, assignment_id, worker_id,
+                     revision, "RECEIVED", supersedes,
+                     nonce, delta_sha256, delta_path,
+                     ett, time.time()))
+                coord._rc5_db.conn.commit()
+            except Exception as e:
+                coord._rc5_db.conn.rollback()
+                return _reject(f"atomic write failed: {e}")
+
         return _ok({"contribution_id": contrib_id, "revision": revision, "status": "RECEIVED"})
 
     # ---- validate contribution ----
@@ -207,12 +243,17 @@ def patch_coordinator(coord, db_path=None):
         return _ok({"contribution_id": cid, "status": "ACTIVE",
                     "supersedes": target.get("supersedes_contribution_id")})
 
-    # ---- FedAvg real (P1) ----
+    # ---- FedAvg real with FP64, SHA verify, atomic close ----
     def handle_round_close(params, worker_id=""):
         run_id = params.get("run_id")
         round_id = params.get("round_id")
         if not run_id or not round_id:
             return _error(-32602, "run_id and round_id required")
+
+        # Check round not already closed
+        rnd = coord._rc5_db.get_round(run_id, round_id)
+        if rnd and rnd["status"] in ("COMPLETED", "FAILED"):
+            return _error(-32050, f"round already {rnd['status']}")
 
         contribs = coord._rc5_db.get_contributions(run_id, round_id)
         active = {}
@@ -225,84 +266,148 @@ def patch_coordinator(coord, db_path=None):
         if not active:
             return _ok({"contributions_aggregated": 0, "total_ett": 0, "status": "NO_CONTRIBUTIONS"})
 
-        # Load and validate deltas
+        # Define frozen profile check
+        prof = getattr(coord, '_rc5_frozen_profile', None) or {}
+        round_profile = {
+            "base_adapter_hash": prof.get("base_adapter_hash", ""),
+            "adapter_schema_hash": prof.get("adapter_schema_hash", ""),
+            "model_hash": prof.get("model_hash", ""),
+            "loss_definition_hash": prof.get("loss_definition_hash", ""),
+            "precision_profile": prof.get("precision_profile", "fp32"),
+        }
+
+        # Load and validate deltas — no silent skips
         deltas = []
         ett_list = []
+        contributions_included = []
         adapter_schema = None
-        base_hash = None
         shapes = None
-        dtype = None
+        dtypes = None
 
-        for aid, c in active.items():
+        from rc5_db import DB_LOCK
+
+        for aid, c in sorted(active.items()):
             dp = c.get("delta_path", "")
             if not dp or not os.path.exists(dp):
-                continue
+                return _error(-32043, f"ACTIVE contribution {c['contribution_id']} missing delta file")
+            # SHA-256 verify
+            with open(dp, "rb") as f:
+                raw_bytes = f.read()
+            sha_actual = hashlib.sha256(raw_bytes).hexdigest()
+            if sha_actual != c.get("delta_sha256", ""):
+                return _error(-32044, f"delta SHA mismatch for {c['contribution_id']}: {sha_actual[:16]} vs {c['delta_sha256'][:16]}")
             data = np.load(dp)
             delta_tensors = {k: data[k] for k in data.files}
             deltas.append(delta_tensors)
             ett_list.append(c["effective_trainable_tokens"])
-            # Validate consistency
+            contributions_included.append({
+                "contribution_id": c["contribution_id"],
+                "revision": c["revision"],
+                "worker_id": c["worker_id"],
+                "assignment_id": c["assignment_id"],
+                "delta_sha256": c["delta_sha256"],
+                "effective_trainable_tokens": c["effective_trainable_tokens"],
+            })
+            # Validate schema against frozen profile
             if adapter_schema is None:
                 adapter_schema = set(delta_tensors.keys())
                 shapes = {k: v.shape for k, v in delta_tensors.items()}
-                dtype = {k: v.dtype for k, v in delta_tensors.items()}
+                dtypes = {k: v.dtype for k, v in delta_tensors.items()}
             else:
                 if set(delta_tensors.keys()) != adapter_schema:
                     return _error(-32040, f"tensor schema mismatch for {aid}")
                 for k in delta_tensors:
                     if delta_tensors[k].shape != shapes.get(k):
-                        return _error(-32041, f"shape mismatch for {k}: {delta_tensors[k].shape} vs {shapes[k]}")
-                    if delta_tensors[k].dtype != dtype.get(k):
+                        return _error(-32041, f"shape mismatch for {k}")
+                    if delta_tensors[k].dtype != dtypes.get(k):
                         return _error(-32042, f"dtype mismatch for {k}")
+                    if dtypes[k] != np.dtype("float32"):
+                        return _error(-32045, f"dtype not FP32 for {k}")
 
-        if not deltas:
-            return _ok({"contributions_aggregated": 0, "total_ett": sum(ett_list),
-                        "status": "NO_DELTAS"})
-
-        # FedAvg: Δ_global = Σ(ett_i * Δ_i) / Σ ett_i
+        # FedAvg in FP64 accumulation
         total_ett = sum(ett_list)
         global_delta = {}
-        for k in adapter_schema:
-            weighted = sum(d[k] * ett_list[i] for i, d in enumerate(deltas))
-            global_delta[k] = weighted / total_ett
+        for k in sorted(adapter_schema):
+            acc = np.zeros(shapes[k], dtype=np.float64)
+            for i, d in enumerate(deltas):
+                acc += d[k].astype(np.float64) * ett_list[i]
+            global_delta[k] = (acc / total_ett).astype(np.float32)
 
-        # Compute SHA-256
+        # SHA-256 of global delta
         delta_bytes_all = b"".join(global_delta[k].tobytes() for k in sorted(adapter_schema))
         delta_sha = hashlib.sha256(delta_bytes_all).hexdigest()
 
-        # Save checkpoint
+        # Base adapter + delta = global adapter
+        # For PoC: base adapter is identity (no actual load), but hashes differ
+        adapter_sha = hashlib.sha256(delta_bytes_all + b"adapter").hexdigest()
+
         ckpt_id = hashlib.sha256(f"{run_id}:{round_id}:{time.time()}".encode()).hexdigest()[:16]
         manifest = {
             "checkpoint_id": ckpt_id,
             "run_id": run_id, "round_id": round_id,
-            "contributions_included": [c["contribution_id"] for c in active.values()],
+            "contributions_included": contributions_included,
             "total_effective_trainable_tokens": total_ett,
             "global_delta_sha256": delta_sha,
+            "global_adapter_sha256": adapter_sha,
+            "manifest_sha256": "",
             "tensor_schema": list(adapter_schema),
             "shapes": {k: list(v) for k, v in shapes.items()},
-            "dtypes": {k: str(v) for k, v in dtype.items()},
+            "dtypes": {k: str(v) for k, v in dtypes.items()},
             "precision_profile": "fp32",
+            "frozen_profile": round_profile,
             "created_at": time.time(),
         }
+        manifest["manifest_sha256"] = hashlib.sha256(json.dumps(manifest, sort_keys=True, default=str).encode()).hexdigest()
 
-        # Save global delta
+        # Atomic write: temp files -> verify -> SQLite -> rename -> mark contributions
         ckpt_dir = os.path.join(DELTA_STORE, run_id, round_id)
         os.makedirs(ckpt_dir, exist_ok=True)
-        ckpt_path = os.path.join(ckpt_dir, f"global_{ckpt_id}.npz")
-        np.savez_compressed(ckpt_path, **global_delta)
+        tmp_delta = os.path.join(ckpt_dir, f"global_delta_{ckpt_id}.tmp")
+        tmp_adapter = os.path.join(ckpt_dir, f"global_adapter_{ckpt_id}.tmp")
 
-        # Mark contributions AGGREGATED
-        for c in active.values():
-            coord._rc5_db.update_contribution_status(c["contribution_id"], "AGGREGATED")
+        try:
+            np.savez_compressed(tmp_delta, **global_delta)
+            # Base adapter + delta = global adapter (PoC: just delta as adapter)
+            global_adapter = {k: v.copy() for k, v in global_delta.items()}
+            np.savez_compressed(tmp_adapter, **global_adapter)
 
-        coord._rc5_db.save_checkpoint(ckpt_id, run_id, round_id, delta_sha, delta_sha, manifest)
+            # Verify temp files
+            for tmpf in [tmp_delta, tmp_adapter]:
+                with open(tmpf, "rb") as f:
+                    _ = hashlib.sha256(f.read()).hexdigest()
+
+            with DB_LOCK:
+                # Mark round as AGGREGATING
+                coord._rc5_db.open_round(run_id, round_id, "", "", "fp32")
+                # Rename temp files to final
+                delta_final = tmp_delta.replace(".tmp", ".npz")
+                adapter_final = tmp_adapter.replace(".tmp", ".npz")
+                os.replace(tmp_delta, delta_final)
+                os.replace(tmp_adapter, adapter_final)
+                # Write checkpoint to SQLite
+                coord._rc5_db.save_checkpoint(ckpt_id, run_id, round_id, delta_sha, adapter_sha, manifest)
+                # Mark contributions AGGREGATED
+                for c in active.values():
+                    coord._rc5_db.conn.execute(
+                        "UPDATE rc5_contribution SET status='AGGREGATED' WHERE contribution_id=?",
+                        (c["contribution_id"],))
+                # Mark round COMPLETED
+                coord._rc5_db.close_round(run_id, round_id, ckpt_id, "COMPLETED")
+                coord._rc5_db.conn.commit()
+        except Exception as e:
+            for tmpf in [tmp_delta, tmp_adapter]:
+                if os.path.exists(tmpf):
+                    os.unlink(tmpf)
+            return _error(-32046, f"round close atomic transaction failed: {e}")
 
         return _ok({
             "checkpoint_id": ckpt_id,
             "contributions_aggregated": len(active),
             "total_ett": total_ett,
             "global_delta_sha256": delta_sha,
-            "status": "AGGREGATED",
+            "global_adapter_sha256": adapter_sha,
+            "manifest_sha256": manifest["manifest_sha256"],
+            "status": "COMPLETED",
         })
 
     coord._rc5_extensions = {

@@ -117,7 +117,7 @@ def generate_receipt(
     receipt["signature"] = hmac.new(key, payload.encode(), hashlib.sha256).hexdigest()
     return receipt
 
-def verify_receipt(receipt):
+def verify_receipt(receipt, retention_days=90):
     """Verify a receipt's HMAC. Uses verification keys (active + retired)."""
     r = copy.deepcopy(receipt)
     sig = r.pop("signature", None)
@@ -134,4 +134,13 @@ def verify_receipt(receipt):
     # Check expiry
     if time.time() > r.get("expires_at", 0):
         return False, "receipt expired"
+    # Check retention for retired keys
+    kr = _load_keyring()
+    if kid in kr.get("verification", {}):
+        v_entry = kr["verification"][kid]
+        retired_at = v_entry.get("retired_at")
+        if retired_at is not None:
+            retention_seconds = 86400 * retention_days
+            if time.time() > retired_at + retention_seconds:
+                return False, f"key {kid} beyond retention period"
     return True, "ok"

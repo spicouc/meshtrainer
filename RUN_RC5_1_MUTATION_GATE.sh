@@ -54,9 +54,8 @@ for i in 1 2 3 4 5; do
             ;;
         2)
             NAME="MUT-02-no-superseded"
-            # Replace the SUPERSEDED block with pass (syntactically valid)
-            perl -i -0pe 's/for c2 in coord\._rc5_ledger:.*?c2\["status"\] = "SUPERSEDED"/if False: pass  # mutant: no SUPERSEDED/s' rc5_coordinator_ext.py 2>/dev/null || \
-            sed -i 's/c2\["status"\] = "SUPERSEDED"/# mutant: c2["status"] = "SUPERSEDED"/' rc5_coordinator_ext.py
+            # Replace SUPERSEDED SQL with pass (syntactically valid in a function body)
+            sed -i '/status.*SUPERSEDED.*ACTIVE/s/conn.execute.*status.*SUPERSEDED.*ACTIVE.*/pass # mutant: removed SUPERSEDED/' rc5_coordinator_ext.py
             ;;
         3)
             NAME="MUT-03-no-sha-bytes"
@@ -77,7 +76,7 @@ for i in 1 2 3 4 5; do
     # Validate mutation applied (exactly once)
     case $i in
         1) COUNT=$(grep -c "torch.zeros_like" rc5_split_server.py || true) ;;
-        2) COUNT=$(grep -c "mutant: no SUPERSEDED\|c2\[.status.\] = .SUPERSEDED" rc5_coordinator_ext.py || true) ;;
+        2) COUNT=$(grep -c "mutant: UPDATE" rc5_coordinator_ext.py || true) ;;
         3) COUNT=$(grep -c "if False and" rc5_coordinator_ext.py || true) ;;
         4) COUNT=$(grep -c "if False:" rc5_split_server.py || true) ;;
         5) COUNT=$(grep -c "if False:" rc5_split_server.py || true) ;;

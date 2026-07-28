@@ -44,15 +44,9 @@ for i in 1 2 3 4 5; do
         1) NAME="MUT-01-zero-delta"
            sed -i 's/lora_delta = lora_after - lora_before/lora_delta = torch.zeros_like(lora_after)/' rc5_split_server.py ;;
         2) NAME="MUT-02-no-superseded"
-           # Python multiline replacement: turn the SUPERSEDED SQL block into "pass"
-           python3 -c "
-import re
-with open('rc5_coordinator_ext.py') as f: c = f.read()
-# Replace the entire SUPERSEDED block (conn.execute + args) with pass
-old = r\"\"\"coord\\._rc5_db\\.conn\\.execute\\(\\\\s*\"UPDATE rc5_contribution SET status='SUPERSEDED'.*?\\)\"\"\"
-c = re.sub(old, 'pass  # mutant: previous ACTIVE is not superseded', c, flags=re.DOTALL)
-with open('rc5_coordinator_ext.py','w') as f: f.write(c)
-" ;;
+           # Replace the 2-line SUPERSEDED block with a pass 
+           sed -i '244,245s/.*/pass  # mutant: previous ACTIVE is not superseded/' rc5_coordinator_ext.py
+           ;;
         3) NAME="MUT-03-no-sha-bytes"
            sed -i 's/if delta_sha_actual != delta_sha256:/if False and delta_sha_actual != delta_sha256:/' rc5_coordinator_ext.py
            sed -i 's/if delta_sha_actual != receipt.get("delta_sha256", "")/if False and delta_sha_actual != receipt.get("delta_sha256", "")/' rc5_coordinator_ext.py ;;

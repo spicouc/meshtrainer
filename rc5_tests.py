@@ -12,12 +12,20 @@ from rc5_coordinator_ext import patch_coordinator, rpc as crpc, DELTA_STORE
 from rc5_db import Rc5Db
 
 PASS, FAIL = 0, 0
+COUNTS = {"protocol": 0, "security": 0, "integrity": 0, "numerical": 0, "ledger": 0, "persistence": 0, "e2e": 0}
 TIMEOUTS = 0
-DEADLOCK_TIMEOUT = 10  # seconds per test
+DEADLOCK_TIMEOUT = 10
 
-# ================================================================
-# REAL HELPERS (P0)
-# ================================================================
+def check(label, cond, category="protocol"):
+    global PASS, FAIL, COUNTS
+    if cond:
+        PASS += 1
+        COUNTS[category] += 1
+        print(f"  ✅ {label}")
+    else:
+        FAIL += 1
+        print(f"  ❌ {label}")
+
 def register_rc3_worker(coord, worker_id="w1", auth_token="tok1"):
     """Register a worker in RC3's StateStore."""
     if not hasattr(coord, "_workers"):
@@ -87,18 +95,19 @@ def run_flow(coord, worker_id="w1", auth_token="tok1", assignment_id="a1",
     assert r["result"]["status"] == "ACTIVE", f"activate failed: {r}"
     return worker_id, session_id, cid
 
-def check(label, cond):
-    global PASS, FAIL
-    if cond:
-        PASS += 1
-        print(f"  ✅ {label}")
-    else:
-        FAIL += 1
-        print(f"  ❌ {label}")
-
 # ================================================================
 # T-R2-01 to T-R2-20
 # ================================================================
+def make_coord(db_path=None):
+    if db_path is None:
+        fd, db_path = tempfile.mkstemp(suffix=".rc5.db")
+        os.close(fd)
+    coord = Coordinator(db_path, admin_mode=True)
+    coord.train_manager.ensure_schema()
+    coord._recovered = True
+    patch_coordinator(coord, db_path)
+    return coord, db_path
+
 def test_tr2_01():
     """T-R2-01: work.request no deadlock"""
     coord, db = make_coord()
@@ -225,6 +234,73 @@ def test_tr2_10():
          "receipt":receipt,"delta_b64":"AAAA","delta_sha256":"c"*64},"w1")
     nonce_after = len(coord._rc5_db.conn.execute("SELECT * FROM rc5_nonce").fetchall())
     check("T-R2-10: nonce not consumed on failed upload", nonce_after == nonce_before)
+
+def test_r4_expired():
+    """T-SPLIT-9: expired receipt with correct reason"""
+    coord, db = make_coord()
+    register_rc3_worker(coord)
+    r = crpc(coord, "worker.join", {"worker_id":"w1","auth_token":"tok1",
+             "protocol_version":"1.1.0-rc5","capabilities":{"precision":"fp32"}},"w1")
+    # Generate receipt already expired (expiry_s=-10)
+    sid = r["result"]["session_id"]
+    expired_receipt = generate_receipt(
+        run_id="r1", round_id="rd1", assignment_id="a1",
+        micro_unit_id="u1", worker_id="w1", session_id=sid,
+        base_adapter_hash="sha256:base", model_hash="sha256:model",
+        adapter_schema_hash="sha256:schema", loss_definition_hash="sha256:loss",
+        precision_profile="fp32", data_shard_hash="d"*16,
+        effective_trainable_tokens=10, optimizer_steps=1,
+        first_step_id="u1-s0", last_step_id="u1-s0",
+        delta_sha256="a"*64, receipt_key_id="k1",
+        expiry_s=-10)
+    delta_bytes, _ = create_npz_delta()
+    d_b64, d_sha = delta_b64_sha(delta_bytes)
+    r = crpc(coord, "checkpoint.upload", {"run_id":"r1","round_id":"rd1","assignment_id":"a1",
+             "receipt":expired_receipt,"delta_b64":d_b64,"delta_sha256":d_sha},"w1")
+    result = r.get("result", {})
+    check("R4-expired: status REJECTED", result.get("status") == "REJECTED")
+    check("R4-expired: reason is 'receipt expired'", "expired" in result.get("reason", "").lower())
+    coord.stop()
+    os.unlink(db)
+
+def test_r4_hash_evidence():
+    """Evidence: coordinator computes hash from actual delta bytes"""
+    coord, db = make_coord()
+    register_rc3_worker(coord)
+    r = crpc(coord, "worker.join", {"worker_id":"w1","auth_token":"tok1",
+             "protocol_version":"1.1.0-rc5","capabilities":{"precision":"fp32"}},"w1")
+    session_id = r["result"]["session_id"]
+    # Create assignment
+    coord._rc5_db.create_assignment("a1", "r1", "rd1", "w1", session_id, ["u1"])
+    crpc(coord, "work.request", {}, "w1")
+    crpc(coord, "work.accept", {"assignment_id":"a1"}, "w1")
+    # Create a known delta, compute hash ourselves
+    known_tensor = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+    buf = io.BytesIO()
+    np.savez_compressed(buf, lora_A=known_tensor, lora_B=known_tensor*2)
+    delta_bytes = buf.getvalue()
+    our_hash = hashlib.sha256(delta_bytes).hexdigest()
+    d_b64 = base64.b64encode(delta_bytes).decode("ascii")
+    # Upload through coordinator
+    receipt = generate_receipt(
+        run_id="r1", round_id="rd1", assignment_id="a1",
+        micro_unit_id="u1", worker_id="w1", session_id=session_id,
+        base_adapter_hash="sha256:base", model_hash="sha256:model",
+        adapter_schema_hash="sha256:schema", loss_definition_hash="sha256:loss",
+        precision_profile="fp32", data_shard_hash="d"*16,
+        effective_trainable_tokens=10, optimizer_steps=1,
+        first_step_id="u1-s0", last_step_id="u1-s0",
+        delta_sha256=our_hash, receipt_key_id="k1")
+    r = crpc(coord, "checkpoint.upload", {"run_id":"r1","round_id":"rd1","assignment_id":"a1",
+             "receipt":receipt,"delta_b64":d_b64,"delta_sha256":our_hash},"w1")
+    print(f"  DEBUG upload response: {json.dumps(r, default=str)[:300]}")
+    check("R4-hash-evidence: upload accepted", r.get("result",{}).get("status") == "RECEIVED")
+    # Verify the stored file has the same SHA
+    cid = r["result"]["contribution_id"]
+    row = coord._rc5_db.conn.execute("SELECT delta_path FROM rc5_contribution WHERE contribution_id=?", (cid,)).fetchone()
+    if row and row[0]:
+        file_sha = hashlib.sha256(open(row[0], "rb").read()).hexdigest()
+        check("R4-hash-evidence: file SHA matches our_hash", file_sha == our_hash)
     coord.stop()
     os.unlink(db)
 
@@ -359,7 +435,192 @@ def test_tr2_20():
 
 # ================================================================
 # MAIN
+def test_r5_fedavg_path():
+    """R5-08: FedAvg through RC5 path with 2 workers, real deltas, checkpoint load"""
+    coord, db = make_coord()
+    # Worker A: delta=1, ett=10
+    register_rc3_worker(coord, "wA", "tokA")
+    r = crpc(coord, "worker.join", {"worker_id":"wA","auth_token":"tokA",
+             "protocol_version":"1.1.0-rc5","capabilities":{"precision":"fp32"}},"wA")
+    sidA = r["result"]["session_id"]
+    coord._rc5_db.create_assignment("aA", "r5", "rd5", "wA", sidA, ["uA"])
+    crpc(coord, "work.request", {}, "wA")
+    crpc(coord, "work.accept", {"assignment_id":"aA"}, "wA")
+
+    # Worker B: delta=3, ett=30
+    register_rc3_worker(coord, "wB", "tokB")
+    r = crpc(coord, "worker.join", {"worker_id":"wB","auth_token":"tokB",
+             "protocol_version":"1.1.0-rc5","capabilities":{"precision":"fp32"}},"wB")
+    sidB = r["result"]["session_id"]
+    coord._rc5_db.create_assignment("aB", "r5", "rd5", "wB", sidB, ["uB"])
+    crpc(coord, "work.request", {}, "wB")
+    crpc(coord, "work.accept", {"assignment_id":"aB"}, "wB")
+
+    def make_worker_delta(value, ett):
+        """Create a 2-element tensor delta with given value"""
+        tensors = {"w": np.full((2,), value, dtype=np.float32)}  # weight tensor
+        buf = io.BytesIO()
+        np.savez_compressed(buf, **tensors)
+        delta_bytes = buf.getvalue()
+        d_b64 = base64.b64encode(delta_bytes).decode("ascii")
+        d_sha = hashlib.sha256(delta_bytes).hexdigest()
+        return delta_bytes, tensors, d_b64, d_sha
+
+    # Upload worker A contribution
+    _, _, d_b64A, d_shaA = make_worker_delta(1.0, 10)
+    rcptA = generate_receipt("r5","rd5","aA","uA","wA",sidA,
+        "sha256:base","sha256:model","sha256:schema","sha256:loss",
+        "fp32","d"*16,10,1,"uA-s0","uA-s0",d_shaA,"k1")
+    rA = crpc(coord, "checkpoint.upload", {"run_id":"r5","round_id":"rd5",
+        "assignment_id":"aA","receipt":rcptA,"delta_b64":d_b64A,"delta_sha256":d_shaA},"wA")
+    cidA = rA["result"]["contribution_id"]
+    crpc(coord, "admin.validate.contribution", {"contribution_id":cidA},"")
+    crpc(coord, "admin.activate.contribution", {"contribution_id":cidA},"")
+
+    # Upload worker B contribution
+    _, _, d_b64B, d_shaB = make_worker_delta(3.0, 30)
+    rcptB = generate_receipt("r5","rd5","aB","uB","wB",sidB,
+        "sha256:base","sha256:model","sha256:schema","sha256:loss",
+        "fp32","d"*16,30,1,"uB-s0","uB-s0",d_shaB,"k1")
+    rB = crpc(coord, "checkpoint.upload", {"run_id":"r5","round_id":"rd5",
+        "assignment_id":"aB","receipt":rcptB,"delta_b64":d_b64B,"delta_sha256":d_shaB},"wB")
+    cidB = rB["result"]["contribution_id"]
+    crpc(coord, "admin.validate.contribution", {"contribution_id":cidB},"")
+    crpc(coord, "admin.activate.contribution", {"contribution_id":cidB},"")
+
+    # Close round
+    rc = crpc(coord, "admin.round.close", {"run_id":"r5","round_id":"rd5"})
+    check("R5-08: round COMPLETED", rc["result"]["status"] == "COMPLETED")
+    check("R5-08: 2 contributions", rc["result"]["contributions_aggregated"] == 2)
+    check("R5-08: ett=40", rc["result"]["total_ett"] == 40)
+
+    # Load checkpoint and verify values
+    ckpt_id = rc["result"]["checkpoint_id"]
+    ckpt_dir = os.path.join(DELTA_STORE, "r5", "rd5")
+    delta_path = os.path.join(ckpt_dir, f"global_delta_{ckpt_id}.npz")
+    check("R5-08: global delta file exists", os.path.exists(delta_path))
+    data = np.load(delta_path)
+    for k in data.files:
+        actual = data[k]
+        expected = np.full(actual.shape, 2.5, dtype=np.float32)
+        ok = np.allclose(actual, expected, rtol=1e-6, atol=1e-7)
+        check(f"R5-08: {k} = 2.5", ok)
+
+    # Verify adapter file too
+    adapter_path = os.path.join(ckpt_dir, f"global_adapter_{ckpt_id}.npz")
+    check("R5-08: adapter file exists", os.path.exists(adapter_path))
+    coord.stop()
+    os.unlink(db)
+
 # ================================================================
+# MUTATION GATE: 5 mutants that tests must detect
+# ================================================================
+def test_r5_mutation_1():
+    """Mutant 1: Remove HMAC verification -> upload should accept bad signature"""
+    coord, db = make_coord()
+    register_rc3_worker(coord)
+    r = crpc(coord, "worker.join", {"worker_id":"w1","auth_token":"tok1",
+             "protocol_version":"1.1.0-rc5","capabilities":{"precision":"fp32"}},"w1")
+    sid = r["result"]["session_id"]
+    coord._rc5_db.create_assignment("a1","r1","rd1","w1",sid,["u1"])
+    crpc(coord, "work.request",{},"w1")
+    crpc(coord, "work.accept",{"assignment_id":"a1"},"w1")
+    # Bad signature receipt
+    rcpt = generate_receipt("r1","rd1","a1","u1","w1",sid,
+        "sha256:base","sha256:model","sha256:schema","sha256:loss",
+        "fp32","d"*16,10,1,"x","x","a"*64,"k1")
+    rcpt["signature"] = "0"*64
+    delta_bytes, _ = create_npz_delta()
+    d_b64, d_sha = delta_b64_sha(delta_bytes)
+    r = crpc(coord, "checkpoint.upload", {"run_id":"r1","round_id":"rd1","assignment_id":"a1",
+        "receipt":rcpt,"delta_b64":d_b64,"delta_sha256":d_sha},"w1")
+    # If HMAC check removed, upload would succeed — we expect REJECTED
+    check("MUT-1: HMAC check alive", r.get("result",{}).get("status") == "REJECTED")
+    coord.stop()
+    os.unlink(db)
+
+def test_r5_mutation_2():
+    """Mutant 2: Remove assignment ownership check -> alien worker upload accepted"""
+    coord, db = make_coord()
+    register_rc3_worker(coord, "wA", "tokA")
+    r = crpc(coord, "worker.join",{"worker_id":"wA","auth_token":"tokA",
+             "protocol_version":"1.1.0-rc5","capabilities":{"precision":"fp32"}},"wA")
+    sidA = r["result"]["session_id"]
+    coord._rc5_db.create_assignment("a1","r1","rd1","wA",sidA,["u1"])
+    # Worker B tries to upload to A's assignment
+    register_rc3_worker(coord, "wB", "tokB")
+    r = crpc(coord, "worker.join",{"worker_id":"wB","auth_token":"tokB",
+             "protocol_version":"1.1.0-rc5","capabilities":{"precision":"fp32"}},"wB")
+    sidB = r["result"]["session_id"]
+    rcpt = generate_receipt("r1","rd1","a1","u1","wB",sidB,
+        "sha256:base","sha256:model","sha256:schema","sha256:loss",
+        "fp32","d"*16,10,1,"x","x","a"*64,"k1")
+    delta_bytes, _ = create_npz_delta()
+    d_b64, d_sha = delta_b64_sha(delta_bytes)
+    r = crpc(coord, "checkpoint.upload",{"run_id":"r1","round_id":"rd1","assignment_id":"a1",
+        "receipt":rcpt,"delta_b64":d_b64,"delta_sha256":d_sha},"wB")
+    check("MUT-2: ownership check alive", r.get("result",{}).get("status") == "REJECTED")
+    coord.stop()
+    os.unlink(db)
+
+def test_r5_mutation_3():
+    """Mutant 3: Remove nonce replay protection -> same receipt upload twice succeeds"""
+    coord, db = make_coord()
+    register_rc3_worker(coord)
+    r = crpc(coord, "worker.join",{"worker_id":"w1","auth_token":"tok1",
+             "protocol_version":"1.1.0-rc5","capabilities":{"precision":"fp32"}},"w1")
+    sid = r["result"]["session_id"]
+    coord._rc5_db.create_assignment("a1","r1","rd1","w1",sid,["u1"])
+    crpc(coord, "work.request",{},"w1")
+    crpc(coord, "work.accept",{"assignment_id":"a1"},"w1")
+    # Upload once
+    delta_bytes, _ = create_npz_delta()
+    d_b64, d_sha = delta_b64_sha(delta_bytes)
+    rcpt = generate_receipt("r1","rd1","a1","u1","w1",sid,
+        "sha256:base","sha256:model","sha256:schema","sha256:loss",
+        "fp32","d"*16,10,1,"x","x",d_sha,"k1")
+    r1 = crpc(coord, "checkpoint.upload",{"run_id":"r1","round_id":"rd1","assignment_id":"a1",
+        "receipt":rcpt,"delta_b64":d_b64,"delta_sha256":d_sha},"w1")
+    check("MUT-3a: first upload RECEIVED", r1["result"]["status"] == "RECEIVED")
+    # Upload same receipt again
+    r2 = crpc(coord, "checkpoint.upload",{"run_id":"r1","round_id":"rd1","assignment_id":"a1",
+        "receipt":rcpt,"delta_b64":d_b64,"delta_sha256":d_sha},"w1")
+    check("MUT-3b: nonce replay REJECTED", r2.get("result",{}).get("status") == "REJECTED")
+    coord.stop()
+    os.unlink(db)
+
+def test_r5_mutation_4():
+    """Mutant 4: Remove delta SHA verification -> wrong bytes accepted"""
+    coord, db = make_coord()
+    register_rc3_worker(coord)
+    r = crpc(coord, "worker.join",{"worker_id":"w1","auth_token":"tok1",
+             "protocol_version":"1.1.0-rc5","capabilities":{"precision":"fp32"}},"w1")
+    sid = r["result"]["session_id"]
+    coord._rc5_db.create_assignment("a1","r1","rd1","w1",sid,["u1"])
+    crpc(coord, "work.request",{},"w1")
+    crpc(coord, "work.accept",{"assignment_id":"a1"},"w1")
+    # Receipt says hash of 'a'*64 but we send different bytes
+    rcpt = generate_receipt("r1","rd1","a1","u1","w1",sid,
+        "sha256:base","sha256:model","sha256:schema","sha256:loss",
+        "fp32","d"*16,10,1,"x","x","b"*64,"k1")
+    delta_bytes, _ = create_npz_delta()
+    d_b64, d_sha = delta_b64_sha(delta_bytes)
+    r = crpc(coord, "checkpoint.upload",{"run_id":"r1","round_id":"rd1","assignment_id":"a1",
+        "receipt":rcpt,"delta_b64":d_b64,"delta_sha256":"b"*64},"w1")
+    check("MUT-4: delta SHA verification alive", r.get("result",{}).get("status") == "REJECTED")
+    coord.stop()
+    os.unlink(db)
+
+def test_r5_mutation_5():
+    """Mutant 5: Remove worker join RC3 check -> unknown worker can register"""
+    coord, db = make_coord()
+    # Try to join without being registered in RC3
+    r = crpc(coord, "worker.join",{"worker_id":"hacker","auth_token":"fake",
+             "protocol_version":"1.1.0-rc5","capabilities":{"precision":"fp32"}},"hacker")
+    check("MUT-5: RC3 join check alive", "error" in r)
+    coord.stop()
+    os.unlink(db)
+
 if __name__ == "__main__":
     if os.path.exists(RECEIPT_KEYRING_FILE):
         os.remove(RECEIPT_KEYRING_FILE)
@@ -376,6 +637,14 @@ if __name__ == "__main__":
         ("T-R2-15", test_tr2_15), ("T-R2-16", test_tr2_16),
         ("T-R2-17", test_tr2_17), ("T-R2-18", test_tr2_18),
         ("T-R2-19", test_tr2_19), ("T-R2-20", test_tr2_20),
+ ("R4-expired", test_r4_expired),
+ ("R4-hash-evidence", test_r4_hash_evidence),
+        ("R5-08-fedavg", test_r5_fedavg_path),
+        ("MUT-1-hmac", test_r5_mutation_1),
+        ("MUT-2-ownership", test_r5_mutation_2),
+        ("MUT-3-nonce", test_r5_mutation_3),
+        ("MUT-4-sha", test_r5_mutation_4),
+        ("MUT-5-rc3", test_r5_mutation_5),
     ]
 
     print("=" * 60)

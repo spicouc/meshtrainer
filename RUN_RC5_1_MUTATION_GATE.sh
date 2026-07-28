@@ -55,7 +55,7 @@ for i in 1 2 3 4 5; do
         2)
             NAME="MUT-02-no-superseded"
             # Replace SUPERSEDED SQL with pass (syntactically valid in a function body)
-            sed -i '/status.*SUPERSEDED.*ACTIVE/s/conn.execute.*status.*SUPERSEDED.*ACTIVE.*/pass # mutant: removed SUPERSEDED/' rc5_coordinator_ext.py
+            sed -i "s/SET status='SUPERSEDED'/SET status='RECEIVED' -- mutant: no SUPERSEDED/" rc5_coordinator_ext.py
             ;;
         3)
             NAME="MUT-03-no-sha-bytes"

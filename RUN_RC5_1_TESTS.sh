@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo "============================================"
-echo "  RC5.1-R7 — Test Runner"
+echo "  RC5.1-R10 — Test Runner"
 echo "============================================"
 echo "Python: $(python3 --version 2>&1)"
 echo "Dir:    $(pwd)"

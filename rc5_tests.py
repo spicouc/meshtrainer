@@ -648,7 +648,7 @@ if __name__ == "__main__":
     ]
 
     print("=" * 60)
-    print("  RC5.1-R3 — T-R2 Tests")
+    print("  RC5.1-R10 — T-R2 Tests")
     print("=" * 60)
 
     for name, fn in tests:

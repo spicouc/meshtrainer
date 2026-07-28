@@ -148,15 +148,21 @@ def test_r6_negative():
     db_bytes, _ = create_npz_delta()
     db64, dsha = delta_b64_sha(db_bytes)
 
-    r = up(gr("b"*64), db64, "b"*64); res=r.get("result",{}); check("R6-03-1: SHA diff", res.get("status")=="REJECTED" and "does not match" in res.get("reason",""), "integrity")
-    r = up(gr(dsha), base64.b64encode(b"fake").decode(), dsha); res=r.get("result",{}); check("R6-03-2: bytes diff", res.get("status")=="REJECTED" and "does not match" in res.get("reason",""), "integrity")
-    r = up(gr(), db64, ""); res=r.get("result",{}); check("R6-03-3: SHA absent", res.get("status")=="REJECTED" and "mismatch" in res.get("reason",""), "integrity")
-    r = up(gr("a"*63), db64, "a"*63); res=r.get("result",{}); check("R6-03-4: 63 chars", res.get("status")=="REJECTED" and "format" in res.get("reason","").lower(), "integrity")
-    r = up(gr("z"*64), db64, "z"*64); res=r.get("result",{}); check("R6-03-5: non-hex", res.get("status")=="REJECTED" and "format" in res.get("reason","").lower(), "integrity")
-    r = up(gr(dsha), "", dsha); res=r.get("result",{}); check("R6-03-6: b64 absent", res.get("status")=="REJECTED" and "required" in res.get("reason",""), "integrity")
-    r = up(gr(dsha), "!!!bad!!!", dsha); res=r.get("result",{}); check("R6-03-7: bad b64", res.get("status")=="REJECTED" and "decode failed" in res.get("reason",""), "integrity")
+    r = up(gr("b"*64), db64, "b"*64); res=r.get("result",{}); check("R6-03-1: SHA diff", res.get("status")=="REJECTED" and res.get("reason")=="delta_sha256 does not match actual delta bytes", "integrity")
+    r = up(gr(dsha), base64.b64encode(b"fake").decode(), dsha); res=r.get("result",{}); check("R6-03-2: bytes diff", res.get("status")=="REJECTED" and res.get("reason")=="delta_sha256 does not match actual delta bytes", "integrity")
+    # R6-03-3: Receipt without delta_sha256 field entirely
+    rcpt_no_sha = gr(dsha)
+    del rcpt_no_sha["delta_sha256"]
+    # Re-sign after removing field
+    pl = json.dumps({k:v for k,v in rcpt_no_sha.items() if k!="signature"}, sort_keys=True, separators=(",",":"))
+    rcpt_no_sha["signature"] = __import__("hmac").new(get_signing_key("k1"), pl.encode(), hashlib.sha256).hexdigest()
+    r = up(rcpt_no_sha, db64, dsha); res=r.get("result",{}); check("R6-03-3: SHA absent", res.get("status")=="REJECTED" and res.get("reason")=="delta_sha256 missing", "integrity")
+    r = up(gr("a"*63), db64, "a"*63); res=r.get("result",{}); check("R6-03-4: 63 chars", res.get("status")=="REJECTED" and res.get("reason")=="delta_sha256 format", "integrity")
+    r = up(gr("z"*64), db64, "z"*64); res=r.get("result",{}); check("R6-03-5: non-hex", res.get("status")=="REJECTED" and res.get("reason")=="delta_sha256 format", "integrity")
+    r = up(gr(dsha), "", dsha); res=r.get("result",{}); check("R6-03-6: b64 absent", res.get("status")=="REJECTED" and res.get("reason")=="delta_b64 required", "integrity")
+    r = up(gr(dsha), "!!!bad!!!", dsha); res=r.get("result",{}); check("R6-03-7: bad b64", res.get("status")=="REJECTED" and res.get("reason")=="delta_b64 decode failed", "integrity")
     bad = bytearray(db_bytes); bad[0] ^= 1
-    r = up(gr(dsha), base64.b64encode(bytes(bad)).decode(), dsha); res=r.get("result",{}); check("R6-03-8: byte alter", res.get("status")=="REJECTED" and "does not match" in res.get("reason",""), "integrity")
+    r = up(gr(dsha), base64.b64encode(bytes(bad)).decode(), dsha); res=r.get("result",{}); check("R6-03-8: byte alter", res.get("status")=="REJECTED" and res.get("reason")=="delta_sha256 does not match actual delta bytes", "integrity")
     # Nonce preservation: count before, send invalid upload, count after
     nb = len(coord._rc5_db.conn.execute("SELECT * FROM rc5_nonce").fetchall())
     r = up(gr(), base64.b64encode(bytes(bad)).decode(), "a"*64)
@@ -212,7 +218,7 @@ if __name__ == "__main__":
         ("R6-05-split-direct", test_r6_split_direct),
     ]
     print("="*60)
-    print("  RC5.1-R6 — Tests")
+    print("  RC5.1-R10 — Tests")
     print("="*60)
     for name, fn in tests:
         print(f"\n--- {name} ---")

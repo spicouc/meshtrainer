@@ -157,10 +157,14 @@ def test_r6_negative():
     r = up(gr(dsha), "!!!bad!!!", dsha); check("R6-03-7: bad b64", r.get("result",{}).get("status")=="REJECTED", "integrity")
     bad = bytearray(db_bytes); bad[0] ^= 1
     r = up(gr(), base64.b64encode(bytes(bad)).decode(), "a"*64); check("R6-03-8: byte alter", r.get("result",{}).get("status")=="REJECTED", "integrity")
+    # Nonce preservation: count before, send invalid upload, count after
     nb = len(coord._rc5_db.conn.execute("SELECT * FROM rc5_nonce").fetchall())
+    r = up(gr(), base64.b64encode(bytes(bad)).decode(), "a"*64)  # another invalid upload
     na = len(coord._rc5_db.conn.execute("SELECT * FROM rc5_nonce").fetchall())
-    check("R6-03-9: nonces stable", na==nb, "integrity")
-    r = up(gr(dsha), db64, dsha); check("R6-03-10: retry OK", r.get("result",{}).get("status")=="RECEIVED", "integrity")
+    check("R6-03-9: nonces not consumed after reject", na==nb, "integrity")
+    # Retry with same receipt (fix only the bytes)
+    same_receipt = gr(dsha)
+    r = up(same_receipt, db64, dsha); check("R6-03-10: retry OK", r.get("result",{}).get("status")=="RECEIVED", "integrity")
     coord.stop()
     os.unlink(db)
 

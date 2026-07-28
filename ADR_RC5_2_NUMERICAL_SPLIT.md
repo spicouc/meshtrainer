@@ -1,414 +1,328 @@
-# RC5.2-ADR — Numerical Split-Learning Architecture Decision Record
+# RC5.2-ADR-R2 — Numerical Split-Learning Architecture Decision Record
 
-**Status:** Proposed
+**Status:** Proposed (R2)
 **Author:** Hermes Agent (Executor)
 **Date:** 2026-07-28
 **Base tag:** `meshtrainer-v1.1-rc5.1` (commit `406089b`)
 **Functional baseline:** commit `9b9aac1`
+**ADR R1:** commit `476d6a0`
 
 ---
 
-## 1. Scope
+## ADR-R2-01 — Numerical Profile v1 (ACCEPTED)
 
-This ADR defines the architecture for the first numerically valid split-learning
-implementation in the meshtrainer project. It does not authorize implementation.
+```yaml
+numerical_profile_v1:
+  vocab_size: 50272
+  sequence_length: 128
+  batch_size: 1
+  d_model: 256
+  d_cut: 256  # partition point dimension
+  base_layers: 2 x TransformerBlock(d_model=256, nhead=4)
+  local_layers: 2 x TransformerBlock(d_model=256, nhead=4)
+  top_layers: 2 x TransformerBlock(d_model=256, nhead=4)
+  cut_entry_point: after base_layers[1]
+  cut_exit_point: after local_layers[1]
+  lora_target_module: local_layers[0].linear1  # nn.Linear(256, 1024)
+  rank: 8
+  alpha: 16
+  scaling: 2.0  # alpha / rank
+  dtype: float32
+  seed: 42
+```
 
----
-
-## 2. Topology
-
-### 2.1 Model Partition
-
-┌──────────────────────────────────────────────────┐
-│                  SPLIT SERVER                     │
-├──────────────────────────────────────────────────┤
-│  tokenizer → embedding → base_layers  │  forward │
-│  top_layers → LM_head → logits                  │
-│  CrossEntropyLoss(labels)                        │
-│  backward (top_layers → cut activation)          │
-│  receipt generation + HMAC signing               │
-│  base adapter (LoRA base weights)                │
-└─────────────────────┬────────────────────────────┘
-                      │ server_activation (to worker)
-                      │ cut_gradient (from worker)
-┌─────────────────────▼────────────────────────────┐
-│                    WORKER                         │
-├──────────────────────────────────────────────────┤
-│  local_layers (forward) + LoRA A/B               │
-│  backward (local layers + LoRA)                  │
-│  optimizer.step (LoRA A/B only)                  │
-│  delta LoRA generation + SHA-256                 │
-└──────────────────────────────────────────────────┘
-
-### ADR-01 — Partition (ACCEPTED)
-
-| Tensor | Producer | Consumer | Shape | dtype | Persistence |
-|---|---|---|---|---|---|
-| token_ids | server tok | server embed | [B, T] | int64 | ephemeral |
-| embedding | server embed | server base | [B, T, D] | fp32 | ephemeral |
-| server_activation | server base | worker local | [B, T, D_cut] | fp32 | step scope |
-| cut_activation | worker local+LoRA | server top | [B, T, D_cut] | fp32 | step scope |
-| logits | server LM_head | server loss | [B, T, V] | fp32 | ephemeral |
-| loss | server CE | server backward | scalar | fp32 | step scope |
-| cut_gradient | server backward | worker backward | [B, T, D_cut] | fp32 | step scope |
-| lora_delta | worker | server receipt | [R] or [D, R] | fp32 | persisted |
-
-Key design decisions:
-- The server computes loss with labels that NEVER leave the server.
-- The worker never sees labels, embeddings, or logits.
-- Cut activation has dimension D_cut (model dimension at the partition point).
-- LoRA delta is the only tensor that persists beyond the step.
-
----
-
-## 3. Data Flow Per Step
-
-### ADR-02 — Reference Model
-
-A single monolithic PyTorch model is created with identical weights:
-
+LoRA attaches to `local_layers[0].linear1`:
 ```python
-class MonolithicModel(nn.Module):
-    def __init__(self):
-        self.embedding = nn.Embedding(vocab_size, d_model)
-        self.base_layers = nn.Sequential(...)  # server-side bottom
-        self.local_layers = nn.Sequential(...)  # worker-side layers
-        self.lora_A = nn.Linear(d_cut, rank, bias=False)
-        self.lora_B = nn.Linear(rank, d_cut, bias=False)
-        self.top_layers = nn.Sequential(...)    # server-side top
-        self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
+base_output = local_layers[0].linear1(x)
+lora_output = scaling * self.lora_B(self.lora_A(x))
+output = base_output + lora_output
 ```
-
-Both the split path and the monolithic path load weights from this single
-model, ensuring identical initial state without two independent constructions.
-
-### ADR-03 — Weight Ownership (ACCEPTED)
-
-| Weight | Owner | Snapshot | Verified by |
-|---|---|---|---|
-| embedding | server | - | model_hash |
-| base_layers | server | - | model_hash |
-| local_layers | worker (copy) | base_adapter_hash | coordinator |
-| LoRA A/B | worker during step | before/after | delta_sha256 |
-| top_layers | server | - | model_hash |
-| LM head | server | - | model_hash |
-| base adapter | coordinator | - | base_adapter_sha256 |
-
-The worker receives `base_adapter.npz` (LoRA base weights, not local_layers).
-The coordinator verifies `base_adapter_hash` matches before the round.
-
-### ADR-04 — LoRA Standard (ACCEPTED)
-
-```python
-output = base_output + (alpha / rank) * B(A(x))
-```
-
-- `rank` = 8 (configurable)
-- `alpha` = 16
-- `scaling = alpha / rank`
-- Initialization: A ~ N(0, σ²), B = 0
-- Params trainable: ONLY lora_A.weight, lora_B.weight
-- All base params: `requires_grad = False`
-- Optimizer: SGD or AdamW containing only [lora_A.weight, lora_B.weight]
-- No activation between A and B
-
-Assertion: if any base parameter receives gradient or changes, the test fails.
 
 ---
 
-## 4. Training Loop
+## ADR-R2-02 — Topology and Directions (ACCEPTED)
 
-### ADR-05 — Loss and Labels (ACCEPTED)
+### Direction map
 
-```python
-loss_fn = torch.nn.CrossEntropyLoss(ignore_index=-100)
+| Tensor | From | To | RPC | Direction |
+|---|---|---|---|---|
+| server_activation | Split Server | Worker | step.server_forward.response.body | Server → Worker (HTTP response body) |
+| cut_activation | Worker | Split Server | step.worker_forward.submit | Worker → Server (HTTP POST body) |
+| cut_gradient | Split Server | Worker | step.server_backward.fetch.response.body | Server → Worker (HTTP response body) |
+| lora_delta | Worker | Split Server | step.worker_update.submit | Worker → Server (HTTP POST body) |
+| receipt | Split Server | Worker | step.worker_update.submit.response.body | Server → Worker (HTTP response body) |
+| contribution | Worker | Coordinator | checkpoint.upload | Worker → Coordinator (HTTP POST) |
 
-# In monolithic: logits = model(token_ids)
-# loss = loss_fn(logits.view(-1, vocab_size), labels.view(-1))
-```
+### Transport model
 
-Labels are:
-- Generated by the server tokenizer during `step.open`
-- NEVER sent to the worker
-- Used exclusively for `CrossEntropyLoss` on the server
-- effective_trainable_tokens = count of labels != -100
-- Loss normalization: `loss = loss_fn(...)` (mean reduction by default)
-
-### ADR-06 — Autograd Between Processes (ACCEPTED)
-
-```
-Worker forward:
-    worker_out = local_layers(server_activation) + lora(server_activation)
-    detached = worker_out.detach()
-    worker_out.retain_grad()          # preserve for local backward
-    SEND detached → Server
-
-Server:
-    server_in = received.detach().requires_grad_(True)
-    logits = top_layers(server_in)
-    loss = loss_fn(logits, labels)
-    loss.backward()
-    cut_grad = server_in.grad          # gradient w.r.t. cut activation
-    SEND cut_grad → Worker
-
-Worker backward:
-    worker_out.backward(cut_grad)     # backward through local layers + LoRA
-    optimizer.step()                   # update LoRA only
-    delta = (lora_weight_after - lora_weight_before).detach()
-    delta_sha256 = SHA256(delta.numpy().tobytes())
-    SEND delta + delta_sha256 → Server (via coordinator)
-```
-
-### ADR-07 — Protocol Tensors (ACCEPTED)
-
-```json
-{
-  "tensor_role": "server_activation | cut_activation | cut_gradient | lora_delta",
-  "run_id": "r1",
-  "round_id": "rd1",
-  "assignment_id": "a1",
-  "micro_unit_id": "u1",
-  "step_id": "u1-s0",
-  "shape": [1, 32, 64],
-  "dtype": "float32",
-  "byte_length": 8192,
-  "sha256": "abcdef...",
-  "encoding": "base64"
-}
-```
-
-Validations:
-1. Number of dimensions matches expected
-2. Each dimension matches expected shape
-3. dtype is `float32`
-4. byte_length == product(shape) * 4
-5. base64 decodes without error
-6. sha256 matches decoded bytes
-7. Payload ≤ 100 MB
-8. Ownership: X-Worker-Id matches unit's worker
-9. Session ID matches
-10. unit is in correct state
-11. step_id not replayed
+Worker-driven HTTP JSON-RPC. The worker initiates every request.
+The Split Server never initiates connections.
+No callbacks, no server-side push in RC5.2.
 
 ---
 
-## 5. State Machine
+## ADR-R2-03 — Versioned Methods (ACCEPTED)
 
-### ADR-08 — Numerical State Machine (ACCEPTED)
+```yaml
+protocol_version: 1.2.0-rc5.2
+```
+
+### Methods
+
+| Method | Direction | Description |
+|---|---|---|
+| step.open | Worker → Server | Open micro-unit, receive server_activation |
+| step.server_forward | Worker → Server | (same as step.open — merged) |
+| step.worker_forward.submit | Worker → Server | Submit forward result, receive loss |
+| step.server_backward.fetch | Worker → Server | Fetch cut gradient |
+| step.worker_update.submit | Worker → Server | Submit delta, receive receipt |
+| step.commit | Worker → Server | Same as R1 — finalize |
+| step.abort | Worker → Server | Abort unit |
+
+### RC5.1 backward compatibility
+
+RC5.1 handlers remain available under protocol `1.1.0-rc5.1`.
+The Split Server routes by `protocol_version` from the first request.
+Handlers `step.embedding`, `step.cut_activation`, `step.cut_gradient` (RC5.1)
+continue to work for protocol 1.1.0 requests.
+
+---
+
+## ADR-R2-04 — State Machine (ACCEPTED)
 
 ```
 OPEN
-  │ step.server_forward (or step.embedding in RC5.1 compat)
+  │ step.open (server computes activation)  
   ▼
-SERVER_FORWARD
-  │ (server sends activation to worker)
+SERVER_ACTIVATION_READY
+  │ step.worker_forward.submit (worker sends cut activation)
   ▼
-WORKER_FORWARD
-  │ (worker returns cut activation)
+WORKER_ACTIVATION_ACCEPTED
+  │ (server computes loss + backward, gradient ready to fetch)
   ▼
-SERVER_LOSS
-  │ (server computes loss, sends cut gradient)
+CUT_GRADIENT_READY
+  │ step.server_backward.fetch (worker fetches cut gradient)
   ▼
-SERVER_BACKWARD
-  │ (server backward complete, cut gradient sent to worker)
+WORKER_UPDATE_ACCEPTED
+  │ (worker applies optimizer exactly once, presents delta)
   ▼
-WORKER_BACKWARD
-  │ (worker backward + optimizer.step + delta ready)
-  ▼
-DELTA_READY
-  │ step.commit
+DELTA_VERIFIED
+  │ step.commit (server validates delta, signs receipt)
   ▼
 COMMITTED
 ```
 
 Terminal states: `COMMITTED`, `ABORTED`, `EXPIRED`
 
-| Operation | Idempotent | Repeatable | Allowed once |
-|---|---|---|---|
-| step.open | no | no | yes |
-| step.server_forward | yes (same input) | yes | no |
-| step.cut_activation | yes (same tensor) | yes | no |
-| step.cut_gradient | yes (gradient idempotent) | no | no |
-| step.commit | yes (looks up receipt) | no | yes |
-| step.abort | yes (already aborted) | yes | yes |
+### Idempotency
+
+| Method | Idempotent | Notes |
+|---|---|---|
+| step.open | No | Fresh unit required |
+| step.worker_forward.submit | Yes (same activations) | update_id prevents replay |
+| step.server_backward.fetch | Yes | Returns same gradient |
+| step.worker_update.submit | No | update_id prevents double optimizer step |
+| step.commit | Yes | Returns same receipt |
+| step.abort | Yes | Already aborted |
+
+The `update_id` is a unique client-generated nonce for `step.worker_update.submit`.
+If the server receives the same `update_id` twice, it returns the existing receipt
+without re-applying the optimizer.
 
 ---
 
-## 6. Numerical Equivalence
+## ADR-R2-05 — Weight Artifacts (ACCEPTED)
 
-### ADR-09 — Equivalence Levels (ACCEPTED)
+Two separate artifacts are defined:
 
-Level A (no optimizer, single forward-backward):
-- Server activation: monolithic vs split → rtol=1e-5, atol=1e-6
-- Cut activation: same tolerance
-- Logits: same tolerance
-- Loss: same tolerance
-- Cut gradient: same tolerance
-- LoRA-A gradient: same tolerance
-- LoRA-B gradient: same tolerance
-
-Level B (with optimizer):
-- LoRA weights post-step: same tolerance
-- Delta LoRA: same tolerance
-- Second consecutive step: same tolerance
-
-Delta SHA only required to match when bytes are deterministic and identical
-between monolithic and split paths. In practice, due to identical weights,
-data, and seed, they should produce identical bytes.
-
-### ADR-10 — Determinism (ACCEPTED)
-
-```python
-torch.manual_seed(42)
-np.random.seed(42)
-random.seed(42)
-torch.set_num_threads(1)
-torch.use_deterministic_algorithms(True)
+### worker_base_model artifact
+```yaml
+worker_model_hash: SHA256(worker_base_model.npz)
+partition_schema_hash: SHA256(layer_names + shapes + dtypes)
+model_version: "1.2.0-rc5.2"
 ```
 
-- Dropout: disabled
-- dtype: fp32
-- Device: CPU (for initial gate)
-- Optimizer: SGD with fixed lr (no weight decay initially)
-- No WebGPU in RC5.2 gate
+### base_adapter artifact
+```yaml
+base_adapter_hash: SHA256(base_adapter.npz)
+adapter_schema_hash: SHA256(lora_layer_names + shapes + dtypes)
+```
+
+Validated by: Coordinator and Split Server independently.
+`base_adapter_hash` is NOT used to verify `local_layers`.
 
 ---
 
-## 7. Backward Compatibility
+## ADR-R2-06 — Delta Schema (ACCEPTED)
 
-### ADR-11 — RC5.1 Compatibility (ACCEPTED)
+```yaml
+delta_keys:
+  - local_layer.lora_A.weight
+  - local_layer.lora_B.weight
 
-**Unchanged:**
-- receipts → HMAC, nonce, key_id, expiry
-- delta_sha256 in receipt payload
-- coordinator: ledger, contribution states, SUPERSEDED, ACTIVE, FedAvg, round.close
-- SQLite persistence
-- mutation gate — all 5 existing mutants must still be detected
-- 76 existing tests must still pass
+shape:
+  local_layer.lora_A.weight: [d_cut, rank]   # [256, 8]
+  local_layer.lora_B.weight: [rank, d_cut]   # [8, 256]
 
-**Changed/Extended:**
-- `step.open` → additionally validates frozen profile and adapter hash
-- `step.embedding` (RC5.1) → `step.server_forward` (RC5.2) — new name + real forward
-- `step.cut_activation` → receives real activations from worker forward
-- `step.cut_gradient` → receives real gradient, not random
-- `step.commit` → worker sends delta, server validates and signs receipt
+encoding: little-endian float32, C-contiguous
+name_encoding: UTF-8
+sort_order: lexicographic by key
+```
 
-**New handlers:**
-- `step.abort` — marks unit ABORTED, no receipt generated
+FedAvg aggregates A and B separately preserving the schema.
 
 ---
 
-## 8. Security and Privacy
+## ADR-R2-07 — Task and Loss (ACCEPTED)
 
-### ADR-12 — Trust Boundaries (ACCEPTED)
+Causal Language Modelling:
 
-| What | Who sees it | Notes |
-|---|---|---|
-| Raw text | Server tokenizer | Never leaves server |
-| Token IDs | Server | Ephemeral |
-| Embeddings | Server → Worker | Could leak distribution info |
-| Cut activation | Worker → Server | Only intermediate representation |
-| Labels | Server ONLY | NEVER sent to worker |
-| Logits | Server | Ephemeral |
-| Cut gradient | Server → Worker | Required for backward |
-| LoRA delta | Worker → Server (via coordinator) | Persisted |
-| Server layer weights | Server | Server-side only |
-| Worker layer weights + LoRA | Worker | Worker-side only |
+```python
+shift_logits = logits[:, :-1, :].contiguous()
+shift_labels = labels[:, 1:].contiguous()
 
-Risks documented:
-- Embeddings could reveal input patterns
-- Cut gradient could leak server layer information
-- Future: gradient inversion attacks (out of RC5.2 scope)
+loss_fn = torch.nn.CrossEntropyLoss(ignore_index=-100)
+loss = loss_fn(shift_logits.view(-1, vocab_size), shift_labels.view(-1))
 
-Payload limits: 100 MB per tensor.
-NaN/Inf detection on all received tensors.
-Gradient clipping optional (configurable).
-Anomalous delta detection placeholder.
+ETT = (shift_labels != -100).sum().item()
+```
+
+Deterministic synthetic fixture for tests:
+```python
+tokens = torch.randint(0, vocab_size-1, (batch_size, sequence_length))
+labels = tokens.clone()
+labels[:, :-1] = -100  # causal masking for test
+```
 
 ---
 
-## 9. Test Plan
+## ADR-R2-08 — Optimizer and Resume (ACCEPTED)
 
-### ADR-13 — Numerical Test Matrix (PROPOSED)
+```yaml
+optimizer: torch.optim.SGD
+learning_rate: 0.01
+momentum: 0.0
+weight_decay: 0.0
+params: [lora_A.weight, lora_B.weight]  # ONLY LoRA
+```
 
-**Numerical tests (N-SPLIT):**
-| ID | Test | Level |
-|---|---|---|
-| N-SPLIT-01 | Model state identical after init | A |
-| N-SPLIT-02 | Server activation equivalent | A |
-| N-SPLIT-03 | Worker cut activation equivalent | A |
-| N-SPLIT-04 | Logits equivalent | A |
-| N-SPLIT-05 | Loss equivalent | A |
-| N-SPLIT-06 | Cut gradient equivalent | A |
-| N-SPLIT-07 | LoRA-A gradient equivalent | A |
-| N-SPLIT-08 | LoRA-B gradient equivalent | A |
-| N-SPLIT-09 | Base weights unchanged | B |
-| N-SPLIT-10 | LoRA weights post-step equivalent | B |
-| N-SPLIT-11 | Delta LoRA equivalent | B |
-| N-SPLIT-12 | Receipt SHA matches delta | A |
-| N-SPLIT-13 | Two consecutive steps | B |
-| N-SPLIT-14 | Loss decreases over training | B |
-| N-SPLIT-15 | Deterministic repeat | B |
-| N-SPLIT-16 | Resume equivalence | B |
-
-**Mutation tests:**
-| ID | Mutant | Detection method |
-|---|---|---|
-| MUT-N1 | Replace real gradient with `randn` | N-SPLIT-06 fails |
-| MUT-N2 | Ignore labels (use dummy loss) | N-SPLIT-05 fails |
-| MUT-N3 | Bypass worker model (reshape as forward) | N-SPLIT-03 fails |
-| MUT-N4 | Base params in optimizer | N-SPLIT-09 fails |
-| MUT-N5 | Alter one byte of cut gradient | N-SPLIT-06 or SHA mismatch |
-| MUT-N6 | Insert ReLU between LoRA A/B | N-SPLIT-10 or N-SPLIT-11 fails |
+N-SPLIT-16 (resume) limited to:
+- Resume after a step reaches COMMITTED
+- Mid-step resume deferred to RC5.4
 
 ---
 
-## 10. Risk Register
+## ADR-R2-09 — Tensor Envelope (ACCEPTED)
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| Numerical drift between split and monolithic | Invalid comparisons | Strict tolerance, deterministic settings |
-| Worker can infer labels from activations | Privacy leak | Documented in ADR-12 |
-| Autograd graph explosion on large models | OOM | Chunking, gradient checkpointing |
-| Single-step equivalence ≠ multi-step convergence | False confidence | Multi-step test required |
-| WebGPU non-determinism | Different hashes | Tolerance-based comparison, documented exception |
-| RC5.1 handlers broken by RC5.2 changes | Regression | 76 existing tests + mutation gate must still pass |
----
+```json
+{
+  "tensor_role": "server_activation | cut_activation | cut_gradient | lora_delta",
+  "run_id": "...",
+  "round_id": "...",
+  "assignment_id": "...",
+  "micro_unit_id": "...",
+  "step_id": "...",
+  "session_id": "...",
+  "shape": [int, ...],
+  "dtype": "float32",
+  "byte_length": int,
+  "sha256": "64-char hex",
+  "data_b64": "base64-encoded bytes",
+  "encoding": "base64"
+}
+```
 
-## 11. Implementation Plan
-
-### Phase 1: Monolithic reference
-1. Create `MonolithicModel` with embedding, base, local+LoRA, top, LM head
-2. Verify single forward-backward produces valid loss
-3. Save model state dict
-
-### Phase 2: Split path
-4. Create server-side model (embedding, base, top, LM head)
-5. Create worker-side model (local layers, LoRA A/B)
-6. Load both from monolithic state dict
-7. Implement forward split (embedding → base → worker → top → loss)
-8. Implement backward split (loss.backward() → cut gradient → worker.backward())
-9. Implement optimizer (worker only, LoRA only)
-
-### Phase 3: Protocol
-10. Implement tensor envelope (shape, dtype, sha256)
-11. Implement step.server_forward, step.cut_activation, step.cut_gradient
-12. Reuse step.commit with real delta
-
-### Phase 4: Tests and gates
-13. N-SPLIT-01..16
-14. MUT-N1..6
-15. Regression suite (76 tests, mutation 5/5)
+Validation rules:
+1. role known
+2. dimensions match role's expected shape
+3. dtype == "float32"
+4. byte_length == product(shape) * 4
+5. base64 decodes without error (strict mode)
+6. decoded bytes length == byte_length
+7. SHA256(decoded_bytes) == sha256 field
+8. No NaN or Inf in decoded values
+9. Maximum dimensions: 3 for activations, 2 for LoRA
+10. Maximum byte_length: 100 MB for activations, 10 MB for LoRA
+11. session_id matches
+12. step_id not replayed
+13. ownership matches X-Worker-Id header
 
 ---
 
-## 12. Decisions Not Yet Made
+## ADR-R2-10 — Receipt and Contribution Sequence (ACCEPTED)
 
-These are deferred to RC5.2 implementation or later phases:
-- Actual training dataset
+1. Worker presents delta + delta_sha256 to Split Server via `step.worker_update.submit`
+2. Split Server validates: bytes, schema, profile, step, SHA, NaN/Inf
+3. Split Server generates receipt with HMAC
+4. Worker receives receipt
+5. Worker sends delta + receipt to Coordinator via `checkpoint.upload`
+6. Coordinator repeats RC5.1 validations
+
+The receipt certifies protocol integrity and step completion.
+The receipt does NOT certify numerical honesty of a malicious worker.
+This limitation is documented.
+
+---
+
+## ADR-R2-11 — Test Plan (ACCEPTED)
+
+N-SPLIT-09 must validate:
+```python
+assert set(optimizer.param_groups[0]['params']) == {lora_A.weight, lora_B.weight}
+assert all(not p.requires_grad for p in base_params)
+assert all(p.grad is None for p in base_params)
+assert base_state_dict_before == base_state_dict_after
+```
+
+Additional tests:
+- protocol_version mismatch → REJECTED
+- worker_model_hash mismatch → REJECTED
+- partition_schema_hash mismatch → REJECTED
+- NaN/Inf in tensor → REJECTED
+- wrong endianness → REJECTED (byte_length mismatch)
+- duplicate update_id → returns existing receipt, no double optimizer
+
+Full N-SPLIT + MUT-N matrix: see RC5_2_NUMERICAL_TEST_PLAN.md.
+
+---
+
+## ADR-R2-12 — Risk Register (ACCEPTED)
+
+See separate RC5_2_RISK_REGISTER.md for expanded register.
+
+Key additions:
+- Worker returns arbitrary delta → mitigated by SHA-256 + receipt (RC5.2)
+- Worker model incorrect → mitigated by worker_model_hash (RC5.2)
+- Double optimizer step → mitigated by update_id (RC5.2)
+- Gradient replay → mitigated by step_id + nonce (RC5.2)
+- Protocol version collision → mitigated by routing (RC5.2)
+- Canonical serialization mismatch → mitigated by strict byte_length check (RC5.2)
+- Crash after optimizer, before commit → NOT mitigated in RC5.2 (deferred to RC5.4)
+- Activation inversion / model extraction → documented, NOT mitigated in RC5.2
+
+---
+
+## ADR-R2-13 — Weight Ownership and Artifact Distribution (ACCEPTED)
+
+| Weight | Artifact | Owner | Verified by |
+|---|---|---|---|
+| embedding | model.npz | Server | model_hash |
+| base_layers | model.npz | Server | model_hash |
+| local_layers | worker_base_model.npz | Worker (copy) | worker_model_hash |
+| LoRA A/B | base_adapter.npz | Worker | base_adapter_hash |
+| top_layers | model.npz | Server | model_hash |
+| LM head | model.npz | Server | model_hash |
+
+The Coordinator validates both `worker_model_hash` and `base_adapter_hash` before round start.
+
+---
+
+## Decisions Not Yet Made
+
+Deferred beyond RC5.2:
 - Multiple workers per round (RC5.3)
-- Fault tolerance (RC5.4)
+- Mid-step resume (RC5.4)
 - WebGPU (RC5.5)
-- Mixed precision (FP16/BF16)
-- Gradient compression
+- Mixed precision
+- Gradient inversion mitigations
 - Calibration protocol

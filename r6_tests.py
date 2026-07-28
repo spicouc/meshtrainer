@@ -148,23 +148,33 @@ def test_r6_negative():
     db_bytes, _ = create_npz_delta()
     db64, dsha = delta_b64_sha(db_bytes)
 
-    r = up(gr("b"*64), db64, "b"*64); check("R6-03-1: SHA diff", r.get("result",{}).get("status")=="REJECTED", "integrity")
-    r = up(gr(dsha), base64.b64encode(b"fake").decode(), dsha); check("R6-03-2: bytes diff", r.get("result",{}).get("status")=="REJECTED", "integrity")
-    r = up(gr(), db64, ""); check("R6-03-3: SHA absent", r.get("result",{}).get("status")=="REJECTED", "integrity")
-    r = up(gr("a"*63), db64, "a"*63); check("R6-03-4: 63 chars", r.get("result",{}).get("status")=="REJECTED", "integrity")
-    r = up(gr("z"*64), db64, "z"*64); check("R6-03-5: non-hex", r.get("result",{}).get("status")=="REJECTED", "integrity")
-    r = up(gr(dsha), "", dsha); check("R6-03-6: b64 absent", r.get("result",{}).get("status")=="REJECTED", "integrity")
-    r = up(gr(dsha), "!!!bad!!!", dsha); check("R6-03-7: bad b64", r.get("result",{}).get("status")=="REJECTED", "integrity")
+    r = up(gr("b"*64), db64, "b"*64); res=r.get("result",{}); check("R6-03-1: SHA diff", res.get("status")=="REJECTED" and "mismatch" in res.get("reason",""), "integrity")
+    r = up(gr(dsha), base64.b64encode(b"fake").decode(), dsha); res=r.get("result",{}); check("R6-03-2: bytes diff", res.get("status")=="REJECTED" and "does not match" in res.get("reason",""), "integrity")
+    r = up(gr(), db64, ""); res=r.get("result",{}); check("R6-03-3: SHA absent", res.get("status")=="REJECTED" and "missing" in res.get("reason","").lower(), "integrity")
+    r = up(gr("a"*63), db64, "a"*63); res=r.get("result",{}); check("R6-03-4: 63 chars", res.get("status")=="REJECTED" and "format" in res.get("reason",""), "integrity")
+    r = up(gr("z"*64), db64, "z"*64); res=r.get("result",{}); check("R6-03-5: non-hex", res.get("status")=="REJECTED" and "format" in res.get("reason",""), "integrity")
+    r = up(gr(dsha), "", dsha); res=r.get("result",{}); check("R6-03-6: b64 absent", res.get("status")=="REJECTED" and "required" in res.get("reason",""), "integrity")
+    r = up(gr(dsha), "!!!bad!!!", dsha); res=r.get("result",{}); check("R6-03-7: bad b64", res.get("status")=="REJECTED" and "decode failed" in res.get("reason",""), "integrity")
     bad = bytearray(db_bytes); bad[0] ^= 1
-    r = up(gr(), base64.b64encode(bytes(bad)).decode(), "a"*64); check("R6-03-8: byte alter", r.get("result",{}).get("status")=="REJECTED", "integrity")
+    r = up(gr(dsha), base64.b64encode(bytes(bad)).decode(), dsha); res=r.get("result",{}); check("R6-03-8: byte alter", res.get("status")=="REJECTED" and "does not match" in res.get("reason",""), "integrity")
     # Nonce preservation: count before, send invalid upload, count after
     nb = len(coord._rc5_db.conn.execute("SELECT * FROM rc5_nonce").fetchall())
-    r = up(gr(), base64.b64encode(bytes(bad)).decode(), "a"*64)  # another invalid upload
+    r = up(gr(), base64.b64encode(bytes(bad)).decode(), "a"*64)
     na = len(coord._rc5_db.conn.execute("SELECT * FROM rc5_nonce").fetchall())
     check("R6-03-9: nonces not consumed after reject", na==nb, "integrity")
-    # Retry with same receipt (fix only the bytes)
+    # Retry with SAME receipt and nonce (fix only the bytes)
     same_receipt = gr(dsha)
-    r = up(same_receipt, db64, dsha); check("R6-03-10: retry OK", r.get("result",{}).get("status")=="RECEIVED", "integrity")
+    same_nonce = same_receipt["receipt_nonce"]
+    # First attempt: same receipt, correct nonce, WRONG bytes
+    bad2 = bytearray(db_bytes); bad2[0] ^= 2
+    r1 = up(same_receipt, base64.b64encode(bytes(bad2)).decode(), dsha)
+    n1 = len(coord._rc5_db.conn.execute("SELECT * FROM rc5_nonce WHERE nonce=?", (same_nonce,)).fetchall())
+    check("R6-03-10a: first fail nonce not consumed", n1==0, "integrity")
+    # Second attempt: SAME receipt, SAME nonce, CORRECT bytes
+    r2 = up(same_receipt, db64, dsha)
+    n2 = len(coord._rc5_db.conn.execute("SELECT * FROM rc5_nonce WHERE nonce=?", (same_nonce,)).fetchall())
+    check("R6-03-10b: second success nonce exists", n2==1, "integrity")
+    check("R6-03-10c: retry OK", r2.get("result",{}).get("status")=="RECEIVED", "integrity")
     coord.stop()
     os.unlink(db)
 
@@ -180,13 +190,15 @@ def test_r6_split_direct():
         "state":"OPEN","assignment_id":"a-own","micro_unit_id":"u-owned"}
 
     r = requests.post(url, json={"jsonrpc":"2.0","method":"step.embedding",
-        "params":{"unit_id":"u-owned","text_b64":"AAA="},"id":"1"},
+        "params":{"unit_id":"u-owned","text_b64":base64.b64encode(b"hello").decode()},"id":"1"},
         headers={"X-Worker-Id":"w-alien"}).json()
     c1 = r.get("error",{}).get("code")
     check("R6-05-1: alien -32003", c1==-32003, "security")
 
+    # Test 2: Illegal transition OPEN -> CUT_ACTIVATION with valid activation payload
+    valid_act = np.zeros((1, ss_state.d_model), dtype=np.float32)
     r = requests.post(url, json={"jsonrpc":"2.0","method":"step.cut_activation",
-        "params":{"unit_id":"u-owned","activation_b64":"AAA="},"id":"1"},
+        "params":{"unit_id":"u-owned","activation_b64":base64.b64encode(valid_act.tobytes()).decode()},"id":"1"},
         headers={"X-Worker-Id":"w-owner"}).json()
     c2 = r.get("error",{}).get("code")
     check("R6-05-2: illegal transition -32003", c2==-32003, "security")

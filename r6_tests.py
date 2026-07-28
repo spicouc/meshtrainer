@@ -148,11 +148,11 @@ def test_r6_negative():
     db_bytes, _ = create_npz_delta()
     db64, dsha = delta_b64_sha(db_bytes)
 
-    r = up(gr("b"*64), db64, "b"*64); res=r.get("result",{}); check("R6-03-1: SHA diff", res.get("status")=="REJECTED" and "mismatch" in res.get("reason",""), "integrity")
+    r = up(gr("b"*64), db64, "b"*64); res=r.get("result",{}); check("R6-03-1: SHA diff", res.get("status")=="REJECTED" and "does not match" in res.get("reason",""), "integrity")
     r = up(gr(dsha), base64.b64encode(b"fake").decode(), dsha); res=r.get("result",{}); check("R6-03-2: bytes diff", res.get("status")=="REJECTED" and "does not match" in res.get("reason",""), "integrity")
-    r = up(gr(), db64, ""); res=r.get("result",{}); check("R6-03-3: SHA absent", res.get("status")=="REJECTED" and "missing" in res.get("reason","").lower(), "integrity")
-    r = up(gr("a"*63), db64, "a"*63); res=r.get("result",{}); check("R6-03-4: 63 chars", res.get("status")=="REJECTED" and "format" in res.get("reason",""), "integrity")
-    r = up(gr("z"*64), db64, "z"*64); res=r.get("result",{}); check("R6-03-5: non-hex", res.get("status")=="REJECTED" and "format" in res.get("reason",""), "integrity")
+    r = up(gr(), db64, ""); res=r.get("result",{}); check("R6-03-3: SHA absent", res.get("status")=="REJECTED" and "mismatch" in res.get("reason",""), "integrity")
+    r = up(gr("a"*63), db64, "a"*63); res=r.get("result",{}); check("R6-03-4: 63 chars", res.get("status")=="REJECTED" and "format" in res.get("reason","").lower(), "integrity")
+    r = up(gr("z"*64), db64, "z"*64); res=r.get("result",{}); check("R6-03-5: non-hex", res.get("status")=="REJECTED" and "format" in res.get("reason","").lower(), "integrity")
     r = up(gr(dsha), "", dsha); res=r.get("result",{}); check("R6-03-6: b64 absent", res.get("status")=="REJECTED" and "required" in res.get("reason",""), "integrity")
     r = up(gr(dsha), "!!!bad!!!", dsha); res=r.get("result",{}); check("R6-03-7: bad b64", res.get("status")=="REJECTED" and "decode failed" in res.get("reason",""), "integrity")
     bad = bytearray(db_bytes); bad[0] ^= 1

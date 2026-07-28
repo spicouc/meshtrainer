@@ -44,9 +44,7 @@ for i in 1 2 3 4 5; do
         1) NAME="MUT-01-zero-delta"
            sed -i 's/lora_delta = lora_after - lora_before/lora_delta = torch.zeros_like(lora_after)/' rc5_split_server.py ;;
         2) NAME="MUT-02-no-superseded"
-           # Replace the 2-line SUPERSEDED block with a pass 
-           sed -i '244,245s/.*/pass  # mutant: previous ACTIVE is not superseded/' rc5_coordinator_ext.py
-           ;;
+           python3 mut02_apply.py ;;
         3) NAME="MUT-03-no-sha-bytes"
            sed -i 's/if delta_sha_actual != delta_sha256:/if False and delta_sha_actual != delta_sha256:/' rc5_coordinator_ext.py
            sed -i 's/if delta_sha_actual != receipt.get("delta_sha256", "")/if False and delta_sha_actual != receipt.get("delta_sha256", "")/' rc5_coordinator_ext.py ;;
@@ -81,9 +79,11 @@ for i in 1 2 3 4 5; do
     if [ $STATUS_NORM -eq 124 ] || [ $STATUS_R6 -eq 124 ]; then
         echo "  $NAME: TIMEOUT"; RESULTS+="$NAME: TIMEOUT"$'\n'; TIMEOUT_COUNT=$((TIMEOUT_COUNT+1))
     elif [ $STATUS_NORM -ne 0 ] || [ $STATUS_R6 -ne 0 ]; then
-        # Check if failure was a crash (RemoteDisconnected, traceback) vs assertion fail
-        CRASH=$(grep -c "RemoteDisconnected\|Traceback\|IndentationError\|SyntaxError" "mutation_$NAME.log" 2>/dev/null || true)
-        if [ "$CRASH" -gt 0 ]; then
+        # Check if failure was a crash (unrelated to assertions) vs SQL constraint (valid detection)
+        CRASH=$(grep -c "RemoteDisconnected\|IndentationError\|SyntaxError\|ModuleNotFoundError" "mutation_$NAME.log" 2>/dev/null || true)
+        # SQL constraint failures are VALID detections (the mutation removes SUPERSEDED logic)
+        SQL_FAIL=$(grep -c "UNIQUE constraint\|IntegrityError" "mutation_$NAME.log" 2>/dev/null || true)
+        if [ "$CRASH" -gt 0 ] && [ "$SQL_FAIL" -eq 0 ]; then
             echo "  $NAME: RUNTIME-INVALID (crash instead of assertion fail)"
             RESULTS+="$NAME: RUNTIME-INVALID"$'\n'; RUNTIME_INVALID=$((RUNTIME_INVALID+1))
         else

@@ -1,54 +1,38 @@
-# RC5.2 State Machine (R2)
+# RC5.2 State Machine (R3)
 
 ```
 OPEN
-  │ step.open  (server computes activation)
+  │ step.open (server computes activation)
   ▼
 SERVER_ACTIVATION_READY
-  │ step.worker_forward.submit  (worker sends cut activation)
+  │ step.worker_forward.submit (worker sends cut_activation)
   ▼
-WORKER_ACTIVATION_ACCEPTED
+CUT_ACTIVATION_ACCEPTED
   │ (server computes loss + backward internally)
   ▼
 CUT_GRADIENT_READY
-  │ step.server_backward.fetch  (worker fetches cut gradient)
+  │ step.server_backward.fetch (first call)
   ▼
-WORKER_UPDATE_ACCEPTED
-  │ (worker applies optimizer exactly once, presents delta via step.worker_update.submit)
+CUT_GRADIENT_DELIVERED
+  │ step.worker_update.submit (worker presents validated delta)
   ▼
 DELTA_VERIFIED
-  │ step.commit  (server validates delta, signs receipt)
+  │ step.commit (server signs receipt)
   ▼
 COMMITTED
 ```
 
-Terminal states: COMMITTED, ABORTED, EXPIRED
+Terminals: `COMMITTED`, `ABORTED`, `EXPIRED`
 
-## Transitions
-
-| From | To | Trigger | Note |
+| From | To | Trigger | Idempotent |
 |---|---|---|---|
-| OPEN | SERVER_ACTIVATION_READY | step.open | Server computes server_activation |
-| SERVER_ACTIVATION_READY | WORKER_ACTIVATION_ACCEPTED | step.worker_forward.submit | Worker sends cut_activation |
-| WORKER_ACTIVATION_ACCEPTED | CUT_GRADIENT_READY | (implicit) | Server computes loss + backward |
-| CUT_GRADIENT_READY | WORKER_UPDATE_ACCEPTED | step.server_backward.fetch + step.worker_update.submit | Worker applies optimizer, sends delta |
-| WORKER_UPDATE_ACCEPTED | DELTA_VERIFIED | (implicit) | Server validates delta |
-| DELTA_VERIFIED | COMMITTED | step.commit | Server signs receipt |
-| any | ABORTED | step.abort | Always valid |
-| any | EXPIRED | Lease timeout | Automatic |
+| OPEN | SERVER_ACTIVATION_READY | step.open | yes (same activation) |
+| SERVER_ACTIVATION_READY | CUT_ACTIVATION_ACCEPTED | step.worker_forward.submit | yes |
+| CUT_ACTIVATION_ACCEPTED | CUT_GRADIENT_READY | server backward (internal) | — |
+| CUT_GRADIENT_READY | CUT_GRADIENT_DELIVERED | step.server_backward.fetch (first) | fetch yes, transition once |
+| CUT_GRADIENT_DELIVERED | DELTA_VERIFIED | step.worker_update.submit | yes (same update_id) |
+| DELTA_VERIFIED | COMMITTED | step.commit | yes (same receipt) |
+| any | ABORTED | step.abort | yes |
 
-## Idempotency and Replay Protection
-
-| Method | Idempotent | Replay protection | Notes |
-|---|---|---|---|
-| step.open | No | unit state check | Fresh unit needed |
-| step.worker_forward.submit | Yes (same activations) | step_id + state | Returns same server result |
-| step.server_backward.fetch | Yes | step_id + state | Returns same gradient |
-| step.worker_update.submit | No (single optimizer step) | update_id | Duplicate update_id → existing receipt |
-| step.commit | Yes | state check | Returns same receipt |
-| step.abort | Yes | state check | Already aborted |
-
-The `update_id` in `step.worker_update.submit` is a unique client-generated nonce.
-On first call, the server applies the optimizer and stores the receipt.
-On duplicate `update_id`, the server returns the stored receipt WITHOUT re-applying
-the optimizer.
+No state implies server-side optimizer execution.
+Optimizer runs exclusively at the worker (see R3-03).

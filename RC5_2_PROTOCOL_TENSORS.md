@@ -1,49 +1,56 @@
-# RC5.2 Protocol Tensors (R2)
+# RC5.2 Protocol Tensors (R3)
 
-## Envelope
+## Single-Tensor Envelope
+
+For activations and gradients (numerical_profile_v1):
 
 ```json
 {
-  "tensor_role": "server_activation | cut_activation | cut_gradient | lora_delta",
-  "run_id": "string",
-  "round_id": "string",
-  "assignment_id": "string",
-  "micro_unit_id": "string",
-  "step_id": "string",
-  "session_id": "string",
-  "shape": [int, ...],
-  "dtype": "float32",
-  "byte_length": int,
+  "tensor_role": "server_activation | cut_activation | cut_gradient",
+  "shape": [1, 128, 256],
+  "dtype": "<f4",
+  "byte_order": "little",
+  "memory_order": "C",
+  "byte_length": 131072,
   "sha256": "64-char hex",
-  "data_b64": "base64-encoded bytes",
-  "encoding": "base64"
+  "data_b64": "...",
+  "session_id": "...",
+  "step_id": "..."
 }
 ```
 
-## Roles, Shapes, and Limits
+Validation:
+1. shape == [1, 128, 256]
+2. dtype == "<f4"
+3. byte_order == "little" else REJECTED
+4. memory_order == "C" else REJECTED
+5. byte_length == 131072
+6. base64 decode (strict) succeeds
+7. decoded length == byte_length
+8. SHA256(decoded) == sha256
+9. No NaN/Inf
+10. session_id matches
+11. step_id not replayed
+12. X-Worker-Id owns the unit
 
-| Role | Shape | Max dims | Max bytes | Encoding |
-|---|---|---|---|---|
-| server_activation | [1, T, D_cut] = [1, 128, 256] | 3 | 100 MB | BE: little, order: C |
-| cut_activation | [1, T, D_cut] = [1, 128, 256] | 3 | 100 MB | BE: little, order: C |
-| cut_gradient | [1, T, D_cut] = [1, 128, 256] | 3 | 100 MB | BE: little, order: C |
-| lora_delta | see delta schema (ADR-R2-06) | 2 | 10 MB | BE: little, order: C |
+## Multi-Tensor Bundle (tensor_bundle_v1)
 
-## Validation Order (hardened)
+For LoRA delta transport:
 
-1. tensor_role is known
-2. Dimensions count matches role's max
-3. All dimensions are positive int
-4. dtype == "float32"
-5. byte_length == product(shape) * 4 (strict: no padding, no endianness tricks)
-6. base64 decode (strict mode) succeeds
-7. Decoded bytes length == byte_length
-8. SHA256(decoded_bytes) == sha256 field
-9. No NaN or Inf in decoded values
-10. run_id matches active run
-11. round_id matches active round
-12. assignment_id matches unit's assignment
-13. session_id matches unit's session
-14. step_id not replayed
-15. worker_id (X-Worker-Id header) owns the unit
-16. Payload size ≤ role's max_bytes
+```
+Magic:       "MTB1" (4 bytes)
+HeaderLen:   uint32 LE
+Header:      canonical JSON (UTF-8, sort_keys=True, separators=(",",":"))
+Payload:     concatenated tensors (LE f32, C-order, no padding)
+```
+
+SHA-256 over the entire bundle (magic + header_length + header + payload).
+
+## Delta Transport
+
+```yaml
+delta_bundle_b64: base64 of tensor_bundle_v1
+delta_bundle_byte_length: total bundle size
+delta_bundle_sha256: SHA256(bundle_bytes)
+adapter_schema_hash: SHA256(schema JSON)
+```

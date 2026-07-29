@@ -1,38 +1,42 @@
-# RC5.2 State Machine (R3)
+# RC5.2 State Machine (R4)
 
 ```
 OPEN
-  │ step.open (server computes activation)
+  │ step.open
   ▼
 SERVER_ACTIVATION_READY
-  │ step.worker_forward.submit (worker sends cut_activation)
+  │ step.worker_forward.submit
   ▼
 CUT_ACTIVATION_ACCEPTED
-  │ (server computes loss + backward internally)
+  │ (server backward)
   ▼
 CUT_GRADIENT_READY
-  │ step.server_backward.fetch (first call)
+  │ step.server_backward.fetch (first)
   ▼
 CUT_GRADIENT_DELIVERED
-  │ step.worker_update.submit (worker presents validated delta)
+  │ step.worker_update.submit
   ▼
 DELTA_VERIFIED
-  │ step.commit (server signs receipt)
+  │ step.commit
   ▼
 COMMITTED
 ```
 
-Terminals: `COMMITTED`, `ABORTED`, `EXPIRED`
+### Terminal states
+- **COMMITTED** — immutable. No further transitions.
+- **ABORTED** — immutable. No further transitions.
+- **EXPIRED** — reserved for RC5.4. Not implemented in RC5.2.
 
-| From | To | Trigger | Idempotent |
-|---|---|---|---|
-| OPEN | SERVER_ACTIVATION_READY | step.open | yes (same activation) |
-| SERVER_ACTIVATION_READY | CUT_ACTIVATION_ACCEPTED | step.worker_forward.submit | yes |
-| CUT_ACTIVATION_ACCEPTED | CUT_GRADIENT_READY | server backward (internal) | — |
-| CUT_GRADIENT_READY | CUT_GRADIENT_DELIVERED | step.server_backward.fetch (first) | fetch yes, transition once |
-| CUT_GRADIENT_DELIVERED | DELTA_VERIFIED | step.worker_update.submit | yes (same update_id) |
-| DELTA_VERIFIED | COMMITTED | step.commit | yes (same receipt) |
-| any | ABORTED | step.abort | yes |
+### Transitions
 
-No state implies server-side optimizer execution.
-Optimizer runs exclusively at the worker (see R3-03).
+| From | To | Trigger |
+|---|---|---|
+| OPEN | SERVER_ACTIVATION_READY | step.open |
+| SERVER_ACTIVATION_READY | CUT_ACTIVATION_ACCEPTED | step.worker_forward.submit |
+| CUT_ACTIVATION_ACCEPTED | CUT_GRADIENT_READY | internal server backward |
+| CUT_GRADIENT_READY | CUT_GRADIENT_DELIVERED | step.server_backward.fetch (first) |
+| CUT_GRADIENT_DELIVERED | DELTA_VERIFIED | step.worker_update.submit |
+| DELTA_VERIFIED | COMMITTED | step.commit |
+| any non-terminal | ABORTED | step.abort |
+
+Terminal → any: prohibited.

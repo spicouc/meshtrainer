@@ -22,12 +22,14 @@ for i in 1 2 3 4 5 6; do
            sed -i 's/labels = tokens.clone()/labels = torch.full_like(tokens, -100)/' rc5_2_phase1_tests.py ;;
         3) NAME="MUT-P1-03-bypass-worker"
            sed -i 's/x = layer(x, src_mask=causal_mask)/x = x  # bypass/' rc5_2_numerical_models.py ;;
-        4) NAME="MUT-P1-04-dual-lora-in-opt"
-           sed -i 's/\[self.lora_wrapper.lora_A.weight, self.lora_wrapper.lora_B.weight\]/[self.lora_wrapper.lora_A.weight, self.lora_wrapper.lora_B.weight, self.lora_wrapper.lora_A.weight, self.lora_wrapper.lora_B.weight]/' rc5_2_numerical_models.py ;;
+        4) NAME="MUT-P1-04-extra-param-in-opt"
+           sed -i 's/\[self.lora_wrapper.lora_A.weight, self.lora_wrapper.lora_B.weight\]/[self.lora_wrapper.lora_A.weight, self.lora_wrapper.lora_B.weight, next(self.local_layers[0].self_attn.out_proj.parameters())]/' rc5_2_numerical_models.py ;;
         5) NAME="MUT-P1-05-zero-grad"
-           sed -i 's/cut_gradient = torch.autograd.grad(loss, x, retain_graph=True, create_graph=False)[0].detach().clone()/cut_gradient = torch.zeros_like(x).detach()/' rc5_2_numerical_models.py ;;
-        6) NAME="MUT-P1-06-relu-lora"
-           sed -i 's/lora_out = self.lora_B(self.lora_A(x)) \* self.scaling/lora_out = self.lora_B(torch.relu(self.lora_A(x))) * self.scaling/' rc5_2_lora.py ;;
+           # Zero out gradients before optimizer step in worker_backward
+           sed -i 's/self.optimizer.step()/self.lora_wrapper.lora_A.weight.grad.zero_(); self.lora_wrapper.lora_B.weight.grad.zero_(); self.optimizer.step()/' rc5_2_numerical_models.py ;;
+        6) NAME="MUT-P1-06-no-worker-lora"
+           # Remove LoRA from WorkerNumericalModel only (not MonolithicNumericalModel)
+           sed -i '/class WorkerNumericalModel/,/self.local_layers\[0\]\.linear1 = self.lora_wrapper/{s/self.local_layers\[0\]\.linear1 = self.lora_wrapper/# mut: no LoRA in worker/}' rc5_2_numerical_models.py ;;
     esac
     set +e; python3 -m py_compile *.py 2>"$NAME.compile.err"; C=$?; set -e
     [ $C -ne 0 ] && echo "  $NAME: INVALID" && RESULTS+="$NAME: INVALID"$'\n' && INVALID=$((INVALID+1)) && continue

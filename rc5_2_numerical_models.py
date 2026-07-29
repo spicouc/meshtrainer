@@ -118,7 +118,8 @@ class SplitServerNumericalModel(nn.Module):
 
     def server_loss_and_backward(self, cut_activation, labels, causal_mask):
         """Take detached cut_activation, re-attach to graph, compute loss & backward."""
-        x = cut_activation.detach().requires_grad_(True)
+        cut_leaf = cut_activation.detach().clone().requires_grad_(True)
+        x = cut_leaf
         for layer in self.top_layers:
             x = layer(x, src_mask=causal_mask)
         logits = self.lm_head(x)
@@ -126,8 +127,7 @@ class SplitServerNumericalModel(nn.Module):
         shift_labels = labels[:, 1:].contiguous()
         loss_fn = nn.CrossEntropyLoss(ignore_index=-100)
         loss = loss_fn(shift_logits.view(-1, P.vocab_size), shift_labels.view(-1))
-        cut_gradient = torch.autograd.grad(loss, x, retain_graph=True, create_graph=False)[0].detach().clone()
-        loss.backward()
+        cut_gradient = torch.autograd.grad(loss, cut_leaf, retain_graph=False)[0].detach().clone()
         return {
             "logits": logits,
             "loss": loss.item(),
@@ -152,6 +152,11 @@ class WorkerNumericalModel(nn.Module):
         )
         self.local_layers[0].linear1 = self.lora_wrapper
 
+        # Freeze ALL base params (everything except LoRA A/B)
+        for name, param in self.named_parameters():
+            if "lora" not in name:
+                param.requires_grad = False
+
         self.optimizer = torch.optim.SGD(
             [self.lora_wrapper.lora_A.weight, self.lora_wrapper.lora_B.weight],
             lr=0.01,
@@ -168,6 +173,7 @@ class WorkerNumericalModel(nn.Module):
 
     def worker_backward(self, cut_activation, cut_gradient):
         """Complete backward and optimizer step."""
+        self.optimizer.zero_grad(set_to_none=True)
         pre_A = self.lora_wrapper.lora_A.weight.detach().clone()
         pre_B = self.lora_wrapper.lora_B.weight.detach().clone()
 

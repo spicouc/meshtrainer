@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo "============================================"
-echo "  RC5.1 FINAL — REAL MUTATION GATE"
+echo "  RC5.1 R9 — REAL MUTATION GATE"
 echo "============================================"
 SRC="$(pwd)"
 TMPDIR="/tmp/rc5_mutation_$$"

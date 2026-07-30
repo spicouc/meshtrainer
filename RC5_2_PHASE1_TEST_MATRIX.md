@@ -1,37 +1,31 @@
-# RC5.2 Phase 1 R3 — Test Matrix (29 assertions)
+# RC5.2 Phase 1 R5 — Test Matrix (35 assertions)
 
-## Numerical Equivalence — 17 tests
-N01: profile hash stable
-N02: monolithic/split state identical, 0 missing/unexpected
-N03: server activation equivalent
-N04: cut activation equivalent
-N05: logits equivalent
-N06: loss equivalent
-N07: cut gradient equivalent
-N08: LoRA-A gradient equivalent
-N09: LoRA-B gradient equivalent
-N10: optimizer == LoRA only
-N14: LoRA-A post-step equivalent
-N15: LoRA-B post-step equivalent
-N16: delta-A equivalent
-N17: delta-B equivalent
-N18: delta non-zero
-N19: deterministic repeat
-N20: two symmetric consecutive steps
-
-## Numerical Equivalence (continued) — 3 tests
-N21: loss matches oracle + labels alter loss
-N22: ETT == 127
-N23: causal mask functional (future unaffected)
-
-## Worker Base Freeze — 3 tests
-N11: worker base requires_grad False
-N12: worker base grad None after backward
-N13: worker base weights unchanged
-
-## Monolithic Base Freeze — 3 tests
-N24: monolithic base requires_grad False
-N25: monolithic base grad None after backward
-N26: monolithic base weights unchanged
-
-## Total: 29 tests, all at strict rtol=1e-5, atol=1e-6
+| Test | Assertions | Description |
+|---|---|---|
+| P1-N01 | 1 | Profile hash deterministic |
+| P1-N02 | 1 | All state identical, 0 missing/unexpected |
+| P1-N03 | 1 | Server activation equivalent |
+| P1-N04 | 1 | Cut activation equivalent |
+| P1-N05 | 1 | Logits equivalent |
+| P1-N06 | 1 | Loss equivalent |
+| P1-N07 | 1 | Cut gradient equivalent |
+| P1-N08 | 1 | LoRA-A gradient equivalent |
+| P1-N09 | 1 | LoRA-B gradient equivalent |
+| P1-N10 | 1 | Optimizer == LoRA only |
+| P1-N11 | 1 | Worker base requires_grad False |
+| P1-N12 | 1 | Worker base grad None after backward |
+| P1-N13 | 1 | Worker base weights unchanged |
+| P1-N14 | 1 | LoRA-A post-step equivalent |
+| P1-N15 | 1 | LoRA-B post-step equivalent |
+| P1-N16 | 1 | Delta-A equivalent |
+| P1-N17 | 1 | Delta-B equivalent |
+| P1-N18 | 1 | Delta non-zero |
+| P1-N19 | 1 | Deterministic repeat |
+| P1-N20 | **7** | Step 2: loss, grad-A, grad-B, LoRA-A, LoRA-B, delta-A, delta-B |
+| P1-N21 | 2 | Loss matches oracle + label change alters loss |
+| P1-N22 | 1 | ETT == 127 |
+| P1-N23 | 3 | Early positions unaffected, late differ, mask check |
+| P1-N24 | 1 | Monolithic base requires_grad False |
+| P1-N25 | 1 | Monolithic base grad None after backward |
+| P1-N26 | 1 | Monolithic base weights unchanged |
+| **Total** | **35** | |

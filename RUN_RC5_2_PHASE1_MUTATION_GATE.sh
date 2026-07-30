@@ -34,13 +34,9 @@ for i in 1 2 3 4 5 6; do
            sed -i 's/\(cut_gradient = torch\.autograd\.grad(loss, cut_leaf, retain_graph=False)\)\[0\]\.detach()\.clone()/cg = \1[0].detach().clone(); cg[0,0,0] = cg[0,0,0] + 0.1; cut_gradient = cg/' rc5_2_numerical_models.py
            grep -c 'cg\[0,0,0\] = cg\[0,0,0\]' rc5_2_numerical_models.py | grep -q '^1$' || OK=1 ;;
         6) NAME="MUT-P1-06-relu-worker-lora"
-           # ReLU between LoRA A and B in LoRALinear
-           sed -i 's/lora_out = self.lora_B(self.lora_A(x)) \* self.scaling/lora_out = self.lora_B(torch.relu(self.lora_A(x))) * self.scaling/' rc5_2_lora.py
-           # In monolithic ONLY: replace the lora_wrapper with base_linear (skip LoRA)
-           sed -i '/class MonolithicNumericalModel/,/def forward/ s/self.local_layers\[0\]\.linear1 = self.lora_wrapper/self.local_layers[0].linear1 = self.lora_wrapper.base_linear/' rc5_2_numerical_models.py
-           # Add requires_grad anchor to prevent crash in monolithic forward
-           sed -i '/class MonolithicNumericalModel/a\        self.token_embedding.weight.requires_grad_(True)' rc5_2_numerical_models.py
-           CNT=$(grep -c 'torch.relu' rc5_2_lora.py 2>/dev/null || true)
+           # Worker-only ReLU between LoRA A and B (Python script, precise)
+           python3 mut06_relu_worker.py
+           CNT=$(grep -c 'mut: ReLU' rc5_2_numerical_models.py 2>/dev/null || true)
            [ "$CNT" -ge 1 ] || OK=1 ;;
     esac
     [ "$OK" -ne 0 ] && echo "  $NAME: NOT APPLIED" && NA=$((NA+1)) && continue
@@ -48,10 +44,9 @@ for i in 1 2 3 4 5 6; do
     [ "$C" -ne 0 ] && echo "  $NAME: INVALID" && I=$((I+1)) && continue
     set +e; timeout 120 python3 rc5_2_phase1_tests.py > "mutation_$NAME.log" 2>&1; S=$?; set -e
     [ "$S" -eq 124 ] && echo "  $NAME: TIMEOUT" && T=$((T+1)) && continue
-    # ANY traceback or exception = RUNTIME-INVALID (R3-08)
+    # ANY traceback = RUNTIME-INVALID (R4-02), regardless of assertion count
     TRACE=$(grep -c 'Traceback\|Error:\|Exception:\|TypeError\|ValueError\|RuntimeError\|IndexError\|KeyError' "mutation_$NAME.log" 2>/dev/null || true)
-    ASSRT=$(grep -c '❌' "mutation_$NAME.log" 2>/dev/null || true)
-    if [ "$TRACE" -gt 0 ] && [ "$ASSRT" -eq 0 ]; then
+    if [ "$TRACE" -gt 0 ]; then
         echo "  $NAME: RUNTIME-INVALID" && R=$((R+1)) && continue
     fi
     [ "$S" -ne 0 ] && echo "  $NAME: DETECTED" && SCORE=$((SCORE+1)) && continue

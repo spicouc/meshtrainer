@@ -112,29 +112,31 @@ def test_p1_n02():
     worker = WorkerNumericalModel()
     s_params = dict(server.named_parameters())
     w_params = dict(worker.named_parameters())
-    s_keys = set(s_params.keys())
-    w_keys = set(w_params.keys())
     r_keys = set(ref.keys())
     server_expected = {k for k in r_keys if any(s in k for s in ["token_embedding","pos_embedding","base_layers","top_layers","lm_head"])}
     worker_expected = {k for k in r_keys if any(w in k for w in ["local_layers","lora_wrapper"])}
+    # Real key sets from actual models
+    actual_s_keys = set(s_params.keys())
+    actual_w_keys = set(w_params.keys())
+    # Check unexpected: keys in actual but not in expected
+    s_unexpected = actual_s_keys - server_expected
+    w_unexpected = actual_w_keys - worker_expected
+    # Missing: keys in expected but not loaded
+    s_missing = server_expected - actual_s_keys
+    w_missing = worker_expected - actual_w_keys
     # Load state
-    s_state = {}; w_state = {}
     for n,p in server.named_parameters():
-        if n in ref: p.data.copy_(ref[n].clone()); s_state[n]=True
+        if n in ref: p.data.copy_(ref[n].clone())
     for n,p in worker.named_parameters():
-        if n in ref: p.data.copy_(ref[n].clone()); w_state[n]=True
-    s_missing = server_expected - set(s_state.keys())
-    s_unexpected = set(s_state.keys()) - server_expected
-    w_missing = worker_expected - set(w_state.keys())
-    w_unexpected = set(w_state.keys()) - worker_expected
+        if n in ref: p.data.copy_(ref[n].clone())
     # Verify exact equality
     ok = True
     for n in server_expected:
-        if n not in s_state: ok=False
-        elif not torch.equal(ref[n], dict(server.named_parameters()).get(n, torch.zeros(1))): ok=False
+        if n not in s_params: ok=False
+        elif not torch.equal(ref[n], s_params[n]): ok=False
     for n in worker_expected:
-        if n not in w_state: ok=False
-        elif not torch.equal(ref[n], dict(worker.named_parameters()).get(n, torch.zeros(1))): ok=False
+        if n not in w_params: ok=False
+        elif not torch.equal(ref[n], w_params[n]): ok=False
     ok = ok and len(s_missing)==0 and len(s_unexpected)==0 and len(w_missing)==0 and len(w_unexpected)==0
     check("P1-N02: all state identical, 0 missing, 0 unexpected", ok)
 
@@ -265,7 +267,7 @@ def test_p1_n19():
     check("P1-N19: deterministic", torch.equal(r1["post_A"], r2["post_A"]) and torch.equal(r1["post_B"], r2["post_B"]))
 
 def test_p1_n20():
-    """Two symmetric steps: both paths execute zero_grad → forward → backward → step, twice."""
+    """Two symmetric steps: compare loss, gradients, post-weights, deltas after step 2."""
     ref, _ = build_reference_state()
 
     # Split: two steps
@@ -275,7 +277,7 @@ def test_p1_n20():
         ca = w.worker_forward(sa, causal_mask)
         r = s.server_loss_and_backward(ca.detach().clone(), labels, causal_mask)
         wr = w.worker_backward(ca, r["cut_gradient"])
-    split_post_A = wr["post_A"]; split_post_B = wr["post_B"]
+    split_r = r; split_wr = wr
 
     # Monolithic: two steps with zero_grad each time
     m = MonolithicNumericalModel()
@@ -284,11 +286,22 @@ def test_p1_n20():
     opt = torch.optim.SGD([m.lora_wrapper.lora_A.weight, m.lora_wrapper.lora_B.weight], lr=0.01, momentum=0.0, weight_decay=0.0)
     for step_i in range(2):
         opt.zero_grad(set_to_none=True)
-        _ = m.forward(tokens, labels, causal_mask, return_all=True)
+        mr = m.forward(tokens, labels, causal_mask, return_all=True)
         opt.step()
 
-    check("P1-N20: step2 LoRA-A", torch.allclose(split_post_A, m.lora_wrapper.lora_A.weight, rtol=1e-5, atol=1e-6))
-    check("P1-N20: step2 LoRA-B", torch.allclose(split_post_B, m.lora_wrapper.lora_B.weight, rtol=1e-5, atol=1e-6))
+    post_A_m = m.lora_wrapper.lora_A.weight.detach().clone()
+    post_B_m = m.lora_wrapper.lora_B.weight.detach().clone()
+
+    mono_pre_A = mr["pre_A"]; mono_pre_B = mr["pre_B"]
+    check("P1-N20: step2 loss", abs(split_r["loss"] - mr["loss"]) < 1e-6)
+    check("P1-N20: grad A", torch.allclose(split_wr["grad_A"], mr["grad_A"], rtol=1e-5, atol=1e-6))
+    check("P1-N20: grad B", torch.allclose(split_wr["grad_B"], mr["grad_B"], rtol=1e-5, atol=1e-6))
+    check("P1-N20: LoRA-A", torch.allclose(split_wr["post_A"], post_A_m, rtol=1e-5, atol=1e-6))
+    check("P1-N20: LoRA-B", torch.allclose(split_wr["post_B"], post_B_m, rtol=1e-5, atol=1e-6))
+    da = (split_wr["post_A"] - split_wr["pre_A"]) - (post_A_m - mono_pre_A)
+    check("P1-N20: delta-A", da.abs().max().item() < 1e-6)
+    db = (split_wr["post_B"] - split_wr["pre_B"]) - (post_B_m - mono_pre_B)
+    check("P1-N20: delta-B", db.abs().max().item() < 1e-6)
 
 def test_p1_n21():
     """Oracle independent cross-entropy loss."""

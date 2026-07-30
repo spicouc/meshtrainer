@@ -1,24 +1,19 @@
-# RC5.2 Phase 1 R3 — Final Report
+# RC5.2 Phase 1 R4 — Final Closeout Report
 
-**Commit:** pending mutation gate
+**Commit:** pending
 **Branch:** rc5.2-numerical-phase1
 **Base:** meshtrainer-v1.1-rc5.1
 
-## Corrections R3
+## Corrections R4
 
 | Bloquejador | Correccio |
 |---|---|
-| Monolithic base params not frozen | `for name, param in self.named_parameters(): if "lora" not in name: param.requires_grad = False` |
-| Missing monolithic freeze tests | P1-N24 (frozen), P1-N25 (grad None), P1-N26 (weights unchanged) |
-| P1-N02: soft key comparison | Exact set comparison: `server_expected`, `worker_expected`, 0 missing, 0 unexpected |
-| P1-N23: not testing future independence | Two sequences (tokens_a, tokens_b), verify early logits identical, late logits differ |
-| MUT-01: randn grad | Implemented (detected by N07/N14/N15) |
-| MUT-02: server ignores labels | SplitServer only, range-limited sed |
-| MUT-03: bypass with crash | Differentiable: `server_activation + 0.0 * (lora_A.sum() + lora_B.sum())` — no traceback |
-| MUT-04: extra param in opt | Implemented (detected by N10) |
-| MUT-05: alter 1 element of gradient | Implemented (detected by N07/N14/N15) |
-| MUT-06: ReLU worker-only | Lambda replacement of `linear1 = lora_wrapper` with ReLU path |
-| Runtime-invalid classification | Any traceback → RUNTIME-INVALID (regardless of assertion count) |
-| Application count | `grep -q '^1$'` for exact one match |
+| MUT-06 INVALID + monolithic modified | Python script `mut06_relu_worker.py`: ReLU between LoRA A/B only in WorkerNumericalModel |
+| RUNTIME-INVALID classification | ANY traceback → RUNTIME-INVALID (regardless of assertions) |
+| P1-N02: soft unexpected check | `actual_s_keys - server_expected` (real key sets, not derived from load) |
+| P1-N20: incomplete | 7 comparisons: loss, 2xgrad, 2xpost, 2xdelta |
+| Count inconsistency | Updated to real 35 assertions |
+| Missing logs/reports | Added RUN_1/2 logs, mutation log, diff, mutation report |
 
-## Numerical tests: 29/29 PASS (strict rtol=1e-5, atol=1e-6)
+## Numerical tests: 35/35 PASS (strict rtol=1e-5, atol=1e-6)
+Run 1: PASS, Run 2: PASS

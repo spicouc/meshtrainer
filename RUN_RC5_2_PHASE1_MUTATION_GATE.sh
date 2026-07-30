@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 echo "============================================"
-echo "  RC5.2 Phase 1 R3 — MUTATION GATE"
+echo "  RC5.2 Phase 1 R5 — FINAL MUTATION GATE"
 echo "============================================"
 SRC="$(pwd)"; TMPDIR="/tmp/p1r3_mut_$$"
 echo ""; echo "=== BASELINE ==="
@@ -37,7 +37,7 @@ for i in 1 2 3 4 5 6; do
            # Worker-only ReLU between LoRA A and B (Python script, precise)
            python3 mut06_relu_worker.py
            CNT=$(grep -c 'mut: ReLU' rc5_2_numerical_models.py 2>/dev/null || true)
-           [ "$CNT" -ge 1 ] || OK=1 ;;
+           [ "$CNT" -eq 1 ] || OK=1 ;;
     esac
     [ "$OK" -ne 0 ] && echo "  $NAME: NOT APPLIED" && NA=$((NA+1)) && continue
     set +e; python3 -m py_compile *.py 2>"$NAME.compile.err"; C=$?; set -e

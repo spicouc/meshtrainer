@@ -400,7 +400,7 @@ TESTS = [
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("  RC5.2 Phase 1 R3 — Numerical Tests")
+    print("  RC5.2 Phase 1 R5 — Numerical Tests")
     print("=" * 60)
     for name, fn in TESTS:
         print(f"\n--- {name} ---")

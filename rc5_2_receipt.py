@@ -1,10 +1,8 @@
-"""RC5.2 Phase 2 W6: Receipt v1.2."""
-import json, hashlib, hmac, time, uuid
+"""RC5.2 Phase 2 R4: Receipt v1.2 — no default key, no mutation."""
+import json, hmac, hashlib, time, uuid
 from rc5_2_canonical import canonical_json_v1
 
 def generate_receipt(**kw) -> dict:
-    """Generate receipt v1.2 with HMAC signature."""
-    key = kw.get("signing_key", b"\x01" * 32)
     receipt = {
         "protocol_version": "1.2.0-rc5.2",
         "receipt_version": "1.2",
@@ -33,46 +31,15 @@ def generate_receipt(**kw) -> dict:
         "loss": kw.get("loss", 0.0),
         "key_id": kw.get("key_id", "k1"),
     }
+    signing_key = kw.get("signing_key")
+    if signing_key is None:
+        raise ValueError("signing_key is required")
     payload = canonical_json_v1(receipt)
-    receipt["signature"] = hmac.new(key, payload, hashlib.sha256).hexdigest()
+    receipt["signature"] = hmac.new(signing_key, payload, hashlib.sha256).hexdigest()
     return receipt
 
-def verify_receipt(receipt: dict, key: bytes = b"\x01" * 32) -> bool:
-    sig = receipt.pop("signature", "")
-    payload = canonical_json_v1(receipt)
-    expected = hmac.new(key, payload, hashlib.sha256).hexdigest()
-    receipt["signature"] = sig
+def verify_receipt(receipt: dict, signing_key: bytes) -> bool:
+    sig = receipt.get("signature", "")
+    payload = canonical_json_v1({k: v for k, v in receipt.items() if k != "signature"})
+    expected = hmac.new(signing_key, payload, hashlib.sha256).hexdigest()
     return hmac.compare_digest(sig, expected)
-
-COORDINATOR_CONTRIBUTIONS = {}
-COORDINATOR_ADAPTER = None
-
-def checkpoint_upload(contrib: dict, key: bytes = b"\x01" * 32) -> str:
-    """RC5.2 checkpoint.upload — validate receipt, store contribution."""
-    receipt = contrib.get("receipt", {})
-    if not verify_receipt(receipt, key):
-        raise ValueError("Invalid receipt HMAC")
-    cid = receipt["receipt_id"]
-    if cid in COORDINATOR_CONTRIBUTIONS:
-        raise ValueError("Duplicate contribution")
-    COORDINATOR_CONTRIBUTIONS[cid] = {
-        "status": "RECEIVED",
-        "delta_bundle_b64": contrib.get("delta_bundle_b64", ""),
-        "delta_bundle_sha256": receipt.get("delta_bundle_sha256", ""),
-        "loss": receipt.get("loss", 0.0),
-        "ett": receipt.get("effective_trainable_tokens", 0),
-        "worker_id": receipt.get("worker_id", ""),
-    }
-    return cid
-
-def validate_contribution(cid: str) -> bool:
-    if cid in COORDINATOR_CONTRIBUTIONS:
-        COORDINATOR_CONTRIBUTIONS[cid]["status"] = "VALIDATED"
-        return True
-    return False
-
-def activate_contribution(cid: str) -> bool:
-    if cid in COORDINATOR_CONTRIBUTIONS and COORDINATOR_CONTRIBUTIONS[cid]["status"] == "VALIDATED":
-        COORDINATOR_CONTRIBUTIONS[cid]["status"] = "ACTIVE"
-        return True
-    return False

@@ -1,11 +1,11 @@
-"""RC5.2 Phase 2 R3: Coordinator — checkpoint.upload, lifecycle, FedAvg."""
+"""RC5.2 Phase 2 R4: Coordinator — SQLite-backed, no global state."""
 import json, sqlite3, hashlib, base64, time
 from rc5_2_receipt import verify_receipt
 from rc5_2_tensor_bundle import delta_bundle_unpack, bundle_sha256
+from rc5_2_canonical import canonical_json_v1
 
 class Coordinator:
-    def __init__(self, db_path="rpc_state.db"):
-        self.db_path = db_path
+    def __init__(self, db_path="coordinator.db"):
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._init_db()
@@ -24,9 +24,9 @@ class Coordinator:
                 cid TEXT, created_at TEXT DEFAULT (datetime('now'))
             );
             CREATE TABLE IF NOT EXISTS rounds (
-                round_id TEXT, run_id TEXT, global_adapter_json TEXT,
-                global_adapter_hash TEXT, closed INTEGER DEFAULT 0,
-                PRIMARY KEY (run_id, round_id)
+                run_id TEXT, round_id TEXT,
+                global_adapter_b64 TEXT, global_adapter_hash TEXT,
+                closed INTEGER DEFAULT 0, PRIMARY KEY (run_id, round_id)
             );
         """)
         self._conn.commit()
@@ -41,51 +41,43 @@ class Coordinator:
 
     def checkpoint_upload(self, p: dict, signing_key: bytes) -> dict:
         receipt = p.get("receipt", {})
-        sr = receipt.copy()
-        sr.pop("signature", None)
         if not verify_receipt(receipt, signing_key):
             raise ValueError("Invalid receipt HMAC")
-        # Validate mandatory fields
-        for field in ["protocol_version", "receipt_version", "key_id", "receipt_id", "receipt_nonce",
-                       "issued_at", "expires_at", "run_id", "round_id", "unit_id", "worker_id",
-                       "delta_bundle_sha256", "delta_bundle_byte_length", "delta_format"]:
+        mandatory = ["protocol_version", "receipt_version", "key_id", "receipt_id",
+                      "receipt_nonce", "issued_at", "expires_at", "run_id", "round_id",
+                      "unit_id", "worker_id", "delta_bundle_sha256",
+                      "delta_bundle_byte_length", "delta_format"]
+        for field in mandatory:
             if field not in receipt:
                 raise ValueError(f"Missing receipt field: {field}")
-        # Check expiry
         if receipt.get("expires_at", 0) < time.time():
             raise ValueError("Receipt expired")
-        # Check nonce
-        nonce_id = receipt["receipt_nonce"]
-        if not self._check_nonce(nonce_id):
+        if not self._check_nonce(receipt["receipt_nonce"]):
             raise ValueError("Nonce already consumed")
-        # Check delta format
         if receipt.get("delta_format") != "tensor_bundle_v1":
-            raise ValueError(f"Unsupported delta_format: {receipt.get('delta_format')}")
-        # Verify bundle bytes
+            raise ValueError(f"Bad delta_format: {receipt.get('delta_format')}")
         bundle_b64 = p.get("delta_bundle_b64", "")
         try:
             bundle_bytes = base64.b64decode(bundle_b64, validate=True)
         except Exception:
-            raise ValueError("Invalid base64")
+            raise ValueError("Invalid base64 in delta_bundle_b64")
         if len(bundle_bytes) != receipt.get("delta_bundle_byte_length", 0):
             raise ValueError("Delta bundle byte length mismatch")
         sha = hashlib.sha256(bundle_bytes).hexdigest()
         if sha != receipt["delta_bundle_sha256"]:
             raise ValueError("Delta bundle SHA mismatch")
-        # Unpack bundle (validates structure)
         delta_bundle_unpack(bundle_bytes, sha)
-        # Store contribution
         cid = receipt["receipt_id"]
         self._conn.execute("""
-            INSERT OR IGNORE INTO contributions (cid, status, unit_id, run_id, round_id, worker_id,
-                delta_bundle_b64, delta_bundle_sha256, receipt_json, ett, nonce_id)
+            INSERT OR IGNORE INTO contributions
+            (cid, status, unit_id, run_id, round_id, worker_id,
+             delta_bundle_b64, delta_bundle_sha256, receipt_json, ett, nonce_id)
             VALUES (?, 'RECEIVED', ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (cid, receipt.get("unit_id",""), receipt.get("run_id",""), receipt.get("round_id",""),
               receipt.get("worker_id",""), bundle_b64, sha, json.dumps(receipt),
-              receipt.get("effective_trainable_tokens",0), nonce_id))
+              receipt.get("effective_trainable_tokens",0), receipt["receipt_nonce"]))
         self._conn.commit()
-        # Consume nonce ONLY after successful persistence
-        self._consume_nonce(nonce_id, cid)
+        self._consume_nonce(receipt["receipt_nonce"], cid)
         return {"contribution_id": cid, "status": "RECEIVED"}
 
     def validate(self, cid):
@@ -93,18 +85,14 @@ class Coordinator:
         self._conn.commit()
 
     def activate(self, cid):
-        # Get current contribution
         c = self._conn.execute("SELECT * FROM contributions WHERE cid=? AND status='VALIDATED'", (cid,)).fetchone()
-        if not c: raise ValueError(f"Cannot activate {cid}: not VALIDATED")
-        # Supersede previous ACTIVE in same round
-        self._conn.execute("""
-            UPDATE contributions SET status='SUPERSEDED' WHERE status='ACTIVE' AND round_id=? AND worker_id=? AND cid != ?
-        """, (c["round_id"], c["worker_id"], cid))
+        if not c: raise ValueError(f"Cannot activate {cid}")
+        self._conn.execute("UPDATE contributions SET status='SUPERSEDED' WHERE status='ACTIVE' AND round_id=? AND worker_id=? AND cid!=?",
+            (c["round_id"], c["worker_id"], cid))
         self._conn.execute("UPDATE contributions SET status='ACTIVE' WHERE cid=?", (cid,))
         self._conn.commit()
 
     def fedavg(self, run_id, round_id):
-        """Weighted average of ACTIVE contributions by ETT."""
         rows = self._conn.execute(
             "SELECT delta_bundle_b64, delta_bundle_sha256, ett FROM contributions WHERE status='ACTIVE' AND run_id=? AND round_id=?",
             (run_id, round_id)).fetchall()
@@ -129,7 +117,7 @@ class Coordinator:
             "local_layers.0.linear1.lora_B.weight": avg_B,
         })
         ah = bundle_sha256(adapter_bytes)
-        self._conn.execute("INSERT OR REPLACE INTO rounds (run_id, round_id, global_adapter_json, global_adapter_hash, closed) VALUES (?,?,?,?,1)",
-            (run_id, round_id, adapter_bytes.hex(), ah))
+        self._conn.execute("INSERT OR REPLACE INTO rounds (run_id, round_id, global_adapter_b64, global_adapter_hash, closed) VALUES (?,?,?,?,1)",
+            (run_id, round_id, base64.b64encode(adapter_bytes).decode(), ah))
         self._conn.commit()
-        return {"adapter_bytes": adapter_bytes, "hash": ah}
+        return adapter_bytes, ah

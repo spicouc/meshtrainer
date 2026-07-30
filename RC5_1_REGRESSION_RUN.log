@@ -1,0 +1,684 @@
+=== RC5.1 Run 1 ===
+============================================
+  RC5.1-R10 — Test Runner
+============================================
+Python: Python 3.13.5
+Dir:    /root/rc3/phase1
+
+All deps present.
+
+=== RUN 1 ===
+============================================================
+  RC5.1-R10 — T-R2 Tests
+============================================================
+
+--- T-R2-01 ---
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+
+--- T-R2-02 ---
+  ✅ T-R2-02: activation no deadlock
+
+--- T-R2-03 ---
+  ✅ T-R2-03: unique ACTIVE for same key
+
+--- T-R2-04 ---
+  ✅ T-R2-04: unknown worker rejected
+
+--- T-R2-05 ---
+  ✅ T-R2-05: wrong token rejected
+
+--- T-R2-06 ---
+  ✅ T-R2-06: retired key verifies old receipt
+
+--- T-R2-07 ---
+  ✅ T-R2-07: retired key cannot sign (raised)
+
+--- T-R2-08 ---
+  ✅ T-R2-08: delta_b64 is valid base64
+  ✅ T-R2-08: delta_sha256 is 64 hex
+
+--- T-R2-09 ---
+  ✅ T-R2-09: wrong SHA rejected
+
+--- T-R2-10 ---
+  ✅ T-R2-10: nonce not consumed on failed upload
+
+--- T-R2-11 ---
+  ✅ T-R2-11: missing delta blocks round.close
+
+--- T-R2-12 ---
+  ✅ T-R2-12: corrupted delta blocks round.close
+
+--- T-R2-13 ---
+  ✅ T-R2-13: FedAvg result
+  ✅ T-R2-13: round.close handles empty
+
+--- T-R2-14 ---
+  ✅ T-R2-14: base + delta
+
+--- T-R2-15 ---
+  ✅ T-R2-15: hashes differ
+
+--- T-R2-16 ---
+  ✅ T-R2-16: round.close returns COMPLETED
+
+--- T-R2-17 ---
+  ✅ T-R2-17: double close rejected
+
+--- T-R2-18 ---
+  ✅ T-R2-18: checkpoint persisted
+
+--- T-R2-19 ---
+  ✅ T-R2-19: session restored
+  ✅ T-R2-19: nonces restored
+  ✅ T-R2-19: contributions restored
+
+--- T-R2-20 ---
+  ✅ T-R2-20: round closed
+  ✅ T-R2-20: 1 contribution aggregated
+
+--- R4-expired ---
+  ✅ R4-expired: status REJECTED
+  ✅ R4-expired: reason is 'receipt expired'
+
+--- R4-hash-evidence ---
+  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "ce6be1fcbd688635", "revision": 1, "status": "RECEIVED"}, "id": "1"}
+  ✅ R4-hash-evidence: upload accepted
+  ✅ R4-hash-evidence: file SHA matches our_hash
+
+--- R5-08-fedavg ---
+  ✅ R5-08: round COMPLETED
+  ✅ R5-08: 2 contributions
+  ✅ R5-08: ett=40
+  ✅ R5-08: global delta file exists
+  ✅ R5-08: w = 2.5
+  ✅ R5-08: adapter file exists
+
+--- MUT-1-hmac ---
+  ✅ MUT-1: HMAC check alive
+
+--- MUT-2-ownership ---
+  ✅ MUT-2: ownership check alive
+
+--- MUT-3-nonce ---
+  ✅ MUT-3a: first upload RECEIVED
+  ✅ MUT-3b: nonce replay REJECTED
+
+--- MUT-4-sha ---
+  ✅ MUT-4: delta SHA verification alive
+
+--- MUT-5-rc3 ---
+  ✅ MUT-5: RC3 join check alive
+
+============================================================
+  Resultat: 45/45 PASS, 0 FAIL
+  Timeouts: 0
+============================================================
+============================================================
+  RC5.1-R10 — Tests
+============================================================
+
+--- R6-01-e2e ---
+[SPLIT SERVER] 127.0.0.1:18802  d_model=32
+  ✅ R6-01: step.open
+  ✅ R6-01: step.embedding
+/root/rc3/phase1/rc5_split_server.py:230: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
+  act = torch.frombuffer(base64.b64decode(act_b64), dtype=torch.float32).reshape(1, -1)
+  ✅ R6-01: step.cut_activation
+  ✅ R6-01: step.cut_gradient
+  ✅ R6-01: loss
+  ✅ R6-01: step.commit
+  ✅ R6-01: receipt
+  ✅ R6-01: delta non-zero (not zero-SHA)
+  DEBUG: delta_sha[:16]=8db590f119444001, zero_sha[:16]=ad7facb2586fc6e9, match=False
+  ✅ R6-01: delta != zero-tensor SHA
+
+--- R6-02-revisions ---
+  ✅ R6-A: v1 ACTIVE
+  ✅ R6-A: v2 RECEIVED
+  ✅ R6-B: v1 still ACTIVE
+  ✅ R6-B: v2 VALIDATED
+  ✅ R6-C: v1 SUPERSEDED
+  ✅ R6-C: v2 ACTIVE
+  ✅ R6-D: v2 still ACTIVE
+  ✅ R6-D: 1 aggregated
+
+--- R6-03-negative ---
+  ✅ R6-03-1: SHA diff
+  ✅ R6-03-2: bytes diff
+  ✅ R6-03-3: SHA absent
+  ✅ R6-03-4: 63 chars
+  ✅ R6-03-5: non-hex
+  ✅ R6-03-6: b64 absent
+  ✅ R6-03-7: bad b64
+  ✅ R6-03-8: byte alter
+  ✅ R6-03-9: nonces not consumed after reject
+  ✅ R6-03-10a: first fail nonce not consumed
+  ✅ R6-03-10b: second success nonce exists
+  ✅ R6-03-10c: retry OK
+
+--- R6-05-split-direct ---
+[SPLIT SERVER] 127.0.0.1:18803  d_model=32
+  ✅ R6-05-1: alien -32003
+  ✅ R6-05-2: illegal transition -32003
+============================================================
+  Resultat: 31/31 PASS, 0 FAIL
+  COUNTS: {'protocol': 0, 'security': 2, 'integrity': 12, 'numerical': 0, 'ledger': 8, 'persistence': 0, 'e2e': 9}
+============================================================
+
+=== RUN 2 ===
+============================================================
+  RC5.1-R10 — T-R2 Tests
+============================================================
+
+--- T-R2-01 ---
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+
+--- T-R2-02 ---
+  ✅ T-R2-02: activation no deadlock
+
+--- T-R2-03 ---
+  ✅ T-R2-03: unique ACTIVE for same key
+
+--- T-R2-04 ---
+  ✅ T-R2-04: unknown worker rejected
+
+--- T-R2-05 ---
+  ✅ T-R2-05: wrong token rejected
+
+--- T-R2-06 ---
+  ✅ T-R2-06: retired key verifies old receipt
+
+--- T-R2-07 ---
+  ✅ T-R2-07: retired key cannot sign (raised)
+
+--- T-R2-08 ---
+  ✅ T-R2-08: delta_b64 is valid base64
+  ✅ T-R2-08: delta_sha256 is 64 hex
+
+--- T-R2-09 ---
+  ✅ T-R2-09: wrong SHA rejected
+
+--- T-R2-10 ---
+  ✅ T-R2-10: nonce not consumed on failed upload
+
+--- T-R2-11 ---
+  ✅ T-R2-11: missing delta blocks round.close
+
+--- T-R2-12 ---
+  ✅ T-R2-12: corrupted delta blocks round.close
+
+--- T-R2-13 ---
+  ✅ T-R2-13: FedAvg result
+  ✅ T-R2-13: round.close handles empty
+
+--- T-R2-14 ---
+  ✅ T-R2-14: base + delta
+
+--- T-R2-15 ---
+  ✅ T-R2-15: hashes differ
+
+--- T-R2-16 ---
+  ✅ T-R2-16: round.close returns COMPLETED
+
+--- T-R2-17 ---
+  ✅ T-R2-17: double close rejected
+
+--- T-R2-18 ---
+  ✅ T-R2-18: checkpoint persisted
+
+--- T-R2-19 ---
+  ✅ T-R2-19: session restored
+  ✅ T-R2-19: nonces restored
+  ✅ T-R2-19: contributions restored
+
+--- T-R2-20 ---
+  ✅ T-R2-20: round closed
+  ✅ T-R2-20: 1 contribution aggregated
+
+--- R4-expired ---
+  ✅ R4-expired: status REJECTED
+  ✅ R4-expired: reason is 'receipt expired'
+
+--- R4-hash-evidence ---
+  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "4a25880f121a7eb8", "revision": 1, "status": "RECEIVED"}, "id": "1"}
+  ✅ R4-hash-evidence: upload accepted
+  ✅ R4-hash-evidence: file SHA matches our_hash
+
+--- R5-08-fedavg ---
+  ✅ R5-08: round COMPLETED
+  ✅ R5-08: 2 contributions
+  ✅ R5-08: ett=40
+  ✅ R5-08: global delta file exists
+  ✅ R5-08: w = 2.5
+  ✅ R5-08: adapter file exists
+
+--- MUT-1-hmac ---
+  ✅ MUT-1: HMAC check alive
+
+--- MUT-2-ownership ---
+  ✅ MUT-2: ownership check alive
+
+--- MUT-3-nonce ---
+  ✅ MUT-3a: first upload RECEIVED
+  ✅ MUT-3b: nonce replay REJECTED
+
+--- MUT-4-sha ---
+  ✅ MUT-4: delta SHA verification alive
+
+--- MUT-5-rc3 ---
+  ✅ MUT-5: RC3 join check alive
+
+============================================================
+  Resultat: 45/45 PASS, 0 FAIL
+  Timeouts: 0
+============================================================
+============================================================
+  RC5.1-R10 — Tests
+============================================================
+
+--- R6-01-e2e ---
+[SPLIT SERVER] 127.0.0.1:18802  d_model=32
+  ✅ R6-01: step.open
+  ✅ R6-01: step.embedding
+/root/rc3/phase1/rc5_split_server.py:230: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
+  act = torch.frombuffer(base64.b64decode(act_b64), dtype=torch.float32).reshape(1, -1)
+  ✅ R6-01: step.cut_activation
+  ✅ R6-01: step.cut_gradient
+  ✅ R6-01: loss
+  ✅ R6-01: step.commit
+  ✅ R6-01: receipt
+  ✅ R6-01: delta non-zero (not zero-SHA)
+  DEBUG: delta_sha[:16]=8db590f119444001, zero_sha[:16]=ad7facb2586fc6e9, match=False
+  ✅ R6-01: delta != zero-tensor SHA
+
+--- R6-02-revisions ---
+  ✅ R6-A: v1 ACTIVE
+  ✅ R6-A: v2 RECEIVED
+  ✅ R6-B: v1 still ACTIVE
+  ✅ R6-B: v2 VALIDATED
+  ✅ R6-C: v1 SUPERSEDED
+  ✅ R6-C: v2 ACTIVE
+  ✅ R6-D: v2 still ACTIVE
+  ✅ R6-D: 1 aggregated
+
+--- R6-03-negative ---
+  ✅ R6-03-1: SHA diff
+  ✅ R6-03-2: bytes diff
+  ✅ R6-03-3: SHA absent
+  ✅ R6-03-4: 63 chars
+  ✅ R6-03-5: non-hex
+  ✅ R6-03-6: b64 absent
+  ✅ R6-03-7: bad b64
+  ✅ R6-03-8: byte alter
+  ✅ R6-03-9: nonces not consumed after reject
+  ✅ R6-03-10a: first fail nonce not consumed
+  ✅ R6-03-10b: second success nonce exists
+  ✅ R6-03-10c: retry OK
+
+--- R6-05-split-direct ---
+[SPLIT SERVER] 127.0.0.1:18803  d_model=32
+  ✅ R6-05-1: alien -32003
+  ✅ R6-05-2: illegal transition -32003
+============================================================
+  Resultat: 31/31 PASS, 0 FAIL
+  COUNTS: {'protocol': 0, 'security': 2, 'integrity': 12, 'numerical': 0, 'ledger': 8, 'persistence': 0, 'e2e': 9}
+============================================================
+
+============================================
+  Normal: Run 1=PASS, Run 2=PASS
+  R6:     Run 1=PASS, Run 2=PASS
+  Timeouts: 0
+  Flaky: 0
+  Mandatory skips: 0
+============================================
+=== RC5.1 Run 2 ===
+============================================
+  RC5.1-R10 — Test Runner
+============================================
+Python: Python 3.13.5
+Dir:    /root/rc3/phase1
+
+All deps present.
+
+=== RUN 1 ===
+============================================================
+  RC5.1-R10 — T-R2 Tests
+============================================================
+
+--- T-R2-01 ---
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+
+--- T-R2-02 ---
+  ✅ T-R2-02: activation no deadlock
+
+--- T-R2-03 ---
+  ✅ T-R2-03: unique ACTIVE for same key
+
+--- T-R2-04 ---
+  ✅ T-R2-04: unknown worker rejected
+
+--- T-R2-05 ---
+  ✅ T-R2-05: wrong token rejected
+
+--- T-R2-06 ---
+  ✅ T-R2-06: retired key verifies old receipt
+
+--- T-R2-07 ---
+  ✅ T-R2-07: retired key cannot sign (raised)
+
+--- T-R2-08 ---
+  ✅ T-R2-08: delta_b64 is valid base64
+  ✅ T-R2-08: delta_sha256 is 64 hex
+
+--- T-R2-09 ---
+  ✅ T-R2-09: wrong SHA rejected
+
+--- T-R2-10 ---
+  ✅ T-R2-10: nonce not consumed on failed upload
+
+--- T-R2-11 ---
+  ✅ T-R2-11: missing delta blocks round.close
+
+--- T-R2-12 ---
+  ✅ T-R2-12: corrupted delta blocks round.close
+
+--- T-R2-13 ---
+  ✅ T-R2-13: FedAvg result
+  ✅ T-R2-13: round.close handles empty
+
+--- T-R2-14 ---
+  ✅ T-R2-14: base + delta
+
+--- T-R2-15 ---
+  ✅ T-R2-15: hashes differ
+
+--- T-R2-16 ---
+  ✅ T-R2-16: round.close returns COMPLETED
+
+--- T-R2-17 ---
+  ✅ T-R2-17: double close rejected
+
+--- T-R2-18 ---
+  ✅ T-R2-18: checkpoint persisted
+
+--- T-R2-19 ---
+  ✅ T-R2-19: session restored
+  ✅ T-R2-19: nonces restored
+  ✅ T-R2-19: contributions restored
+
+--- T-R2-20 ---
+  ✅ T-R2-20: round closed
+  ✅ T-R2-20: 1 contribution aggregated
+
+--- R4-expired ---
+  ✅ R4-expired: status REJECTED
+  ✅ R4-expired: reason is 'receipt expired'
+
+--- R4-hash-evidence ---
+  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "a09d95fde66163c0", "revision": 1, "status": "RECEIVED"}, "id": "1"}
+  ✅ R4-hash-evidence: upload accepted
+  ✅ R4-hash-evidence: file SHA matches our_hash
+
+--- R5-08-fedavg ---
+  ✅ R5-08: round COMPLETED
+  ✅ R5-08: 2 contributions
+  ✅ R5-08: ett=40
+  ✅ R5-08: global delta file exists
+  ✅ R5-08: w = 2.5
+  ✅ R5-08: adapter file exists
+
+--- MUT-1-hmac ---
+  ✅ MUT-1: HMAC check alive
+
+--- MUT-2-ownership ---
+  ✅ MUT-2: ownership check alive
+
+--- MUT-3-nonce ---
+  ✅ MUT-3a: first upload RECEIVED
+  ✅ MUT-3b: nonce replay REJECTED
+
+--- MUT-4-sha ---
+  ✅ MUT-4: delta SHA verification alive
+
+--- MUT-5-rc3 ---
+  ✅ MUT-5: RC3 join check alive
+
+============================================================
+  Resultat: 45/45 PASS, 0 FAIL
+  Timeouts: 0
+============================================================
+============================================================
+  RC5.1-R10 — Tests
+============================================================
+
+--- R6-01-e2e ---
+[SPLIT SERVER] 127.0.0.1:18802  d_model=32
+  ✅ R6-01: step.open
+  ✅ R6-01: step.embedding
+/root/rc3/phase1/rc5_split_server.py:230: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
+  act = torch.frombuffer(base64.b64decode(act_b64), dtype=torch.float32).reshape(1, -1)
+  ✅ R6-01: step.cut_activation
+  ✅ R6-01: step.cut_gradient
+  ✅ R6-01: loss
+  ✅ R6-01: step.commit
+  ✅ R6-01: receipt
+  ✅ R6-01: delta non-zero (not zero-SHA)
+  DEBUG: delta_sha[:16]=8db590f119444001, zero_sha[:16]=ad7facb2586fc6e9, match=False
+  ✅ R6-01: delta != zero-tensor SHA
+
+--- R6-02-revisions ---
+  ✅ R6-A: v1 ACTIVE
+  ✅ R6-A: v2 RECEIVED
+  ✅ R6-B: v1 still ACTIVE
+  ✅ R6-B: v2 VALIDATED
+  ✅ R6-C: v1 SUPERSEDED
+  ✅ R6-C: v2 ACTIVE
+  ✅ R6-D: v2 still ACTIVE
+  ✅ R6-D: 1 aggregated
+
+--- R6-03-negative ---
+  ✅ R6-03-1: SHA diff
+  ✅ R6-03-2: bytes diff
+  ✅ R6-03-3: SHA absent
+  ✅ R6-03-4: 63 chars
+  ✅ R6-03-5: non-hex
+  ✅ R6-03-6: b64 absent
+  ✅ R6-03-7: bad b64
+  ✅ R6-03-8: byte alter
+  ✅ R6-03-9: nonces not consumed after reject
+  ✅ R6-03-10a: first fail nonce not consumed
+  ✅ R6-03-10b: second success nonce exists
+  ✅ R6-03-10c: retry OK
+
+--- R6-05-split-direct ---
+[SPLIT SERVER] 127.0.0.1:18803  d_model=32
+  ✅ R6-05-1: alien -32003
+  ✅ R6-05-2: illegal transition -32003
+============================================================
+  Resultat: 31/31 PASS, 0 FAIL
+  COUNTS: {'protocol': 0, 'security': 2, 'integrity': 12, 'numerical': 0, 'ledger': 8, 'persistence': 0, 'e2e': 9}
+============================================================
+
+=== RUN 2 ===
+============================================================
+  RC5.1-R10 — T-R2 Tests
+============================================================
+
+--- T-R2-01 ---
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+
+--- T-R2-02 ---
+  ✅ T-R2-02: activation no deadlock
+
+--- T-R2-03 ---
+  ✅ T-R2-03: unique ACTIVE for same key
+
+--- T-R2-04 ---
+  ✅ T-R2-04: unknown worker rejected
+
+--- T-R2-05 ---
+  ✅ T-R2-05: wrong token rejected
+
+--- T-R2-06 ---
+  ✅ T-R2-06: retired key verifies old receipt
+
+--- T-R2-07 ---
+  ✅ T-R2-07: retired key cannot sign (raised)
+
+--- T-R2-08 ---
+  ✅ T-R2-08: delta_b64 is valid base64
+  ✅ T-R2-08: delta_sha256 is 64 hex
+
+--- T-R2-09 ---
+  ✅ T-R2-09: wrong SHA rejected
+
+--- T-R2-10 ---
+  ✅ T-R2-10: nonce not consumed on failed upload
+
+--- T-R2-11 ---
+  ✅ T-R2-11: missing delta blocks round.close
+
+--- T-R2-12 ---
+  ✅ T-R2-12: corrupted delta blocks round.close
+
+--- T-R2-13 ---
+  ✅ T-R2-13: FedAvg result
+  ✅ T-R2-13: round.close handles empty
+
+--- T-R2-14 ---
+  ✅ T-R2-14: base + delta
+
+--- T-R2-15 ---
+  ✅ T-R2-15: hashes differ
+
+--- T-R2-16 ---
+  ✅ T-R2-16: round.close returns COMPLETED
+
+--- T-R2-17 ---
+  ✅ T-R2-17: double close rejected
+
+--- T-R2-18 ---
+  ✅ T-R2-18: checkpoint persisted
+
+--- T-R2-19 ---
+  ✅ T-R2-19: session restored
+  ✅ T-R2-19: nonces restored
+  ✅ T-R2-19: contributions restored
+
+--- T-R2-20 ---
+  ✅ T-R2-20: round closed
+  ✅ T-R2-20: 1 contribution aggregated
+
+--- R4-expired ---
+  ✅ R4-expired: status REJECTED
+  ✅ R4-expired: reason is 'receipt expired'
+
+--- R4-hash-evidence ---
+  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "5fd24a31af3b8ace", "revision": 1, "status": "RECEIVED"}, "id": "1"}
+  ✅ R4-hash-evidence: upload accepted
+  ✅ R4-hash-evidence: file SHA matches our_hash
+
+--- R5-08-fedavg ---
+  ✅ R5-08: round COMPLETED
+  ✅ R5-08: 2 contributions
+  ✅ R5-08: ett=40
+  ✅ R5-08: global delta file exists
+  ✅ R5-08: w = 2.5
+  ✅ R5-08: adapter file exists
+
+--- MUT-1-hmac ---
+  ✅ MUT-1: HMAC check alive
+
+--- MUT-2-ownership ---
+  ✅ MUT-2: ownership check alive
+
+--- MUT-3-nonce ---
+  ✅ MUT-3a: first upload RECEIVED
+  ✅ MUT-3b: nonce replay REJECTED
+
+--- MUT-4-sha ---
+  ✅ MUT-4: delta SHA verification alive
+
+--- MUT-5-rc3 ---
+  ✅ MUT-5: RC3 join check alive
+
+============================================================
+  Resultat: 45/45 PASS, 0 FAIL
+  Timeouts: 0
+============================================================
+============================================================
+  RC5.1-R10 — Tests
+============================================================
+
+--- R6-01-e2e ---
+[SPLIT SERVER] 127.0.0.1:18802  d_model=32
+  ✅ R6-01: step.open
+  ✅ R6-01: step.embedding
+/root/rc3/phase1/rc5_split_server.py:230: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
+  act = torch.frombuffer(base64.b64decode(act_b64), dtype=torch.float32).reshape(1, -1)
+  ✅ R6-01: step.cut_activation
+  ✅ R6-01: step.cut_gradient
+  ✅ R6-01: loss
+  ✅ R6-01: step.commit
+  ✅ R6-01: receipt
+  ✅ R6-01: delta non-zero (not zero-SHA)
+  DEBUG: delta_sha[:16]=8db590f119444001, zero_sha[:16]=ad7facb2586fc6e9, match=False
+  ✅ R6-01: delta != zero-tensor SHA
+
+--- R6-02-revisions ---
+  ✅ R6-A: v1 ACTIVE
+  ✅ R6-A: v2 RECEIVED
+  ✅ R6-B: v1 still ACTIVE
+  ✅ R6-B: v2 VALIDATED
+  ✅ R6-C: v1 SUPERSEDED
+  ✅ R6-C: v2 ACTIVE
+  ✅ R6-D: v2 still ACTIVE
+  ✅ R6-D: 1 aggregated
+
+--- R6-03-negative ---
+  ✅ R6-03-1: SHA diff
+  ✅ R6-03-2: bytes diff
+  ✅ R6-03-3: SHA absent
+  ✅ R6-03-4: 63 chars
+  ✅ R6-03-5: non-hex
+  ✅ R6-03-6: b64 absent
+  ✅ R6-03-7: bad b64
+  ✅ R6-03-8: byte alter
+  ✅ R6-03-9: nonces not consumed after reject
+  ✅ R6-03-10a: first fail nonce not consumed
+  ✅ R6-03-10b: second success nonce exists
+  ✅ R6-03-10c: retry OK
+
+--- R6-05-split-direct ---
+[SPLIT SERVER] 127.0.0.1:18803  d_model=32
+  ✅ R6-05-1: alien -32003
+  ✅ R6-05-2: illegal transition -32003
+============================================================
+  Resultat: 31/31 PASS, 0 FAIL
+  COUNTS: {'protocol': 0, 'security': 2, 'integrity': 12, 'numerical': 0, 'ledger': 8, 'persistence': 0, 'e2e': 9}
+============================================================
+
+============================================
+  Normal: Run 1=PASS, Run 2=PASS
+  R6:     Run 1=PASS, Run 2=PASS
+  Timeouts: 0
+  Flaky: 0
+  Mandatory skips: 0
+============================================

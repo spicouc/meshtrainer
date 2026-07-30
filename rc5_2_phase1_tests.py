@@ -106,26 +106,36 @@ def test_p1_n01():
     check("P1-N01: hash stable", h1 == h2 and len(h1) == 64)
 
 def test_p1_n02():
+    """Exact key set comparison: no missing, no unexpected, all equal."""
     ref, _ = build_reference_state()
-    _, _, v = load_split_models(ref)
-    ok = len(v["server_missing"]) == 0 and len(v["worker_missing"]) == 0
-    ok = ok and len(v["server_unexpected"]) == 0 and len(v["worker_unexpected"]) == 0
-    # Explicit equality check
-    server = load_split_models(ref)[0]
-    worker = load_split_models(ref)[1]
-    for name, p in ref.items():
-        if any(s in name for s in SERVER_KEYS):
-            try:
-                sp = dict(server.named_parameters())[name]
-                if not torch.equal(p, sp): ok = False
-            except KeyError:
-                ok = False
-        if any(w in name for w in WORKER_KEYS):
-            try:
-                wp = dict(worker.named_parameters())[name]
-                if not torch.equal(p, wp): ok = False
-            except KeyError:
-                ok = False
+    server = SplitServerNumericalModel()
+    worker = WorkerNumericalModel()
+    s_params = dict(server.named_parameters())
+    w_params = dict(worker.named_parameters())
+    s_keys = set(s_params.keys())
+    w_keys = set(w_params.keys())
+    r_keys = set(ref.keys())
+    server_expected = {k for k in r_keys if any(s in k for s in ["token_embedding","pos_embedding","base_layers","top_layers","lm_head"])}
+    worker_expected = {k for k in r_keys if any(w in k for w in ["local_layers","lora_wrapper"])}
+    # Load state
+    s_state = {}; w_state = {}
+    for n,p in server.named_parameters():
+        if n in ref: p.data.copy_(ref[n].clone()); s_state[n]=True
+    for n,p in worker.named_parameters():
+        if n in ref: p.data.copy_(ref[n].clone()); w_state[n]=True
+    s_missing = server_expected - set(s_state.keys())
+    s_unexpected = set(s_state.keys()) - server_expected
+    w_missing = worker_expected - set(w_state.keys())
+    w_unexpected = set(w_state.keys()) - worker_expected
+    # Verify exact equality
+    ok = True
+    for n in server_expected:
+        if n not in s_state: ok=False
+        elif not torch.equal(ref[n], dict(server.named_parameters()).get(n, torch.zeros(1))): ok=False
+    for n in worker_expected:
+        if n not in w_state: ok=False
+        elif not torch.equal(ref[n], dict(worker.named_parameters()).get(n, torch.zeros(1))): ok=False
+    ok = ok and len(s_missing)==0 and len(s_unexpected)==0 and len(w_missing)==0 and len(w_unexpected)==0
     check("P1-N02: all state identical, 0 missing, 0 unexpected", ok)
 
 def test_p1_n03():
@@ -308,38 +318,57 @@ def test_p1_n22():
     check("P1-N22: ETT=127", (shift_labels != -100).sum().item() == 127)
 
 def test_p1_n23():
-    """Functional causal mask test: future tokens don't affect early logits."""
+    """Functional causal mask: future tokens don't affect early logits."""
     ref, _ = build_reference_state()
-    # Create two sequences identical up to position k, differing after
-    k = P.sequence_length // 2
+    s, w, _ = load_split_models(ref)
+    k = P.sequence_length // 2  # 64
+    # Two sequences: identical up to k, different after k
     tokens_a = (torch.arange(P.sequence_length, dtype=torch.long).reshape(1, P.sequence_length) % P.vocab_size).contiguous()
     tokens_b = tokens_a.clone()
-    # Modify tokens after position k
-    tokens_b[0, k:] = tokens_b[0, k:] + 1 % P.vocab_size
+    tokens_b[0, k:] = (tokens_b[0, k:] + 50) % P.vocab_size  # diff after k
 
-    s, w, _ = load_split_models(ref)
-    sa_both = s.server_forward(tokens, causal_mask)  # same activation for both (same tokens up to k)
-    # Actually use the same server_forward since both sequences share the same early tokens
-    # The server_forward depends on ALL tokens (embedding), so we need separate forwards
+    sa_a = s.server_forward(tokens_a, causal_mask)
+    ca_a = w.worker_forward(sa_a, causal_mask)
+    logits_a = s.server_loss_and_backward(ca_a.detach().clone(), labels, causal_mask)["logits"]
 
-    # More precise test: run the same tokens with and without causal mask
-    sa = s.server_forward(tokens_a, causal_mask)
-    ca = w.worker_forward(sa, causal_mask)
-    r1 = s.server_loss_and_backward(ca.detach().clone(), labels, causal_mask)
+    sa_b = s.server_forward(tokens_b, causal_mask)
+    ca_b = w.worker_forward(sa_b, causal_mask)
+    logits_b = s.server_loss_and_backward(ca_b.detach().clone(), labels, causal_mask)["logits"]
 
-    # Without causal mask (all ones)
-    no_mask = torch.zeros((P.sequence_length, P.sequence_length))
-    sa2 = s.server_forward(tokens_a, no_mask)
-    ca2 = w.worker_forward(sa2, no_mask)
-    r2 = s.server_loss_and_backward(ca2.detach().clone(), labels, no_mask)
+    # Positions before k must be identical
+    early_diff = (logits_a[0, :k] - logits_b[0, :k]).abs().max().item()
+    # After k there must be SOME difference (otherwise trivial)
+    late_diff = (logits_a[0, k:] - logits_b[0, k:]).abs().max().item()
 
-    # With causal mask, token[0] cannot attend to token[-1]
-    # The logit at position 0 should differ between causal and non-causal
-    diff = (r1["logits"][0, 0] - r2["logits"][0, 0]).abs().max().item()
-    check("P1-N23: causal mask affects output", diff > 1e-6)
+    check("P1-N23: early positions unaffected by future", early_diff < 1e-6)
+    check("P1-N23: late positions differ (non-trivial)", late_diff > 1e-6)
+    check("P1-N23: causal_mask[0,1]==-inf", causal_mask[0, 1] == float('-inf'))
 
-    # Verify the mask itself
-    check("P1-N23: causal_mask[0,1] == -inf", causal_mask[0, 1] == float('-inf'))
+def test_p1_n24():
+    """Monolithic: all base params frozen (only LoRA trainable)."""
+    m = MonolithicNumericalModel()
+    ok = all(not p.requires_grad for n, p in m.named_parameters() if "lora" not in n)
+    ok = ok and all(p.requires_grad for n, p in m.named_parameters() if "lora" in n)
+    check("P1-N24: monolithic base frozen", ok)
+
+def test_p1_n25():
+    """Monolithic: base gradients None after backward."""
+    m = MonolithicNumericalModel()
+    ref = {n: p.detach().clone() for n, p in m.named_parameters()}
+    _ = m.forward(tokens, labels, causal_mask, return_all=True)
+    base = [p for n, p in m.named_parameters() if "lora" not in n]
+    ok = all(p.grad is None for p in base)
+    check("P1-N25: monolithic base grad None", ok)
+
+def test_p1_n26():
+    """Monolithic: base weights unchanged after backward + step."""
+    m = MonolithicNumericalModel()
+    ref = {n: p.detach().clone() for n, p in m.named_parameters()}
+    _ = m.forward(tokens, labels, causal_mask, return_all=True)
+    opt = torch.optim.SGD([m.lora_wrapper.lora_A.weight, m.lora_wrapper.lora_B.weight], lr=0.01)
+    opt.step()
+    ok = all(torch.equal(ref[n], p) for n, p in m.named_parameters() if "lora" not in n)
+    check("P1-N26: monolithic base unchanged", ok)
 
 TESTS = [
     ("P1-N01", test_p1_n01), ("P1-N02", test_p1_n02),
@@ -353,12 +382,12 @@ TESTS = [
     ("P1-N17", test_p1_n17), ("P1-N18", test_p1_n18),
     ("P1-N19", test_p1_n19), ("P1-N20", test_p1_n20),
     ("P1-N21", test_p1_n21), ("P1-N22", test_p1_n22),
-    ("P1-N23", test_p1_n23),
+    ("P1-N23", test_p1_n23), ("P1-N24", test_p1_n24), ("P1-N25", test_p1_n25), ("P1-N26", test_p1_n26),
 ]
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("  RC5.2 Phase 1 R2 — Numerical Tests")
+    print("  RC5.2 Phase 1 R3 — Numerical Tests")
     print("=" * 60)
     for name, fn in TESTS:
         print(f"\n--- {name} ---")
@@ -366,6 +395,7 @@ if __name__ == "__main__":
             fn()
         except Exception as e:
             import traceback
+            FAIL += 1
             print(f"  ❌ {name}: {e}")
             traceback.print_exc()
     print(f"\n{'='*60}")

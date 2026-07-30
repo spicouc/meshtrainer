@@ -42,6 +42,11 @@ class MonolithicNumericalModel(nn.Module):
         )
         self.local_layers[0].linear1 = self.lora_wrapper
 
+        # Freeze ALL base params — ONLY LoRA A/B are trainable
+        for name, param in self.named_parameters():
+            if "lora" not in name:
+                param.requires_grad = False
+
     def forward(self, tokens, labels, causal_mask, return_all=False):
         B, T = tokens.shape
         pos = torch.arange(T, device=tokens.device).unsqueeze(0)

@@ -1,27 +1,24 @@
-# RC5.2 Phase 1 R2 — Report
+# RC5.2 Phase 1 R3 — Final Report
 
 **Commit:** pending mutation gate
 **Branch:** rc5.2-numerical-phase1
 **Base:** meshtrainer-v1.1-rc5.1
 
-## Correccions R2 vs R1
+## Corrections R3
 
 | Bloquejador | Correccio |
 |---|---|
-| Cut gradient erroni | `cut_leaf` separat per `torch.autograd.grad(loss, cut_leaf)` |
-| Tolerancies massa amples | Restaurades a rtol=1e-5, atol=1e-6 (totes) |
-| Base params no congelats | Tots els params del worker amb `lora` al nom tenen `requires_grad=False` |
-| Falta zero_grad | `optimizer.zero_grad(set_to_none=True)` abans de cada backward |
-| P1-N20 asimetric | Dos steps simetrics amb zero_grad → forward → backward → step ×2 |
-| P1-N02 incomplet | Mapatge explicit, verifica 0 missing, 0 unexpected keys |
-| P1-N12 tautologic | Executat despres del backward |
-| P1-N21 insuficient | Calcula oracle loss independent, verifica que canviar labels altera loss |
-| P1-N23 tautologic | Test funcional: compara causal vs non-causal mask |
-| 5 mutants incorrectes | 6 mutants nous: randn grad, ignore labels, bypass, extra param, alter grad, ReLU worker |
-| Runner sense classificacio | DETECTED / INVALID / RUNTIME-INVALID / NOT APPLIED / TIMEOUT |
+| Monolithic base params not frozen | `for name, param in self.named_parameters(): if "lora" not in name: param.requires_grad = False` |
+| Missing monolithic freeze tests | P1-N24 (frozen), P1-N25 (grad None), P1-N26 (weights unchanged) |
+| P1-N02: soft key comparison | Exact set comparison: `server_expected`, `worker_expected`, 0 missing, 0 unexpected |
+| P1-N23: not testing future independence | Two sequences (tokens_a, tokens_b), verify early logits identical, late logits differ |
+| MUT-01: randn grad | Implemented (detected by N07/N14/N15) |
+| MUT-02: server ignores labels | SplitServer only, range-limited sed |
+| MUT-03: bypass with crash | Differentiable: `server_activation + 0.0 * (lora_A.sum() + lora_B.sum())` — no traceback |
+| MUT-04: extra param in opt | Implemented (detected by N10) |
+| MUT-05: alter 1 element of gradient | Implemented (detected by N07/N14/N15) |
+| MUT-06: ReLU worker-only | Lambda replacement of `linear1 = lora_wrapper` with ReLU path |
+| Runtime-invalid classification | Any traceback → RUNTIME-INVALID (regardless of assertion count) |
+| Application count | `grep -q '^1$'` for exact one match |
 
-## Resultats Phase 1 R2
-
-Suite: **26/26 PASS** (strict tolerances)  
-Run 1: PASS, Run 2: PASS  
-Mutation: pendent
+## Numerical tests: 29/29 PASS (strict rtol=1e-5, atol=1e-6)

@@ -1,7 +1,7 @@
 # RC5.3 ADR — Multi-Worker Distributed Round (Stage A Contract)
 
 **Status:** Contract frozen
-**Base:** RC5.2 Phase 2 R9 (commit pending)
+**Base:** RC5.2 Phase 2 R9 (RC5.2 tag meshtrainer-v1.1-rc5.2)
 **Topology:** 1 Coordinator, 1 Split Server HTTP, 2 independent workers, distinct shards
 
 ## New Methods

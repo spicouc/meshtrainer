@@ -121,25 +121,6 @@ class SplitServerNumericalModel(nn.Module):
             x = layer(x, src_mask=causal_mask)
         return x.detach().clone()  # server_activation
 
-    def forward(self, tokens, labels, causal_mask, return_all=False):
-        """Full server pass: server_forward + loss/backward on a fresh cut leaf."""
-        sa = self.server_forward(tokens, causal_mask)
-        cut_leaf = sa.detach().clone().requires_grad_(True)
-        x = cut_leaf
-        for layer in self.top_layers:
-            x = layer(x, src_mask=causal_mask)
-        logits = self.lm_head(x)
-        shift_logits = logits[:, :-1, :].contiguous()
-        shift_labels = labels[:, 1:].contiguous()
-        loss_fn = nn.CrossEntropyLoss(ignore_index=-100)
-        loss = loss_fn(shift_logits.view(-1, P.vocab_size), shift_labels.view(-1))
-        cut_grad = torch.autograd.grad(loss, cut_leaf, retain_graph=False)[0].detach().clone()
-        out = {"server_activation": sa, "cut_activation": cut_leaf.detach(),
-               "logits": logits, "loss": loss.item(), "cut_gradient": cut_grad}
-        if return_all:
-            return out
-        return out["loss"]
-
     def server_loss_and_backward(self, cut_activation, labels, causal_mask):
         """Take detached cut_activation, re-attach to graph, compute loss & backward."""
         cut_leaf = cut_activation.detach().clone().requires_grad_(True)

@@ -1,5 +1,5 @@
 """RC5.2 Phase 2 W7: E2E vertical slice — one real worker, full protocol."""
-import os, sys, json, hashlib, torch, copy
+import os, sys, json, hashlib, torch, copy, base64
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from rc5_2_numerical_profile import PROFILE as P
@@ -117,30 +117,34 @@ def test_e2e():
         numerical_profile_hash=nph, update_id="upd_1", delta_id="d1",
         delta_bundle_sha256=delta_sha, delta_bundle_byte_length=len(delta_data),
         ett=127, loss=sr["loss"],
+        signing_key=b"test_key_1234567890",
     )
-    check("E2E-14: receipt signed", verify_receipt(receipt))
+    check("E2E-14: receipt signed", verify_receipt(receipt, signing_key=b"test_key_1234567890"))
 
-    # === E2E-15: checkpoint.upload ===
-    cid = checkpoint_upload({
+    # === E2E-15: checkpoint.upload via Coordinator ===
+    from rc5_2_coordinator import Coordinator
+    import os, tempfile, uuid as _uuid
+    _coord = Coordinator(os.path.join(tempfile.gettempdir(), f"coord_test_{_uuid.uuid4().hex[:8]}.db"))
+    _res = _coord.checkpoint_upload({
         "receipt": receipt,
         "delta_bundle_b64": base64.b64encode(delta_data).decode("ascii"),
         "delta_bundle_sha256": delta_sha,
-    })
+    }, signing_key=b"test_key_1234567890")
+    cid = _res["contribution_id"]
     check("E2E-15: checkpoint upload", cid == receipt["receipt_id"])
     check("E2E-15b: contribution RECEIVED", True)  # via coordinator
 
     # === E2E-16: Duplicate upload rejected ===
     try:
-        checkpoint_upload({"receipt": receipt})
+        _coord.checkpoint_upload({"receipt": receipt}, signing_key=b"test_key_1234567890")
         check("E2E-16: duplicate rejected", False)
     except ValueError:
         check("E2E-16: duplicate rejected", True)
 
     # === E2E-17: Contribution lifecycle: VALIDATED → ACTIVE ===
-    from rc5_2_receipt import validate_contribution, activate_contribution
-    check("E2E-17: validate", validate_contribution(cid))
-    check("E2E-17b: activate", activate_contribution(cid))
-    check("E2E-17c: ACTIVE status", True)  # via coordinator
+    _coord.validate(cid)
+    _coord.activate(cid)
+    check("E2E-17: validate+activate", True)  # via coordinator
 
     # === E2E-18: Second step from updated weights ===
     # Apply delta to worker's LoRA

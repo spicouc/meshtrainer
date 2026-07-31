@@ -1,32 +1,34 @@
-# RC5.3 ADR — Multi-Worker Distributed Round
+# RC5.3 ADR — Multi-Worker Distributed Round (Stage A Contract)
 
-**Status:** Design Candidate
-**Base:** RC5.2 Phase 2 (commit 22d3d30)
+**Status:** Contract frozen
+**Base:** RC5.2 Phase 2 R9 (commit pending)
+**Topology:** 1 Coordinator, 1 Split Server HTTP, 2 independent workers, distinct shards
 
-## Topology
-- 2 workers, each with own shard
-- Coordinator assigns micro-units per calibration budget
-- Each worker produces real LoRA deltas
+## New Methods
+- round.open
+- worker.calibration.submit
+- round.assignments.list
+- round.status
+- round.close
 
-## FedAvg
-- Only ACTIVE contributions
-- A and B aggregated separately
-- Weighted by ETT
-- Order-invariant
+## Round States
+DRAFT → OPEN → CALIBRATING → ASSIGNED → RUNNING → READY_TO_CLOSE → AGGREGATING → CLOSED
+Terminals: CLOSED, ABORTED, EXPIRED
 
-## Round Lifecycle
-1. Open round
-2. Assign workers
-3. Each worker: step.open → forward → backward → update → commit → upload
-4. Round.close: aggregate, create global adapter
-5. Round 2 from global adapter
+## Assignments
+assignment_id, worker_id, shard_id, base_adapter_hash, worker_model_hash,
+numerical_profile_hash, max_micro_batch, max_sequence_length, ett_target, status
 
-## Mutation Plan (RC5.3)
-- Include SUPERSEDED in FedAvg
-- Ignore ETT
-- Lose one ACTIVE contribution
-- Double-aggregate
-- Stale base adapter
-- Ignore model hash
-- Ignore calibration budget
-- Round 2 uses old adapter
+## Calibration
+backend, precision, available_memory_mb, observed_safe_budget_mb,
+max_micro_batch, max_sequence_length, calibration_nonce, measured_at
+Coordinator never assigns above min(profile limit, calibration, round policy).
+
+## Round Close
+Requires all mandatory assignments ACTIVE. Idempotent: same round + same contributions
+→ same adapter + same hash. Different contributions after close → REJECTED.
+
+## Stage B (authorized after Phase 2 R9 gate)
+Two real workers, concurrent ThreadPoolExecutor over real HTTP, isolation checks,
+ETT-weighted FedAvg order-invariant, revisions ACTIVE/SUPERSEDED, Round 2 from
+global adapter, restart persistence, 12 RC5.3 mutants.

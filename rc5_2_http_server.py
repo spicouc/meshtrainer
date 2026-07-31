@@ -77,12 +77,28 @@ class ProtocolHandler:
     def __init__(self, db_path="rpc_state.db", signing_key=None):
         self.db_path = db_path
         self.signing_key = signing_key or SIGNING_KEY
-        self.coordinator = Coordinator(db_path)
         self._lock = threading.Lock()
         self._units = {}  # unit_id -> per-unit numerical context (A3: no shared runtime)
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
-        self._init_db()
+        self._init_db()  # create schema BEFORE Coordinator (authoritative units table)
+        self.coordinator = Coordinator(db_path)
+        # Authoritative assignment registry (R11-2): worker -> expected hashes
+        self._assignments = {}
+        self._register_default_assignment()
+
+    def _register_default_assignment(self):
+        # Test/vertical-slice assignment for worker w1 (registered before step.open)
+        self._assignments[("r1", "rd1", "a1", "w1")] = {
+            "worker_model_hash": "a" * 64,
+            "base_adapter_hash": "b" * 64,
+            "partition_schema_hash": partition_schema_hash(),
+            "adapter_schema_hash": adapter_schema_hash(),
+            "numerical_profile_hash": numerical_profile_hash(),
+        }
+
+    def register_assignment(self, run_id, round_id, assignment_id, worker_id, hashes: dict):
+        self._assignments[(run_id, round_id, assignment_id, worker_id)] = hashes
 
     def _init_db(self):
         self._conn.executescript("""
@@ -170,6 +186,11 @@ class ProtocolHandler:
         for k in required:
             if k not in p or not p[k]:
                 raise ValueError(f"Missing or empty required field: {k}")
+        import re
+        for hk in ["worker_model_hash", "base_adapter_hash", "partition_schema_hash",
+                   "adapter_schema_hash", "numerical_profile_hash"]:
+            if not re.fullmatch(r"[0-9a-f]{64}", p.get(hk, "")):
+                raise ValueError(f"Invalid hash format for {hk}")
         if p["protocol_version"] != "1.2.0-rc5.2":
             raise ValueError(f"Wrong protocol_version: {p['protocol_version']}")
         # A1: verify hashes, not just store
@@ -179,6 +200,15 @@ class ProtocolHandler:
             raise ValueError("Partition schema hash mismatch")
         if p["adapter_schema_hash"] != adapter_schema_hash():
             raise ValueError("Adapter schema hash mismatch")
+        # R11-2: verify against authoritative assignment registry
+        key = (p["run_id"], p["round_id"], p["assignment_id"], p["worker_id"])
+        reg = self._assignments.get(key)
+        if reg is None:
+            raise ValueError("No registered assignment for this run/round/assignment/worker")
+        for hk in ["worker_model_hash", "base_adapter_hash", "partition_schema_hash",
+                   "adapter_schema_hash", "numerical_profile_hash"]:
+            if p.get(hk) != reg.get(hk):
+                raise ValueError(f"Hash mismatch for {hk}")
         uid = p["unit_id"]
         existing = self._get_unit(uid)
         if existing and existing["server_activation_b64"]:

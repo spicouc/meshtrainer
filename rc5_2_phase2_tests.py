@@ -32,7 +32,7 @@ def _fresh_db():
 def open_params(uid="u1", run="r1"):
     return {"protocol_version": "1.2.0-rc5.2", "unit_id": uid, "run_id": run, "round_id": "rd1",
             "assignment_id": "a1", "micro_unit_id": f"mu_{uid}", "worker_id": "w1", "session_id": "s1",
-            "worker_model_hash": "wmh1", "partition_schema_hash": psh, "base_adapter_hash": "bah1",
+            "worker_model_hash": "a"*64, "partition_schema_hash": psh, "base_adapter_hash": "b"*64,
             "adapter_schema_hash": ash, "numerical_profile_hash": nph}
 
 def test_jsonrpc_validation():
@@ -61,7 +61,7 @@ def test_jsonrpc_validation():
     except Exception:
         check("J3: missing params rejected", True)
     # success envelope has jsonrpc+id+result
-    r = cl.call("step.open", open_params("u_j1", "r_j1"))
+    r = cl.call("step.open", open_params("u_j1", "r1"))
     check("J4: open returns state", r["state"] == "SERVER_ACTIVATION_READY")
     check("J5: open returns server_activation", "server_activation" in r)
 
@@ -148,7 +148,8 @@ def test_forward_backward_real():
 
 def test_update_commit_upload():
     """worker_update → commit → checkpoint.upload with lifecycle."""
-    srv, _ = serve(port=19861, db_path=_fresh_db(), signing_key=KEY)
+    _udb = _fresh_db()
+    srv, _ = serve(port=19861, db_path=_udb, signing_key=KEY)
     cl = JsonRpcClient("http://127.0.0.1:19861"); time.sleep(0.3)
     r1 = cl.call("step.open", open_params("u_uc"))
     from rc5_2_numerical_models import WorkerNumericalModel
@@ -179,15 +180,12 @@ def test_update_commit_upload():
     r5b = cl.call("step.commit", {"unit_id": "u_uc", "delta_id": r4["delta_id"]})
     check("U5: retry same receipt", r5b["receipt"]["receipt_id"] == receipt["receipt_id"])
     # checkpoint.upload
-    coord = Coordinator(_fresh_db())
+    coord = Coordinator(_udb)
     up = coord.checkpoint_upload({"receipt": receipt, "delta_bundle_b64": db64, "delta_bundle_sha256": dsha}, KEY)
     check("U6: upload RECEIVED", up["status"] == "RECEIVED")
-    # duplicate rejected
-    try:
-        coord.checkpoint_upload({"receipt": receipt, "delta_bundle_b64": db64, "delta_bundle_sha256": dsha}, KEY)
-        check("U7: duplicate upload rejected", False)
-    except ValueError:
-        check("U7: duplicate upload rejected", True)
+    # duplicate → idempotent retry returns same response (R11-8), not rejected
+    up_dup = coord.checkpoint_upload({"receipt": receipt, "delta_bundle_b64": db64, "delta_bundle_sha256": dsha}, KEY)
+    check("U7: duplicate upload idempotent", up_dup["contribution_id"] == up["contribution_id"])
     # lifecycle
     coord.validate(up["contribution_id"])
     coord.activate(up["contribution_id"])

@@ -28,6 +28,15 @@ class Coordinator:
                 global_adapter_b64 TEXT, global_adapter_hash TEXT,
                 closed INTEGER DEFAULT 0, PRIMARY KEY (run_id, round_id)
             );
+            CREATE TABLE IF NOT EXISTS units (
+                unit_id TEXT PRIMARY KEY, state TEXT,
+                receipt_json TEXT, run_id TEXT, round_id TEXT,
+                assignment_id TEXT, micro_unit_id TEXT, worker_id TEXT, session_id TEXT,
+                worker_model_hash TEXT, partition_schema_hash TEXT, base_adapter_hash TEXT,
+                adapter_schema_hash TEXT, numerical_profile_hash TEXT,
+                update_id TEXT, delta_id TEXT, ett INTEGER, loss REAL,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
         """)
         self._conn.commit()
 
@@ -41,6 +50,17 @@ class Coordinator:
 
     def checkpoint_upload(self, p: dict, signing_key: bytes) -> dict:
         receipt = p.get("receipt", {})
+        # R11-6: unit must exist and be COMMITTED (authoritative state)
+        uid = receipt.get("unit_id", "")
+        unit = self._conn.execute("SELECT * FROM units WHERE unit_id=?", (uid,)).fetchone()
+        if unit is None:
+            raise ValueError("Unit not found")
+        if unit["state"] != "COMMITTED":
+            raise ValueError(f"Unit not COMMITTED (state={unit['state']})")
+        # R11-8: idempotent retry — contribution already accepted → same response
+        existing = self._conn.execute("SELECT * FROM contributions WHERE cid=?", (receipt.get("receipt_id", ""),)).fetchone()
+        if existing:
+            return {"contribution_id": existing["cid"], "status": existing["status"]}
         if not verify_receipt(receipt, signing_key):
             raise ValueError("Invalid receipt HMAC")
         mandatory = ["protocol_version", "receipt_version", "key_id", "receipt_id",

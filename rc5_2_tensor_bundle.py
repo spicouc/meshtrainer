@@ -96,3 +96,16 @@ def delta_bundle_unpack(data: bytes, expected_sha: str = None) -> dict:
 
 def bundle_sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def verify_adapter_schema(bundle_data: bytes, expected_schema_hash: str) -> bool:
+    """Verify the bundle header names match the adapter schema and hash."""
+    from rc5_2_canonical import adapter_schema_hash
+    try:
+        hdr_len = struct.unpack_from("<I", bundle_data, 4)[0]
+        header = json.loads(bundle_data[8:8+hdr_len])
+        names = tuple(t["name"] for t in header.get("tensors", []))
+        expected = ("local_layers.0.linear1.lora_A.weight", "local_layers.0.linear1.lora_B.weight")
+        return names == expected and adapter_schema_hash() == expected_schema_hash
+    except Exception:
+        return False

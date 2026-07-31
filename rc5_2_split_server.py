@@ -28,7 +28,7 @@ class SplitServerRuntime:
         return {
             "loss": result["loss"],
             "ett": 127,
-            "backward_id": "bw_" + str(id(cut_activation)),
+            "backward_id": __import__("hashlib").sha256(repr(cut_activation.shape).encode()).hexdigest()[:16],
             "logits": result["logits"],
         }
 

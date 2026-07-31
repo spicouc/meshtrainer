@@ -30,14 +30,7 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
     [ "$OK" -ne 0 ] && echo "  $NAME: NOT APPLIED" && NA=$((NA+1)) && continue
     set +e; python3 -m py_compile *.py 2>"$NAME.compile.err"; C=$?; set -e
     [ "$C" -ne 0 ] && echo "  $NAME: INVALID" && I=$((I+1)) && continue
-    set +e; timeout 120 python3 -c "
-import sys; sys.path.insert(0,'.')
-from rc5_2_tensor_bundle import *; from rc5_2_tensor_envelope import *; from rc5_2_canonical import *; from rc5_2_coordinator import *; from rc5_2_http_server import *; from rc5_2_jsonrpc import *
-import torch, base64
-d = delta_bundle_pack(torch.randn(8,256), torch.randn(1024,8))
-env = pack_tensor_envelope(torch.randn(1,128,256), 'server_activation', 'u1')
-print('OK', bundle_sha256(d)[:4])
-" > "mutation_$NAME.log" 2>&1; S=$?; set -e
+    set +e; timeout 300 python3 rc5_2_phase2_tests.py > "mutation_$NAME.log" 2>&1; S=$?; set -e
     [ "$S" -eq 124 ] && echo "  $NAME: TIMEOUT" && T=$((T+1)) && continue
     TRACE=$(grep -c 'Traceback\|Error:\|Exception:' "mutation_$NAME.log" 2>/dev/null || true)
     ASSRT=$(grep -c '❌' "mutation_$NAME.log" 2>/dev/null || true)

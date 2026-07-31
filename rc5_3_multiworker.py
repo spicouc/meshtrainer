@@ -89,6 +89,11 @@ class RoundCoordinator:
             return self._assign_locked(run_id, round_id, assignment_id, worker_id, shard_id, hashes, ett_target, strict_budget)
 
     def _assign_locked(self, run_id, round_id, assignment_id, worker_id, shard_id, hashes, ett_target, strict_budget=True):
+        # a worker can have exactly ONE assignment per round
+        dup = self._conn.execute("SELECT assignment_id FROM assignments WHERE run_id=? AND round_id=? AND worker_id=?",
+                                 (run_id, round_id, worker_id)).fetchone()
+        if dup is not None and dup["assignment_id"] != assignment_id:
+            raise ValueError("Worker already assigned in this round")
         # stale adapter rejection: if this round follows a closed round, base_adapter_hash must match it
         prev_round = self._conn.execute("SELECT round_id FROM rounds WHERE run_id=? AND state=? AND round_id < ? ORDER BY round_id DESC LIMIT 1",
                                         (run_id, ROUND_CLOSED, round_id)).fetchone()
@@ -219,8 +224,10 @@ class RoundCoordinator:
             "SELECT COUNT(*) c FROM contributions_r53 WHERE run_id=? AND round_id=? AND status='ACTIVE'", (run_id, round_id)).fetchone()["c"]
         if active < mandatory:
             raise ValueError(f"Cannot close: {active}/{mandatory} mandatory assignments ACTIVE")
-        # previous global adapter (pre) or zero
-        prev = self._conn.execute("SELECT * FROM round_adapters WHERE run_id=? AND round_id=?", (run_id, round_id)).fetchone()
+        # previous global adapter (pre) = adapter of the previous CLOSED round
+        prev = self._conn.execute(
+            "SELECT * FROM round_adapters WHERE run_id=? AND round_id < ? ORDER BY round_id DESC LIMIT 1",
+            (run_id, round_id)).fetchone()
         if prev is not None:
             pre_tensors = delta_bundle_unpack(base64.b64decode(prev["adapter_b64"]), prev["adapter_hash"])
             pre_A = pre_tensors["local_layers.0.linear1.lora_A.weight"].clone()
@@ -248,10 +255,10 @@ def run_two_workers_concurrent(coord, run_id, round_id, worker_specs, hashes):
     def flow(ws):
         a_id, w_id, shard, ett = ws
         asg = coord.assign(run_id, round_id, a_id, w_id, shard, hashes, ett)
-        # worker builds delta (deterministic for reproducibility)
-        torch.manual_seed(hash((run_id, a_id)) % (2**32))
-        delta_A = torch.randn(8, 256) * 0.001
-        delta_B = torch.randn(1024, 8) * 0.001
+        # worker builds delta (deterministic per assignment, thread-safe local generator)
+        g = torch.Generator().manual_seed(hash((run_id, a_id)) % (2**32))
+        delta_A = torch.randn(8, 256, generator=g) * 0.001
+        delta_B = torch.randn(1024, 8, generator=g) * 0.001
         d = delta_bundle_pack(delta_A, delta_B)
         dsha = bundle_sha256(d)
         db64 = base64.b64encode(d).decode("ascii")

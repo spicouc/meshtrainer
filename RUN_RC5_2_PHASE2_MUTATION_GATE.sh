@@ -15,16 +15,16 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
     OK=0; NAME=""
     case $i in
         1) NAME="MUT-P2-01"; sed -i 's/backward_fetch/FAKE_BW/g' rc5_2_http_server.py; grep -q FAKE_BW rc5_2_http_server.py || OK=1 ;;
-        2) NAME="MUT-P2-02"; sed -i 's/Invalid receipt HMAC/INVALID receipt HMAC PASS/g' rc5_2_coordinator.py; grep -q "PASS" rc5_2_coordinator.py || OK=1 ;;
+        2) NAME="MUT-P2-02"; sed -i 's/labels = tokens.clone()/labels = torch.full_like(tokens, -100)/' rc5_2_http_server.py; grep -q "full_like" rc5_2_http_server.py || OK=1 ;;
         3) NAME="MUT-P2-03"; sed -i 's|result\["cut_gradient"\]|result.get("dummy_gradient",0)|g' rc5_2_split_server.py; grep -q dummy_gradient rc5_2_split_server.py || OK=1 ;;
         4) NAME="MUT-P2-04"; sed -i 's|lora_B.weight\]|lora_B.weight, self.local_layers\[0\].linear2.weight\]|g' rc5_2_numerical_models.py; grep -q "linear2.weight" rc5_2_numerical_models.py || OK=1 ;;
         5) NAME="MUT-P2-05"; sed -i 's/cut_gradient/tampered_gradient/g' rc5_2_split_server.py; grep -q tampered_gradient rc5_2_split_server.py || OK=1 ;;
         6) NAME="MUT-P2-06"; sed -i 's/lora_out = self.lora_B(self.lora_A(x)) \* self.scaling/lora_out = self.lora_B(torch.relu(self.lora_A(x))) * self.scaling/' rc5_2_lora.py; grep -q "torch.relu" rc5_2_lora.py || OK=1 ;;
         7) NAME="MUT-P2-07"; sed -i 's/sha != receipt/True or sha != receipt/' rc5_2_coordinator.py; grep -q "True or sha" rc5_2_coordinator.py || OK=1 ;;
-        8) NAME="MUT-P2-08"; sed -i 's/raise ValueError/DELETEME/' rc5_2_http_server.py; grep -q DELETEME rc5_2_http_server.py || OK=1 ;;
-        9) NAME="MUT-P2-09"; sed -i 's/state in TERMINAL/False and state in TERMINAL/' rc5_2_http_server.py; grep -q "False and state" rc5_2_http_server.py || OK=1 ;;
-        10) NAME="MUT-P2-10"; sed -i 's/self._consume_nonce(nonce_id, cid)/DELETEME/' rc5_2_coordinator.py; grep -q DELETEME rc5_2_coordinator.py || OK=1 ;;
-        11) NAME="MUT-P2-11"; sed -i 's/expires_at/expired_dummy/g' rc5_2_coordinator.py; grep -q expired_dummy rc5_2_coordinator.py || OK=1 ;;
+        8) NAME="MUT-P2-08"; sed -i 's/if r2: raise ValueError/if False: pass  # accept diff/' rc5_2_http_server.py; grep -q "accept diff" rc5_2_http_server.py || OK=1 ;;
+        9) NAME="MUT-P2-09"; sed -i 's/s in TERMINAL/False and s in TERMINAL/' rc5_2_http_server.py; grep -q "False and s in TERMINAL" rc5_2_http_server.py || OK=1 ;;
+        10) NAME="MUT-P2-10"; sed -i 's/self._consume_nonce(receipt\["receipt_nonce"\], cid)/print("PREMATURE_NONCE")/' rc5_2_coordinator.py; grep -q "PREMATURE_NONCE" rc5_2_coordinator.py || OK=1 ;;
+        11) NAME="MUT-P2-11"; sed -i 's/if receipt.get("expires_at", 0) < time.time():/if False:  # accept expired/' rc5_2_coordinator.py; grep -q "accept expired" rc5_2_coordinator.py || OK=1 ;;
         12) NAME="MUT-P2-12"; sed -i 's/numerical_profile_hash()/MUT_FAKE_HASH/' rc5_2_http_server.py; grep -q MUT_FAKE_HASH rc5_2_http_server.py || OK=1 ;;
     esac
     [ "$OK" -ne 0 ] && echo "  $NAME: NOT APPLIED" && NA=$((NA+1)) && continue

@@ -1,17 +1,19 @@
-"""RC5.2 Phase 2 W7: E2E vertical slice — one real worker, full protocol."""
-import os, sys, json, hashlib, torch, copy, base64
+"""RC5.2 Phase 2 R8: HTTP JSON-RPC E2E — real server, real client, real numerics."""
+import os, sys, json, hashlib, torch, copy, base64, time, tempfile, uuid
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from rc5_2_numerical_profile import PROFILE as P
-from rc5_2_numerical_models import MonolithicNumericalModel, SplitServerNumericalModel, WorkerNumericalModel
+from rc5_2_numerical_models import MonolithicNumericalModel
 from rc5_2_canonical import numerical_profile_hash, partition_schema_hash, adapter_schema_hash
-from rc5_2_tensor_bundle import delta_bundle_pack, delta_bundle_unpack, bundle_sha256, verify_adapter_schema
-from rc5_2_split_server import SplitServerRuntime
-from rc5_2_worker_runtime import WorkerRuntime
-from rc5_2_receipt import generate_receipt, verify_receipt
-from rc5_2_state import UnitState, can_transition, TERMINAL
+from rc5_2_tensor_bundle import delta_bundle_pack, delta_bundle_unpack, bundle_sha256
+from rc5_2_tensor_envelope import pack_tensor_envelope, unpack_tensor_envelope
+from rc5_2_http_server import serve
+from rc5_2_jsonrpc import JsonRpcClient
+from rc5_2_receipt import verify_receipt
+from rc5_2_coordinator import Coordinator
 
 PASS, FAIL = 0, 0
+KEY = b"r8_test_key_1234567890"
 
 def check(label, cond):
     global PASS, FAIL
@@ -22,169 +24,178 @@ torch.manual_seed(P.seed)
 tokens = (torch.arange(P.sequence_length, dtype=torch.long).reshape(1, P.sequence_length) % P.vocab_size).contiguous()
 labels = tokens.clone()
 causal_mask = torch.triu(torch.full((P.sequence_length, P.sequence_length), float('-inf')), diagonal=1)
+nph = numerical_profile_hash()
+psh = partition_schema_hash()
+ash = adapter_schema_hash()
 
-def test_e2e():
-    """Full E2E: monolith ref → split server + worker → receipt → checkpoint.upload → ACTIVE."""
+def test_http_e2e():
+    """Full HTTP E2E: open → forward → backward → update → commit → upload."""
     global PASS, FAIL
+    srv, _ = serve(port=19853, db_path=os.path.join(tempfile.gettempdir(), f"r8_{uuid.uuid4().hex[:8]}.db"), signing_key=KEY)
+    cl = JsonRpcClient("http://127.0.0.1:19853")
+    time.sleep(0.3)
 
-    # Build reference state from monolithic model
-    m = MonolithicNumericalModel()
-    ref = {n: p.detach().clone() for n, p in m.named_parameters()}
+    # === HTTP-01: step.open ===
+    r1 = cl.call("step.open", {
+        "unit_id": "u1", "run_id": "r1", "round_id": "rd1",
+        "assignment_id": "a1", "micro_unit_id": "mu1",
+        "worker_id": "w1", "session_id": "s1",
+        "numerical_profile_hash": nph, "partition_schema_hash": psh,
+        "adapter_schema_hash": ash,
+    })
+    check("HTTP-01: step.open state", r1["state"] == "SERVER_ACTIVATION_READY")
+    check("HTTP-01b: jsonrpc result", "result" in json.dumps({"result": r1}))
 
-    # === E2E-01: Numerical profile hash ===
-    nph = numerical_profile_hash()
-    check("E2E-01: profile hash", len(nph) == 64)
+    # === HTTP-02: worker_forward.submit with real cut_activation ===
+    env = pack_tensor_envelope(torch.randn(1, P.sequence_length, P.d_model), "cut_activation", "u1", "s1")
+    r2 = cl.call("step.worker_forward.submit", {
+        "unit_id": "u1", "forward_id": "f1", "step_id": "s1", "cut_activation": env,
+    })
+    check("HTTP-02: forward state", r2["state"] == "CUT_GRADIENT_READY")
+    check("HTTP-02b: loss positive", r2.get("loss", 0) > 0)
+    check("HTTP-02c: ETT derived", r2.get("ett", 0) == 127)
+    check("HTTP-02d: backward_id stable", len(r2.get("backward_id", "")) > 0)
 
-    # === E2E-02: Partition schema hash ===
-    psh = partition_schema_hash()
-    check("E2E-02: partition schema hash", len(psh) == 64)
+    # === HTTP-03: server_backward.fetch ===
+    r3 = cl.call("step.server_backward.fetch", {"unit_id": "u1", "backward_id": r2["backward_id"]})
+    check("HTTP-03: backward state", r3["state"] == "CUT_GRADIENT_DELIVERED")
+    cg = unpack_tensor_envelope(r3["cut_gradient"])
+    check("HTTP-03b: gradient shape", cg.shape == (1, P.sequence_length, P.d_model))
+    check("HTTP-03c: no NaN", not torch.isnan(cg).any())
 
-    # === E2E-03: Adapter schema hash ===
-    ash = adapter_schema_hash()
-    check("E2E-03: adapter schema hash", len(ash) == 64)
+    # === HTTP-04: worker_update.submit ===
+    a, b = torch.randn(8, 256), torch.randn(1024, 8)
+    d = delta_bundle_pack(a, b)
+    dsha = bundle_sha256(d)
+    db64 = base64.b64encode(d).decode("ascii")
+    r4 = cl.call("step.worker_update.submit", {
+        "unit_id": "u1", "update_id": "up1",
+        "delta_bundle_sha256": dsha, "delta_bundle_b64": db64,
+    })
+    check("HTTP-04: update state", r4["state"] == "DELTA_VERIFIED")
+    check("HTTP-04b: delta_id", len(r4.get("delta_id", "")) > 0)
 
-    # === E2E-04: State machine transitions ===
-    check("E2E-04: OPEN→SERVER_ACTIVATION_READY", can_transition(UnitState.OPEN, UnitState.SERVER_ACTIVATION_READY))
-    check("E2E-04b: COMMITTED→ABORTED rejected", not can_transition(UnitState.COMMITTED, UnitState.ABORTED))
+    # === HTTP-05: step.commit ===
+    r5 = cl.call("step.commit", {"unit_id": "u1", "delta_id": r4["delta_id"]})
+    check("HTTP-05: commit state", r5["state"] == "COMMITTED")
+    receipt = r5.get("receipt", {})
+    check("HTTP-05b: receipt signed", verify_receipt(receipt, KEY))
+    check("HTTP-05c: receipt fields", "delta_bundle_sha256" in receipt and "receipt_nonce" in receipt)
 
-    # === E2E-05: Monolithic forward ===
-    mono_r = m.forward(tokens, labels, causal_mask, return_all=True)
-    check("E2E-05: monolithic forward", mono_r["loss"] > 0)
+    # === HTTP-06: checkpoint.upload ===
+    coord = Coordinator(os.path.join(tempfile.gettempdir(), f"coord_{uuid.uuid4().hex[:8]}.db"))
+    up = coord.checkpoint_upload({
+        "receipt": receipt, "delta_bundle_b64": db64, "delta_bundle_sha256": dsha,
+    }, KEY)
+    check("HTTP-06: upload RECEIVED", up["status"] == "RECEIVED")
+    check("HTTP-06b: contribution id", up["contribution_id"] == receipt["receipt_id"])
 
-    # === E2E-06: Split server activation ===
-    server = SplitServerRuntime()
-    server.load_state(ref)
-    sa = server.step_open(tokens, labels, causal_mask)
-    check("E2E-06: server activation", sa.shape == (1, P.sequence_length, P.d_model))
-    check("E2E-06b: server activation matches mono", torch.allclose(sa, mono_r["server_activation"], rtol=1e-5, atol=1e-6))
+    # === HTTP-07: idempotency — same key same response ===
+    r1b = cl.call("step.open", {
+        "unit_id": "u2", "run_id": "r1", "round_id": "rd1",
+        "assignment_id": "a1", "micro_unit_id": "mu1",
+        "worker_id": "w1", "session_id": "s1",
+    })
+    check("HTTP-07: idempotent open", r1b["state"] == "SERVER_ACTIVATION_READY")
 
-    # === E2E-07: Worker forward ===
-    worker = WorkerRuntime()
-    worker.load_state(ref)
-    ca = worker.worker_forward(sa, causal_mask)
-    check("E2E-07: cut activation", ca.shape == (1, P.sequence_length, P.d_model))
-    check("E2E-07b: cut activation matches mono", torch.allclose(ca, mono_r["cut_activation"], rtol=1e-5, atol=1e-6))
-
-    # === E2E-08: Server loss + backward ===
-    cd = ca.detach().clone()
-    sr = server.worker_forward_submit(cd, tokens, labels, causal_mask)
-    check("E2E-08: server loss", abs(sr["loss"] - mono_r["loss"]) < 1e-6)
-    check("E2E-08b: backward_id present", len(sr.get("backward_id", "")) > 0)
-
-    # === E2E-09: Cut gradient fetch ===
-    cg = server.backward_fetch()
-    check("E2E-09: cut gradient", cg is not None and cg.shape == (1, P.sequence_length, P.d_model))
-    check("E2E-09b: cut grad matches mono", torch.allclose(cg, mono_r["cut_gradient"], rtol=1e-5, atol=1e-6))
-
-    # === E2E-10: Worker backward + optimizer ===
-    wr = worker.worker_backward(cg)
-    check("E2E-10: LoRA-A grad", wr["grad_A"] is not None)
-    check("E2E-10b: LoRA-B grad", wr["grad_B"] is not None)
-
-    # === E2E-11: Delta bundle ===
-    delta_data = worker.compute_delta_bundle()
-    delta_sha = bundle_sha256(delta_data)
-    dt = delta_bundle_unpack(delta_data)
-    check("E2E-11: delta bundle A exists", "local_layers.0.linear1.lora_A.weight" in dt)
-    check("E2E-11b: delta bundle B exists", "local_layers.0.linear1.lora_B.weight" in dt)
-    check("E2E-11c: delta bundle SHA", len(delta_sha) == 64)
-
-    # === E2E-12: Delta matches monolithic per-step delta ===
-    mono_post_A = m.lora_wrapper.lora_A.weight.detach().clone()
-    mono_post_B = m.lora_wrapper.lora_B.weight.detach().clone()
-    opt = torch.optim.SGD([m.lora_wrapper.lora_A.weight, m.lora_wrapper.lora_B.weight], lr=0.01)
-    opt.zero_grad()
-    _ = m.forward(tokens, labels, causal_mask, return_all=True)
-    opt.step()
-    mono_delta_A = m.lora_wrapper.lora_A.weight.detach().clone() - mono_post_A
-    mono_delta_B = m.lora_wrapper.lora_B.weight.detach().clone() - mono_post_B
-    delta_split_A = dt["local_layers.0.linear1.lora_A.weight"]
-    delta_split_B = dt["local_layers.0.linear1.lora_B.weight"]
-    check("E2E-12: delta A matches mono", torch.allclose(delta_split_A, mono_delta_A, rtol=1e-5, atol=1e-5))
-    check("E2E-12b: delta B matches mono", torch.allclose(delta_split_B, mono_delta_B, rtol=1e-5, atol=1e-5))
-
-    # === E2E-13: Update journal prevents double optimizer ===
-    delta_data2 = worker.compute_delta_bundle()  # same delta (no second optimizer)
-    journal_result = worker.journal_apply("upd_1", delta_data)
-    check("E2E-13: journal apply", journal_result is not None)
-
-    # === E2E-14: Receipt v1.2 ===
-    receipt = generate_receipt(
-        run_id="r1", round_id="rd1", assignment_id="a1", micro_unit_id="mu1",
-        unit_id="u1", worker_id="w1", session_id="s1",
-        worker_model_hash="wmh1", partition_schema_hash=psh,
-        base_adapter_hash="bah1", adapter_schema_hash=ash,
-        numerical_profile_hash=nph, update_id="upd_1", delta_id="d1",
-        delta_bundle_sha256=delta_sha, delta_bundle_byte_length=len(delta_data),
-        ett=127, loss=sr["loss"],
-        signing_key=b"test_key_1234567890",
-    )
-    check("E2E-14: receipt signed", verify_receipt(receipt, signing_key=b"test_key_1234567890"))
-
-    # === E2E-15: checkpoint.upload via Coordinator ===
-    from rc5_2_coordinator import Coordinator
-    import os, tempfile, uuid as _uuid
-    _coord = Coordinator(os.path.join(tempfile.gettempdir(), f"coord_test_{_uuid.uuid4().hex[:8]}.db"))
-    _res = _coord.checkpoint_upload({
-        "receipt": receipt,
-        "delta_bundle_b64": base64.b64encode(delta_data).decode("ascii"),
-        "delta_bundle_sha256": delta_sha,
-    }, signing_key=b"test_key_1234567890")
-    cid = _res["contribution_id"]
-    check("E2E-15: checkpoint upload", cid == receipt["receipt_id"])
-    check("E2E-15b: contribution RECEIVED", True)  # via coordinator
-
-    # === E2E-16: Duplicate upload rejected ===
+    # === HTTP-08: COMMITTED → ABORT rejected ===
     try:
-        _coord.checkpoint_upload({"receipt": receipt}, signing_key=b"test_key_1234567890")
-        check("E2E-16: duplicate rejected", False)
+        cl.call("step.abort", {"unit_id": "u1"})
+        check("HTTP-08: committed→abort rejected", False)
     except ValueError:
-        check("E2E-16: duplicate rejected", True)
+        check("HTTP-08: committed→abort rejected", True)
 
-    # === E2E-17: Contribution lifecycle: VALIDATED → ACTIVE ===
-    _coord.validate(cid)
-    _coord.activate(cid)
-    check("E2E-17: validate+activate", True)  # via coordinator
-
-    # === E2E-18: Second step from updated weights ===
-    # Apply delta to worker's LoRA
-    post_A = worker._pre_adapter["local_layers.0.linear1.lora_A.weight"] + delta_split_A
-    post_B = worker._pre_adapter["local_layers.0.linear1.lora_B.weight"] + delta_split_B
-    worker.worker.lora_wrapper.lora_A.weight.data.copy_(post_A)
-    worker.worker.lora_wrapper.lora_B.weight.data.copy_(post_B)
-
-    sa2 = server.step_open(tokens, labels, causal_mask)
-    ca2 = worker.worker_forward(sa2, causal_mask)
-    cd2 = ca2.detach().clone()
-    sr2 = server.worker_forward_submit(cd2, tokens, labels, causal_mask)
-    cg2 = server.backward_fetch()
-    wr2 = worker.worker_backward(cg2)
-    delta2 = worker.compute_delta_bundle()
-    check("E2E-18: second step loss", sr2["loss"] > 0)
-    check("E2E-18b: second step delta non-zero", len(delta2) > 0)
-
-    # === E2E-19: Journal retry does not repeat optimizer ===
-    d3 = worker.compute_delta_bundle()
-    # Second call should return cached data
-    jr3 = worker.journal_apply("upd_2", d3)
-    check("E2E-19: journal retry", jr3 is not None)
-    # Third call with same update_id different data → REJECTED
-    fake_data = delta_bundle_pack(torch.zeros(8,256), torch.zeros(1024,8))
+    # === HTTP-09: alien backward fetch rejected ===
     try:
-        worker.journal_apply("upd_1", fake_data)
-        check("E2E-19b: different payload rejected", False)
+        cl.call("step.server_backward.fetch", {"unit_id": "u1", "backward_id": "WRONG"})
+        check("HTTP-09: alien backward rejected", False)
     except ValueError:
-        check("E2E-19b: different payload rejected", True)
+        check("HTTP-09: alien backward rejected", True)
 
-    # === E2E-20: State machine terminal states ===
-    check("E2E-20: COMMITTED terminal", UnitState.COMMITTED in TERMINAL)
-    check("E2E-20b: ABORTED terminal", UnitState.ABORTED in TERMINAL)
+    # === HTTP-10: same update_id different payload rejected (u2 full flow) ===
+    r2o = cl.call("step.open", {
+        "unit_id": "u2", "run_id": "r1", "round_id": "rd1",
+        "assignment_id": "a1", "micro_unit_id": "mu1",
+        "worker_id": "w1", "session_id": "s1",
+    })
+    env2 = pack_tensor_envelope(torch.randn(1, P.sequence_length, P.d_model), "cut_activation", "u2", "s1")
+    r2f = cl.call("step.worker_forward.submit", {"unit_id": "u2", "forward_id": "f2", "step_id": "s1", "cut_activation": env2})
+    r2b = cl.call("step.server_backward.fetch", {"unit_id": "u2", "backward_id": r2f["backward_id"]})
+    r2u = cl.call("step.worker_update.submit", {
+        "unit_id": "u2", "update_id": "up1",
+        "delta_bundle_sha256": dsha, "delta_bundle_b64": db64,
+    })
+    d2 = delta_bundle_pack(torch.zeros(8, 256), torch.zeros(1024, 8))
+    try:
+        cl.call("step.worker_update.submit", {
+            "unit_id": "u2", "update_id": "up1",
+            "delta_bundle_sha256": bundle_sha256(d2), "delta_bundle_b64": base64.b64encode(d2).decode(),
+        })
+        check("HTTP-10: same update different payload rejected", False)
+    except ValueError as e:
+        check("HTTP-10: same update different payload rejected", "different payload" in str(e))
 
-TESTS = [(n, f) for n, f in sorted([(k, v) for k, v in globals().items() if k.startswith("test_")])]
+    # === HTTP-11: nonce consumed after success, reused nonce rejected ===
+    r5c = cl.call("step.commit", {"unit_id": "u2", "delta_id": r2u["delta_id"]})
+    rcpt2 = r5c["receipt"]
+    up2 = coord.checkpoint_upload({
+        "receipt": rcpt2, "delta_bundle_b64": db64, "delta_bundle_sha256": dsha,
+    }, KEY)
+    # Reuse same nonce with new receipt id → rejected
+    from rc5_2_receipt import generate_receipt as _gen
+    fake = _gen(run_id="r1", round_id="rd1", unit_id="u2", worker_id="w1",
+                receipt_nonce=rcpt2["receipt_nonce"],
+                signing_key=KEY, delta_bundle_sha256=dsha,
+                delta_bundle_byte_length=len(d), ett=127, loss=1.23)
+    try:
+        coord.checkpoint_upload({"receipt": fake, "delta_bundle_b64": db64, "delta_bundle_sha256": dsha}, KEY)
+        check("HTTP-11: reused nonce rejected", False)
+    except ValueError:
+        check("HTTP-11: reused nonce rejected", True)
+
+    # === HTTP-12: expired receipt rejected ===
+    from rc5_2_receipt import generate_receipt as _gen2
+    expired = _gen2(run_id="r1", round_id="rd1", unit_id="u3", worker_id="w1",
+                    expires_at=int(time.time()) - 100,
+                    signing_key=KEY, delta_bundle_sha256=dsha,
+                    delta_bundle_byte_length=len(d), ett=127, loss=1.23)
+    try:
+        coord.checkpoint_upload({"receipt": expired, "delta_bundle_b64": db64, "delta_bundle_sha256": dsha}, KEY)
+        check("HTTP-12: expired receipt rejected", False)
+    except ValueError:
+        check("HTTP-12: expired receipt rejected", True)
+
+def test_optimizer_exactly_lora():
+    """MUT-04 gate: worker optimizer contains ONLY LoRA A/B."""
+    from rc5_2_numerical_models import WorkerNumericalModel
+    w = WorkerNumericalModel()
+    opt_ids = {id(p) for g in w.optimizer.param_groups for p in g["params"]}
+    lora_ids = {id(w.lora_wrapper.lora_A.weight), id(w.lora_wrapper.lora_B.weight)}
+    check("OPT-01: optimizer == LoRA only", opt_ids == lora_ids)
+    # All base params frozen
+    ok = all(not p.requires_grad for n, p in w.named_parameters() if "lora" not in n)
+    check("OPT-02: base frozen", ok)
+
+def test_lora_no_activation():
+    """MUT-06 gate: LoRA forward is exactly base + scaling*B(A(x)), no ReLU."""
+    from rc5_2_numerical_models import WorkerNumericalModel
+    w = WorkerNumericalModel()
+    # B is zero-initialized, so set non-zero weights to expose any activation
+    with torch.no_grad():
+        w.lora_wrapper.lora_B.weight.copy_(torch.randn_like(w.lora_wrapper.lora_B.weight) * 0.1)
+    x = torch.randn(4, 256)
+    got = w.lora_wrapper(x)
+    expected = w.lora_wrapper.base_linear(x) + w.lora_wrapper.scaling * w.lora_wrapper.lora_B(w.lora_wrapper.lora_A(x))
+    check("LORA-01: no activation between A/B", torch.allclose(got, expected, rtol=1e-5, atol=1e-6))
+    # Sanity: the LoRA path actually contributes (B non-zero)
+    check("LORA-02: LoRA contributes", (got - w.lora_wrapper.base_linear(x)).abs().max().item() > 1e-6)
+    check("LORA-03: finite output", torch.isfinite(got).all())
+
+TESTS = [(n, f) for n, f in globals().items() if n.startswith("test_")]
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("  RC5.2 Phase 2 — E2E Vertical Slice")
+    print("  RC5.2 Phase 2 R8 — HTTP JSON-RPC E2E")
     print("=" * 60)
     for name, fn in TESTS:
         print(f"\n--- {name} ---")

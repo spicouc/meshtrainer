@@ -77,7 +77,7 @@ class ProtocolHandler:
     def __init__(self, db_path="rpc_state.db", signing_key=None):
         self.db_path = db_path
         self.signing_key = signing_key or SIGNING_KEY
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._units = {}  # unit_id -> per-unit numerical context (A3: no shared runtime)
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
@@ -137,6 +137,9 @@ class ProtocolHandler:
             return f"{params.get('unit_id','')}:{params.get('update_id','')}"
         if method == "step.commit":
             return f"{params.get('unit_id','')}:{params.get('delta_id','')}"
+        if method == "checkpoint.upload":
+            rcpt = params.get("receipt", {}) if isinstance(params.get("receipt"), dict) else {}
+            return f"{rcpt.get('receipt_id','')}:{rcpt.get('receipt_nonce','')}"
         return method
 
     def _check_idem(self, lk, sha):
@@ -200,9 +203,16 @@ class ProtocolHandler:
             raise ValueError("Partition schema hash mismatch")
         if p["adapter_schema_hash"] != adapter_schema_hash():
             raise ValueError("Adapter schema hash mismatch")
-        # R11-2: verify against authoritative assignment registry
+        # R11-2/R12: verify against authoritative assignment registry (RoundCoordinator table first)
         key = (p["run_id"], p["round_id"], p["assignment_id"], p["worker_id"])
         reg = self._assignments.get(key)
+        try:
+            row = self._conn.execute("SELECT * FROM assignments_r53 WHERE assignment_id=? AND run_id=? AND round_id=? AND worker_id=?",
+                                     (p["assignment_id"], p["run_id"], p["round_id"], p["worker_id"])).fetchone()
+            if row is not None:
+                reg = dict(row)
+        except Exception:
+            pass
         if reg is None:
             raise ValueError("No registered assignment for this run/round/assignment/worker")
         for hk in ["worker_model_hash", "base_adapter_hash", "partition_schema_hash",
@@ -215,14 +225,29 @@ class ProtocolHandler:
             return {"unit_id": uid, "state": existing["state"],
                     "server_activation": json.loads(existing["server_activation_b64"])}
         # A3: per-unit numerical context — compute real server activation
-        tokens, labels, causal_mask = _make_causal_fixture()
-        torch.manual_seed(12345)  # deterministic per-unit model (oracle-comparable)
-        server = SplitServerNumericalModel()
+        # R12: deterministic PER-ASSIGNMENT seed for Stage B (same assignment → same model);
+        #      Phase 2 path (no shard) keeps the frozen oracle seed 12345.
+        #      Model creation is serialized under the lock (global RNG is not thread-safe).
+        with self._lock:
+            if p.get("shard_id"):
+                from rc5_3_multiworker import _stable_seed
+                torch.manual_seed(12345 + _stable_seed(p.get("run_id",""), p.get("round_id",""), p.get("assignment_id",""), p.get("worker_id","")) % 1000)
+            else:
+                torch.manual_seed(12345)
+            server = SplitServerNumericalModel()
+        # R12: per-unit shard data (real, distinct per worker/shard)
+        if p.get("shard_id"):
+            from rc5_3_multiworker import make_shard
+            lk = p.get("label_keep", -1)
+            tokens, labels, causal_mask = make_shard(p["shard_id"], offset=int(p.get("shard_offset", 0)),
+                                                     label_keep=None if lk < 0 else lk)
+        else:
+            tokens, labels, causal_mask = _make_causal_fixture()
         sa = server.server_forward(tokens, causal_mask)
         env = pack_tensor_envelope(sa, "server_activation", uid, "s1")
-        # store per-unit context
         self._units[uid] = {"server": server, "tokens": tokens, "labels": labels,
-                            "causal_mask": causal_mask, "cut_activation": None, "cut_gradient": None}
+                            "causal_mask": causal_mask, "server_activation": sa,
+                            "cut_activation": None, "cut_gradient": None}
         self._conn.execute("""
             INSERT OR REPLACE INTO units (unit_id, state, run_id, round_id, assignment_id, micro_unit_id,
                 worker_id, session_id, worker_model_hash, partition_schema_hash,

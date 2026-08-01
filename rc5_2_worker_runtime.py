@@ -40,6 +40,30 @@ class WorkerRuntime:
             self.worker.lora_wrapper.lora_B.weight.detach().cpu(),
         )
 
+    def load_from_artifacts(self, base_model_bytes: bytes, base_adapter_bytes: bytes):
+        """Load worker state from REAL artifact bundles (strict: zero missing/unexpected)."""
+        from rc5_2_tensor_bundle import tensor_bundle_v1_unpack, bundle_sha256
+        bm = tensor_bundle_v1_unpack(base_model_bytes, bundle_sha256(base_model_bytes))
+        ad = tensor_bundle_v1_unpack(base_adapter_bytes, bundle_sha256(base_adapter_bytes))
+        params = dict(self.worker.named_parameters())
+        missing, unexpected = [], []
+        for n, p in params.items():
+            if "lora" not in n:
+                if n in bm: p.data.copy_(bm[n])
+                else: missing.append(n)
+        for k in bm:
+            if k not in params: unexpected.append(k)
+        if "local_layers.0.linear1.lora_A.weight" in ad:
+            self.worker.lora_wrapper.lora_A.weight.data.copy_(ad["local_layers.0.linear1.lora_A.weight"])
+            self.worker.lora_wrapper.lora_B.weight.data.copy_(ad["local_layers.0.linear1.lora_B.weight"])
+        if missing or unexpected:
+            raise ValueError(f"Artifact load mismatch: missing={missing} unexpected={unexpected}")
+        return {"missing": missing, "unexpected": unexpected}
+
+    def get_journal_status(self, update_id):
+        r = self._conn.execute("SELECT status FROM journal WHERE update_id=?", (update_id,)).fetchone()
+        return r["status"] if r else None
+
     def prepare_update(self, update_id, unit_id):
         """Persist PREPARED if not present; reject if ALREADY APPLIED."""
         r = self._conn.execute("SELECT status FROM journal WHERE update_id=?", (update_id,)).fetchone()

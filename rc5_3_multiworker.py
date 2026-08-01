@@ -115,7 +115,7 @@ class RoundCoordinator:
 
     def register_round_model(self, run_id, round_id, model_hashes, adapter_0_bytes=None):
         """Freeze the round's SHARED model: one worker_model, one base_adapter for ALL workers.
-        adapter_0: real absolute adapter artifact the round starts from (round 1: zero LoRA)."""
+        adapter_0: the SAME real base_adapter_v1 artifact the workers load (byte-for-byte)."""
         with self._lock:
             st = self._round_state(run_id, round_id)
             if st != ROUND_OPEN:
@@ -133,6 +133,9 @@ class RoundCoordinator:
                   model_hashes.get("base_adapter_hash",""), model_hashes.get("partition_schema_hash",""),
                   model_hashes.get("adapter_schema_hash",""), model_hashes.get("numerical_profile_hash",""),
                   base64.b64encode(adapter_0_bytes).decode(), a0_hash, run_id, round_id))
+            # R4: round.base_adapter_hash MUST equal round.adapter_0_hash (single real adapter)
+            if model_hashes.get("base_adapter_hash", "") != a0_hash:
+                raise ValueError("base_adapter_hash must equal adapter_0_hash (single real adapter per round)")
             return {"adapter_0_hash": a0_hash, "worker_model_hash": model_hashes.get("worker_model_hash","")}
 
     def calibration_submit(self, run_id, round_id, worker_id, cal):
@@ -233,7 +236,10 @@ class RoundCoordinator:
             self._set_round_state(run_id, round_id, ROUND_RUNNING)
             return {"state": ROUND_RUNNING}
 
-    def submit_contribution(self, run_id, round_id, assignment_id, worker_id, receipt, delta_bundle_b64, ett, revision=1):
+    def register_uploaded_contribution(self, contribution_id, run_id, round_id, assignment_id, worker_id, revision=1):
+        """R4: SECURE ingestion — only accepts a contribution_id produced by checkpoint.upload.
+        Reads the RC5.2-validated row (receipt+HMAC+nonce+COMMITTED already verified) and
+        cross-checks every field against the RC5.3 round state."""
         with self._lock:
             st = self._round_state(run_id, round_id)
             if st != ROUND_RUNNING:
@@ -242,20 +248,36 @@ class RoundCoordinator:
                                    (assignment_id, run_id, round_id, worker_id)).fetchone()
             if a is None:
                 raise ValueError("Assignment not found for contribution")
-            dsha = hashlib.sha256(base64.b64decode(delta_bundle_b64)).hexdigest()
-            if dsha != receipt.get("delta_bundle_sha256", ""):
+            # the validated row produced by checkpoint.upload (RC5.2 Coordinator's contributions table)
+            row = self._conn.execute("SELECT * FROM contributions WHERE cid=?", (contribution_id,)).fetchone()
+            if row is None:
+                raise ValueError(f"Contribution {contribution_id} not produced by checkpoint.upload")
+            if row["status"] != "RECEIVED":
+                raise ValueError(f"Contribution status not RECEIVED: {row['status']}")
+            unit = self._conn.execute("SELECT * FROM units WHERE unit_id=?", (row["unit_id"],)).fetchone()
+            if unit is None or unit["state"] != "COMMITTED":
+                raise ValueError("Unit not COMMITTED")
+            if unit["assignment_id"] != assignment_id or unit["worker_id"] != worker_id:
+                raise ValueError("Assignment/worker mismatch with unit")
+            if unit["run_id"] != run_id or unit["round_id"] != round_id:
+                raise ValueError("Run/round mismatch with unit")
+            receipt = json.loads(row["receipt_json"])
+            if receipt.get("assignment_id", "") != assignment_id or receipt.get("worker_id", "") != worker_id:
+                raise ValueError("Receipt assignment/worker mismatch")
+            if row["delta_bundle_sha256"] != receipt.get("delta_bundle_sha256", ""):
                 raise ValueError("Bundle SHA mismatch")
-            delta_bundle_unpack(base64.b64decode(delta_bundle_b64), dsha)
-            if ett <= 0:
-                raise ValueError("ETT must be strictly positive")
-            ex = self._conn.execute("SELECT * FROM contributions_r53 WHERE cid=?", (receipt["receipt_id"],)).fetchone()
+            if row["ett"] != receipt.get("effective_trainable_tokens", 0) or row["ett"] <= 0:
+                raise ValueError("ETT mismatch or non-positive")
+            # idempotency: same receipt_id+nonce already registered → same response
+            ex = self._conn.execute("SELECT * FROM contributions_r53 WHERE cid=?", (contribution_id,)).fetchone()
             if ex:
                 return {"contribution_id": ex["cid"], "status": ex["status"]}
             self._conn.execute("""
                 INSERT INTO contributions_r53 (cid, run_id, round_id, assignment_id, worker_id, status, ett, delta_bundle_b64, delta_bundle_sha256, receipt_json, revision)
                 VALUES (?,?,?,?,?, 'RECEIVED', ?, ?, ?, ?, ?)
-            """, (receipt["receipt_id"], run_id, round_id, assignment_id, worker_id, ett, delta_bundle_b64, dsha, json.dumps(receipt), revision))
-            return {"contribution_id": receipt["receipt_id"], "status": "RECEIVED"}
+            """, (contribution_id, run_id, round_id, assignment_id, worker_id,
+                  row["ett"], row["delta_bundle_b64"], row["delta_bundle_sha256"], json.dumps(receipt), revision))
+            return {"contribution_id": contribution_id, "status": "RECEIVED"}
 
     def validate_contribution(self, cid):
         with self._lock:
@@ -364,6 +386,25 @@ class RoundCoordinator:
         return [dict(r) for r in rows]
 
 
+def pack_server_model(server_model):
+    """REAL server artifact: pack ALL server params -> (bytes, SHA-256)."""
+    from rc5_2_tensor_bundle import tensor_bundle_v1_pack
+    state = {n: p.detach().cpu() for n, p in server_model.named_parameters()}
+    data = tensor_bundle_v1_pack(state)
+    return data, bundle_sha256(data)
+
+def server_model_from_bytes(server_bytes, server_hash):
+    """Reconstruct a server model EXACTLY from the persisted artifact (restart-safe)."""
+    from rc5_2_tensor_bundle import tensor_bundle_v1_unpack
+    from rc5_2_numerical_models import SplitServerNumericalModel
+    tensors = tensor_bundle_v1_unpack(server_bytes, server_hash)
+    m = SplitServerNumericalModel()
+    params = dict(m.named_parameters())
+    for n, p in params.items():
+        if n in tensors:
+            p.data.copy_(tensors[n])
+    return m
+
 def zero_adapter_artifact():
     """REAL zero-LoRA adapter artifact (verified, shared as adapter_0 for round 1)."""
     from rc5_2_artifacts import pack_base_adapter
@@ -445,8 +486,8 @@ def real_worker_flow(cl, coord, run_id, round_id, assignment_id, worker_id, shar
     r6 = cl.call("checkpoint.upload", {
         "receipt": receipt,
         "delta_bundle_b64": delta_b64, "delta_bundle_sha256": delta_sha})
-    cid = coord.submit_contribution(run_id, round_id, assignment_id, worker_id,
-                                    receipt, delta_b64, ett)
+    up_cid = r6.get("contribution_id", receipt["receipt_id"])
+    cid = coord.register_uploaded_contribution(up_cid, run_id, round_id, assignment_id, worker_id)
     coord.validate_contribution(cid["contribution_id"])
     coord.activate_contribution(cid["contribution_id"])
     return {"worker_id": worker_id, "unit_id": unit_id, "assignment_id": assignment_id,

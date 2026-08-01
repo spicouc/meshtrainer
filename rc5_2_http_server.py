@@ -79,6 +79,7 @@ class ProtocolHandler:
         self.signing_key = signing_key or SIGNING_KEY
         self._lock = threading.RLock()
         self._units = {}  # unit_id -> per-unit numerical context (A3: no shared runtime)
+        self._round_models = {}  # (run_id, round_id) -> SHARED server model (R3)
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._init_db()  # create schema BEFORE Coordinator (authoritative units table)
@@ -225,16 +226,20 @@ class ProtocolHandler:
             return {"unit_id": uid, "state": existing["state"],
                     "server_activation": json.loads(existing["server_activation_b64"])}
         # A3: per-unit numerical context — compute real server activation
-        # R12: deterministic PER-ASSIGNMENT seed for Stage B (same assignment → same model);
-        #      Phase 2 path (no shard) keeps the frozen oracle seed 12345.
-        #      Model creation is serialized under the lock (global RNG is not thread-safe).
-        with self._lock:
-            if p.get("shard_id"):
-                from rc5_3_multiworker import _stable_seed
-                torch.manual_seed(12345 + _stable_seed(p.get("run_id",""), p.get("round_id",""), p.get("assignment_id",""), p.get("worker_id","")) % 1000)
-            else:
+        # R3: Stage B (shard_id present): ONE SHARED server model per round,
+        #     created once with a fixed round seed; all units share the same weights.
+        #     Phase 2 path (no shard): frozen oracle seed 12345 per unit (unchanged).
+        if p.get("shard_id"):
+            round_key = (p.get("run_id", ""), p.get("round_id", ""))
+            with self._lock:
+                if round_key not in self._round_models:
+                    torch.manual_seed(424242)  # fixed round seed — never per-assignment
+                    self._round_models[round_key] = SplitServerNumericalModel()
+                server = self._round_models[round_key]
+        else:
+            with self._lock:
                 torch.manual_seed(12345)
-            server = SplitServerNumericalModel()
+                server = SplitServerNumericalModel()
         # R12: per-unit shard data (real, distinct per worker/shard)
         if p.get("shard_id"):
             from rc5_3_multiworker import make_shard

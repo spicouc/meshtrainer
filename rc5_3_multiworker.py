@@ -64,6 +64,9 @@ class RoundCoordinator:
             CREATE TABLE IF NOT EXISTS rounds_r53 (
                 run_id TEXT, round_id TEXT, state TEXT,
                 policy_max_micro_batch INTEGER, policy_max_seq INTEGER,
+                server_model_hash TEXT, worker_model_hash TEXT, base_adapter_hash TEXT,
+                partition_schema_hash TEXT, adapter_schema_hash TEXT, numerical_profile_hash TEXT,
+                adapter_0_b64 TEXT, adapter_0_hash TEXT,
                 closed_at TEXT, PRIMARY KEY (run_id, round_id)
             );
             CREATE TABLE IF NOT EXISTS assignments_r53 (
@@ -110,6 +113,28 @@ class RoundCoordinator:
             self._set_round_state(run_id, round_id, ROUND_OPEN)
             return {"run_id": run_id, "round_id": round_id, "state": ROUND_OPEN}
 
+    def register_round_model(self, run_id, round_id, model_hashes, adapter_0_bytes=None):
+        """Freeze the round's SHARED model: one worker_model, one base_adapter for ALL workers.
+        adapter_0: real absolute adapter artifact the round starts from (round 1: zero LoRA)."""
+        with self._lock:
+            st = self._round_state(run_id, round_id)
+            if st != ROUND_OPEN:
+                raise ValueError(f"register_round_model requires OPEN (state={st})")
+            if adapter_0_bytes is None:
+                adapter_0_bytes = zero_adapter_artifact()[0]
+            a0_hash = bundle_sha256(adapter_0_bytes)
+            self._conn.execute("""
+                UPDATE rounds_r53 SET
+                    server_model_hash=?, worker_model_hash=?, base_adapter_hash=?,
+                    partition_schema_hash=?, adapter_schema_hash=?, numerical_profile_hash=?,
+                    adapter_0_b64=?, adapter_0_hash=?
+                WHERE run_id=? AND round_id=?
+            """, (model_hashes.get("server_model_hash",""), model_hashes.get("worker_model_hash",""),
+                  model_hashes.get("base_adapter_hash",""), model_hashes.get("partition_schema_hash",""),
+                  model_hashes.get("adapter_schema_hash",""), model_hashes.get("numerical_profile_hash",""),
+                  base64.b64encode(adapter_0_bytes).decode(), a0_hash, run_id, round_id))
+            return {"adapter_0_hash": a0_hash, "worker_model_hash": model_hashes.get("worker_model_hash","")}
+
     def calibration_submit(self, run_id, round_id, worker_id, cal):
         with self._lock:
             st = self._round_state(run_id, round_id)
@@ -128,10 +153,12 @@ class RoundCoordinator:
         rnd = self._conn.execute("SELECT * FROM rounds_r53 WHERE run_id=? AND round_id=?", (run_id, round_id)).fetchone()
         cal = self._conn.execute("SELECT * FROM calibrations_r53 WHERE worker_id=? AND run_id=? AND round_id=?",
                                  (worker_id, run_id, round_id)).fetchone()
+        if cal is None:
+            raise ValueError(f"Worker {worker_id} is not calibrated for this round")
         mb = min(self._profile["max_micro_batch"], (rnd["policy_max_micro_batch"] if rnd and rnd["policy_max_micro_batch"] is not None else 8),
-                 (cal["max_micro_batch"] if cal and cal["max_micro_batch"] is not None else 1))
+                 cal["max_micro_batch"])
         sl = min(self._profile["max_sequence_length"], (rnd["policy_max_seq"] if rnd and rnd["policy_max_seq"] is not None else 256),
-                 (cal["max_sequence_length"] if cal and cal["max_sequence_length"] is not None else 128))
+                 cal["max_sequence_length"])
         return mb, sl
 
     def assign(self, run_id, round_id, assignment_id, worker_id, shard_id, hashes, ett_target, strict_budget=True):
@@ -139,19 +166,32 @@ class RoundCoordinator:
             st = self._round_state(run_id, round_id)
             if st not in (ROUND_CALIBRATING, ROUND_ASSIGNED):
                 raise ValueError(f"Assignment requires CALIBRATING/ASSIGNED (state={st})")
+            # R3: calibration required — no defaults
+            cal = self._conn.execute("SELECT * FROM calibrations_r53 WHERE worker_id=? AND run_id=? AND round_id=?",
+                                     (worker_id, run_id, round_id)).fetchone()
+            if cal is None:
+                raise ValueError(f"Worker {worker_id} not calibrated (run={run_id} round={round_id})")
+            # R3: shared model invariant — assignment hashes must match the registered round model
+            rnd = self._conn.execute("SELECT * FROM rounds_r53 WHERE run_id=? AND round_id=?", (run_id, round_id)).fetchone()
+            if rnd is None or not rnd["worker_model_hash"]:
+                raise ValueError("Round model not registered (call register_round_model)")
+            for hk in ["worker_model_hash", "base_adapter_hash", "partition_schema_hash",
+                       "adapter_schema_hash", "numerical_profile_hash"]:
+                if hashes.get(hk, "") != rnd[hk]:
+                    raise ValueError(f"Hash mismatch for {hk}: does not match shared round model")
             dup = self._conn.execute("SELECT assignment_id FROM assignments_r53 WHERE run_id=? AND round_id=? AND worker_id=?",
                                      (run_id, round_id, worker_id)).fetchone()
             if dup is not None and dup["assignment_id"] != assignment_id:
                 raise ValueError("Worker already assigned in this round")
+            dup2 = self._conn.execute("SELECT worker_id FROM assignments_r53 WHERE assignment_id=? AND run_id=? AND round_id=?",
+                                      (assignment_id, run_id, round_id)).fetchone()
+            if dup2 is not None and dup2["worker_id"] != worker_id:
+                raise ValueError("assignment_id already used by another worker")
             prev_ad = self._conn.execute(
                 "SELECT adapter_hash FROM round_adapters_r53 WHERE run_id=? AND round_id < ? ORDER BY round_id DESC LIMIT 1",
                 (run_id, round_id)).fetchone()
             if prev_ad is not None and hashes.get("base_adapter_hash", "") != prev_ad["adapter_hash"]:
                 raise ValueError("Stale base adapter: does not match previous round adapter")
-            for hk in ["worker_model_hash", "base_adapter_hash", "partition_schema_hash",
-                       "adapter_schema_hash", "numerical_profile_hash"]:
-                if not hashes.get(hk):
-                    raise ValueError(f"Missing hash {hk}")
             mb, sl = self._budget_for(run_id, round_id, worker_id)
             if strict_budget and hashes.get("max_micro_batch", mb) > mb:
                 raise ValueError("Assignment exceeds calibration budget (micro_batch)")
@@ -284,11 +324,17 @@ class RoundCoordinator:
             st = self._round_state(run_id, round_id)
             if st != ROUND_READY:
                 raise ValueError(f"close requires READY_TO_CLOSE (state={st})")
+            # pre = this round's registered adapter_0 (round 1) OR previous round's adapter (round 2+)
+            rnd0 = self._conn.execute("SELECT * FROM rounds_r53 WHERE run_id=? AND round_id=?", (run_id, round_id)).fetchone()
             prev = self._conn.execute(
                 "SELECT * FROM round_adapters_r53 WHERE run_id=? AND round_id < ? ORDER BY round_id DESC LIMIT 1",
                 (run_id, round_id)).fetchone()
             if prev is not None:
                 pre_tensors = delta_bundle_unpack(base64.b64decode(prev["adapter_b64"]), prev["adapter_hash"])
+                pre_A = pre_tensors["local_layers.0.linear1.lora_A.weight"].clone()
+                pre_B = pre_tensors["local_layers.0.linear1.lora_B.weight"].clone()
+            elif rnd0 is not None and rnd0["adapter_0_b64"]:
+                pre_tensors = delta_bundle_unpack(base64.b64decode(rnd0["adapter_0_b64"]), rnd0["adapter_0_hash"])
                 pre_A = pre_tensors["local_layers.0.linear1.lora_A.weight"].clone()
                 pre_B = pre_tensors["local_layers.0.linear1.lora_B.weight"].clone()
             else:
@@ -318,6 +364,16 @@ class RoundCoordinator:
         return [dict(r) for r in rows]
 
 
+def zero_adapter_artifact():
+    """REAL zero-LoRA adapter artifact (verified, shared as adapter_0 for round 1)."""
+    from rc5_2_artifacts import pack_base_adapter
+    from rc5_2_numerical_models import WorkerNumericalModel
+    w = WorkerNumericalModel()
+    with torch.no_grad():
+        w.lora_wrapper.lora_A.weight.zero_()
+        w.lora_wrapper.lora_B.weight.zero_()
+    return pack_base_adapter(w)  # (bytes, hash)
+
 def build_worker_artifacts(worker_model):
     """REAL artifacts: pack → verify → (bytes, real SHA-256 hashes)."""
     base_bytes, base_hash = pack_worker_base_model(worker_model)
@@ -337,7 +393,8 @@ def adapter_artifacts_from_round(worker_model, adapter_bytes):
 
 def real_worker_flow(cl, coord, run_id, round_id, assignment_id, worker_id, shard_id,
                      base_bytes, base_hash, ad_bytes, ad_hash, offset=0, label_keep=None,
-                     session_id=None, update_suffix="", db_dir=None, micro_unit_id=None):
+                     session_id=None, update_suffix="", db_dir=None, micro_unit_id=None,
+                     stop_at_commit=False, silent_upload=False):
     """One REAL worker: full HTTP flow with a real WorkerRuntime (no synthetic deltas)."""
     import os, tempfile
     session_id = session_id or f"sess_{worker_id}_{uuid.uuid4().hex[:6]}"
@@ -379,6 +436,12 @@ def real_worker_flow(cl, coord, run_id, round_id, assignment_id, worker_id, shar
         "delta_bundle_b64": delta_b64, "delta_bundle_sha256": delta_sha})
     r5 = cl.call("step.commit", {"unit_id": unit_id, "delta_id": r4.get("delta_id", "")})
     receipt = r5["receipt"]
+    if stop_at_commit:
+        return {"worker_id": worker_id, "unit_id": unit_id, "assignment_id": assignment_id,
+                "shard_id": shard_id, "ett": ett, "backward_id": bw_id,
+                "receipt": receipt, "receipt_id": receipt["receipt_id"],
+                "delta_bundle_b64": delta_b64, "delta_bundle_sha256": delta_sha,
+                "wmh": base_hash, "baeh": ad_hash}
     r6 = cl.call("checkpoint.upload", {
         "receipt": receipt,
         "delta_bundle_b64": delta_b64, "delta_bundle_sha256": delta_sha})
@@ -388,7 +451,8 @@ def real_worker_flow(cl, coord, run_id, round_id, assignment_id, worker_id, shar
     coord.activate_contribution(cid["contribution_id"])
     return {"worker_id": worker_id, "unit_id": unit_id, "assignment_id": assignment_id,
             "shard_id": shard_id, "ett": ett, "cid": cid["contribution_id"],
-            "backward_id": bw_id, "receipt_id": receipt["receipt_id"], "delta_sha": delta_sha}
+            "backward_id": bw_id, "receipt_id": receipt["receipt_id"], "delta_sha": delta_sha,
+            "wmh": base_hash, "baeh": ad_hash}
 
 
 def run_two_real_workers(coord, cl, run_id, round_id, artifacts_by_worker, specs):

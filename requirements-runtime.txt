@@ -1,0 +1,6 @@
+# requirements-runtime.txt — dependències reals del gate RC5.3 R6
+# (versions exactes utilitzades a la certificació; CPU)
+torch==2.13.0+cpu
+numpy==2.4.4
+requests==2.34.2
+httpx==0.28.1

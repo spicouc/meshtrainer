@@ -12,6 +12,7 @@
 set -uo pipefail
 LOG_DIR="${LOG_DIR:-$(mktemp -d)}"
 mkdir -p "$LOG_DIR"
+export LOG_DIR
 LOG="$LOG_DIR/RC5_3_FINAL_GATE.log"
 : > "$LOG"
 OVERALL=0

@@ -4,14 +4,14 @@ DELIVERY_INFO — meshtrainer RC5.3 Stage B R6 FINAL CLOSEOUT
 DATA: 2026-08-03
 BRANCH: rc5.3-stageb
 BASE COMMIT: a7b7cf87c9c05139b64cc956104063216d8a6ee6
-FINAL COMMIT (complet): f40c79227755c9fea97a0c05026dd48dd83e1abd
-FINAL COMMIT (curt): f40c792
+FINAL COMMIT (complet): 00cda126b327e4431ebd71e80131deda474a4e5c
+FINAL COMMIT (curt): 00cda12
 GIT STATUS: buit (0 fitxers pendents)
 
 TARBALL
 -------
-Nom: meshtrainer_rc53_stageb_r6_final_f40c792.tar.gz
-Fitxer sha256: meshtrainer_rc53_stageb_r6_final_f40c792.tar.gz.sha256
+Nom: meshtrainer_rc53_stageb_r6_final_00cda12.tar.gz
+Fitxer sha256: meshtrainer_rc53_stageb_r6_final_00cda12.tar.gz.sha256
 (Mida i SHA-256 reals: vegeu el fitxer .sha256 que acompanya el tarball
 i verify.txt)
 
@@ -31,8 +31,8 @@ TAGS
 meshtrainer-v1.1-rc5.1: intacte (no tocat)
 meshtrainer-v1.1-rc5.2: WITHDRAWN — apunta a cfe0a5e (closeout NO certificat).
   Documentat, NO mogut.
-meshtrainer-v1.1-rc5.2.1: apunta a f40c792 (commit final real R6)
-meshtrainer-v1.1-rc5.3: preparada sobre f40c792, NO publicada
+meshtrainer-v1.1-rc5.2.1: apunta a 00cda12 (commit final real R6)
+meshtrainer-v1.1-rc5.3: preparada sobre 00cda12, NO publicada
   (pendent d'auditoria del Supervisor)
 
 RESULTATS (logs certificats a evidence/)

@@ -3,13 +3,13 @@ verify.txt — verificació del paquet RC5.3 Stage B R6
 Data: 2026-08-03
 Branch: rc5.3-stageb
 Base: a7b7cf87c9c05139b64cc956104063216d8a6ee6
-Commit complet: feb166c41a89ea4fcfbdef3e18c283482cf969bc
-Commit curt: feb166c
-Tag: meshtrainer-v1.1-rc5.2.1 (apunta a feb166c)
+Commit complet: f40c79227755c9fea97a0c05026dd48dd83e1abd
+Commit curt: f40c792
+Tag: meshtrainer-v1.1-rc5.2.1 (apunta a f40c792)
       meshtrainer-v1.1-rc5.3 (preparada, no publicada)
 
-Tarball: meshtrainer_rc53_stageb_r6_final_feb166c.tar.gz
-Fitxer sha256: meshtrainer_rc53_stageb_r6_final_feb166c.tar.gz.sha256
+Tarball: meshtrainer_rc53_stageb_r6_final_f40c792.tar.gz
+Fitxer sha256: meshtrainer_rc53_stageb_r6_final_f40c792.tar.gz.sha256
 
 Metadades del paquet:
 - Fitxers regulars: 196 (195 al manifest + MANIFEST.sha256)

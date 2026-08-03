@@ -15,7 +15,9 @@ mkdir -p "$TMPDIR"; cp "$SRC"/*.py "$TMPDIR"/ 2>/dev/null
 cp -r "$SRC"/mutants_r53 "$TMPDIR"/ 2>/dev/null || true
 SCORE=0; I=0; R=0; NA=0; T=0; ND=0
 for i in $(seq -w 1 12); do
-    # free disk: each mutant run creates ~1.5G of temp DBs; clean between mutants
+    # free disk: each mutant run creates ~1.5G of temp DBs (created inside
+    # $TMPDIR because TMPDIR is exported); clean between mutants
+    find "$TMPDIR" -maxdepth 1 -name "r53r_*.db" -delete 2>/dev/null || true
     find "$BASE_TMP" -maxdepth 1 -name "r53r_*.db" -delete 2>/dev/null || true
     W="$TMPDIR/mut_$i"; rm -rf "$W"; mkdir -p "$W"
     cp "$TMPDIR"/*.py "$W"/ 2>/dev/null || true

@@ -60,10 +60,9 @@ echo "FAILs: $FAILS | W1: $W1FAIL | tracebacks: $TRACE | $RES"
 [ "$TRACE" -ne 0 ] && echo "CF-R53: FAIL (tracebacks=$TRACE)" && exit 1
 echo "$RES" | grep -q "104/105 PASS, 1 FAIL" || { echo "CF-R53: FAIL (resultat inesperat)"; exit 1; }
 
-# 7. paquet original intacte: cap fitxer auditat (manifest) modificat,
-#    cap fitxer tracked modificat (els nous runners untracked són part de la feina)
+# 7. paquet original intacte: cap fitxer auditat (manifest) modificat.
+#    (funciona tant dins un repo git com en un directori extret sense .git)
 cd "$SRC"
-git diff --quiet || { echo "CF-R53: FAIL (fitxers tracked modificats)"; exit 1; }
 NOK=$(sha256sum -c MANIFEST.sha256 2>&1 | grep -cv ": OK")
 [ "$NOK" -eq 0 ] || { echo "CF-R53: FAIL (manifest trencat, $NOK no-OK)"; exit 1; }
 

@@ -69,14 +69,15 @@ def test_step_open_real():
     """step.open returns real server_activation, verifies hashes, idempotent."""
     srv, _ = serve(port=19859, db_path=_fresh_db(), signing_key=KEY)
     cl = JsonRpcClient("http://127.0.0.1:19859"); time.sleep(0.3)
-    # Wrong profile hash rejected
+    # Wrong profile hash rejected — must fail BECAUSE of the canonical profile
+    # check ("Numerical profile hash mismatch"), not the assignment loop.
     bad = open_params("u_bad")
     bad["numerical_profile_hash"] = "0" * 64
     try:
         cl.call("step.open", bad)
         check("S1: wrong profile hash rejected", False)
-    except ValueError:
-        check("S1: wrong profile hash rejected", True)
+    except ValueError as e:
+        check("S1: wrong profile hash rejected", "numerical profile hash mismatch" in str(e).lower())
     # Missing field rejected
     no_ws = open_params("u_no")
     del no_ws["worker_model_hash"]
@@ -196,16 +197,46 @@ def test_update_commit_upload():
         check("U9: committed→abort rejected", False)
     except ValueError:
         check("U9: committed→abort rejected", True)
-    # Expired receipt rejected
-    expired = generate_receipt(run_id="r1", round_id="rd1", unit_id="u_x", worker_id="w1",
-                               expires_at=int(time.time()) - 100,
-                               signing_key=KEY, delta_bundle_sha256=dsha,
-                               delta_bundle_byte_length=len(d), ett=127, loss=1.23)
+    # Expired receipt rejected — EVERYTHING else valid (same COMMITTED unit u_uc,
+    # real receipt fields re-signed with KEY), ONLY expires_at in the past.
+    import hmac as _hmac
+    expired = dict(receipt)  # real receipt of COMMITTED unit u_uc
+    expired["receipt_id"] = uuid.uuid4().hex
+    expired["receipt_nonce"] = uuid.uuid4().hex  # fresh nonce (real one already consumed)
+    expired["expires_at"] = int(time.time()) - 100
+    from rc5_2_canonical import canonical_json_v1 as _cj
+    expired["signature"] = _hmac.new(KEY, _cj({k: v for k, v in expired.items() if k != "signature"}),
+                                     hashlib.sha256).hexdigest()
     try:
         coord.checkpoint_upload({"receipt": expired, "delta_bundle_b64": db64, "delta_bundle_sha256": dsha}, KEY)
         check("U10: expired receipt rejected", False)
-    except ValueError:
-        check("U10: expired receipt rejected", True)
+    except ValueError as e:
+        check("U10: expired receipt rejected", "expired" in str(e).lower())
+    # Nonce reuse rejected — same nonce, different receipt_id (MUT-P2-10)
+    reused = dict(receipt)
+    reused["receipt_id"] = uuid.uuid4().hex
+    reused["expires_at"] = int(time.time()) + 3600
+    from rc5_2_canonical import canonical_json_v1 as _cj
+    reused["signature"] = _hmac.new(KEY, _cj({k: v for k, v in reused.items() if k != "signature"}),
+                                    hashlib.sha256).hexdigest()
+    try:
+        coord.checkpoint_upload({"receipt": reused, "delta_bundle_b64": db64, "delta_bundle_sha256": dsha}, KEY)
+        check("U11: nonce reuse rejected", False)
+    except ValueError as e:
+        check("U11: nonce reuse rejected", "nonce" in str(e).lower())
+    # SHA mismatch rejected — everything else valid, only bundle SHA differs (MUT-P2-07)
+    badsha = dict(receipt)
+    badsha["receipt_id"] = uuid.uuid4().hex
+    badsha["receipt_nonce"] = uuid.uuid4().hex
+    badsha["expires_at"] = int(time.time()) + 3600
+    badsha["delta_bundle_sha256"] = "0" * 64
+    badsha["signature"] = _hmac.new(KEY, _cj({k: v for k, v in badsha.items() if k != "signature"}),
+                                    hashlib.sha256).hexdigest()
+    try:
+        coord.checkpoint_upload({"receipt": badsha, "delta_bundle_b64": db64, "delta_bundle_sha256": "0" * 64}, KEY)
+        check("U12: SHA mismatch rejected", False)
+    except ValueError as e:
+        check("U12: SHA mismatch rejected", "sha" in str(e).lower())
 
 def test_bundle_strict():
     """tensor_bundle_v1 strict validation."""

@@ -35,10 +35,17 @@ class WorkerRuntime:
         self.worker.worker_backward(self._cut_activation, cut_gradient)
 
     def compute_delta_bundle(self) -> bytes:
-        return delta_bundle_pack(
-            self.worker.lora_wrapper.lora_A.weight.detach().cpu(),
-            self.worker.lora_wrapper.lora_B.weight.detach().cpu(),
-        )
+        """Delta bundle = post - pre (REAL delta). Pre must be captured before
+        the backward; the journal stores it so an exactly-once replay returns
+        the SAME delta without a second optimizer step."""
+        r = self._conn.execute(
+            "SELECT pre_adapter_hash, post_adapter_hash, delta_bundle_sha256, delta_bundle_b64 FROM journal WHERE update_id=?",
+            (self._last_update_id,)).fetchone() if getattr(self, "_last_update_id", None) else None
+        if r is not None and r["delta_bundle_b64"]:
+            import base64
+            return base64.b64decode(r["delta_bundle_b64"])
+        # Fresh path: caller must pass pre/post explicitly via apply_update_once.
+        raise ValueError("compute_delta_bundle: no journaled delta; use apply_update_once")
 
     def load_from_artifacts(self, base_model_bytes: bytes, base_adapter_bytes: bytes):
         """Load worker state from REAL artifact bundles (strict: zero missing/unexpected)."""
@@ -74,7 +81,11 @@ class WorkerRuntime:
         self._conn.commit()
 
     def apply_update_once(self, update_id, cut_activation, cut_gradient):
-        """Exactly-once: backward + single optimizer.step, persist APPLIED + delta bundle."""
+        """Exactly-once: ONE backward + ONE optimizer.step, persist APPLIED + REAL delta bundle.
+
+        pre is captured before the optimizer touches the weights; delta = post - pre.
+        A replay (status=APPLIED) returns the SAME journaled delta with NO second step.
+        """
         r = self._conn.execute("SELECT * FROM journal WHERE update_id=?", (update_id,)).fetchone()
         if r is None:
             raise ValueError(f"update_id {update_id} not prepared")
@@ -84,14 +95,20 @@ class WorkerRuntime:
             return r["delta_bundle_b64"], r["delta_bundle_sha256"]
         if r["status"] == "COMMITTED":
             raise ValueError(f"update_id {update_id} already COMMITTED")
-        # fresh application
-        self.worker.optimizer.zero_grad(set_to_none=True)
+        # fresh application: capture pre BEFORE the update
+        self._last_update_id = update_id
+        pre_A = self.worker.lora_wrapper.lora_A.weight.detach().clone()
+        pre_B = self.worker.lora_wrapper.lora_B.weight.detach().clone()
         self._cut_activation = cut_activation
-        self.worker.worker_backward(cut_activation, cut_gradient)
-        self.worker.optimizer.step()
-        delta = self.compute_delta_bundle()
-        dsha = bundle_sha256(delta)
+        # worker_backward performs: zero_grad -> backward -> SINGLE optimizer.step
+        res = self.worker.worker_backward(cut_activation, cut_gradient)
+        post_A = self.worker.lora_wrapper.lora_A.weight.detach().clone()
+        post_B = self.worker.lora_wrapper.lora_B.weight.detach().clone()
+        delta_A = post_A - pre_A
+        delta_B = post_B - pre_B
         import base64
+        delta = delta_bundle_pack(delta_A, delta_B)
+        dsha = bundle_sha256(delta)
         self._conn.execute(
             "UPDATE journal SET status='APPLIED', delta_bundle_sha256=?, delta_bundle_b64=? WHERE update_id=?",
             (dsha, base64.b64encode(delta).decode("ascii"), update_id))

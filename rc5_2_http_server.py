@@ -187,6 +187,19 @@ class ProtocolHandler:
                     "micro_unit_id", "worker_id", "session_id",
                     "worker_model_hash", "partition_schema_hash", "base_adapter_hash",
                     "adapter_schema_hash", "numerical_profile_hash"]
+        # Secció 1: when the round has a registered server model (RC5.3 mode),
+        # server_model_hash is BINDING — required and compared against the round.
+        round_model = None
+        try:
+            row = self._conn.execute(
+                "SELECT server_model_b64, server_model_hash FROM rounds_r53 WHERE run_id=? AND round_id=?",
+                (p.get("run_id", ""), p.get("round_id", ""))).fetchone()
+            if row is not None and row["server_model_hash"]:
+                round_model = row
+        except sqlite3.OperationalError:
+            round_model = None  # RC5.2-only DB (no rounds_r53 table)
+        if round_model is not None:
+            required.append("server_model_hash")
         for k in required:
             if k not in p or not p[k]:
                 raise ValueError(f"Missing or empty required field: {k}")
@@ -195,6 +208,11 @@ class ProtocolHandler:
                    "adapter_schema_hash", "numerical_profile_hash"]:
             if not re.fullmatch(r"[0-9a-f]{64}", p.get(hk, "")):
                 raise ValueError(f"Invalid hash format for {hk}")
+        if "server_model_hash" in required:
+            if not re.fullmatch(r"[0-9a-f]{64}", p["server_model_hash"]):
+                raise ValueError("Invalid hash format for server_model_hash")
+            if p["server_model_hash"] != round_model["server_model_hash"]:
+                raise ValueError("server_model_hash mismatch with registered round model")
         if p["protocol_version"] != "1.2.0-rc5.2":
             raise ValueError(f"Wrong protocol_version: {p['protocol_version']}")
         # A1: verify hashes, not just store
@@ -212,7 +230,7 @@ class ProtocolHandler:
                                      (p["assignment_id"], p["run_id"], p["round_id"], p["worker_id"])).fetchone()
             if row is not None:
                 reg = dict(row)
-        except Exception:
+        except sqlite3.OperationalError:
             pass
         if reg is None:
             raise ValueError("No registered assignment for this run/round/assignment/worker")
@@ -220,20 +238,32 @@ class ProtocolHandler:
                    "adapter_schema_hash", "numerical_profile_hash"]:
             if p.get(hk) != reg.get(hk):
                 raise ValueError(f"Hash mismatch for {hk}")
+        if "server_model_hash" in required and reg.get("server_model_hash"):
+            if p.get("server_model_hash") != reg.get("server_model_hash"):
+                raise ValueError("Hash mismatch for server_model_hash")
         uid = p["unit_id"]
         existing = self._get_unit(uid)
         if existing and existing["server_activation_b64"]:
             return {"unit_id": uid, "state": existing["state"],
                     "server_activation": json.loads(existing["server_activation_b64"])}
         # A3: per-unit numerical context — compute real server activation
-        # R3: Stage B (shard_id present): ONE SHARED server model per round,
-        #     created once with a fixed round seed; all units share the same weights.
-        #     Phase 2 path (no shard): frozen oracle seed 12345 per unit (unchanged).
-        if p.get("shard_id"):
+        # Secció 1: the executed model MUST be reconstructed from the persisted
+        # server_model_v1 bytes (restart-safe); the seed is used ONLY to build
+        # the initial artifact, never to re-execute.
+        if round_model is not None:
             round_key = (p.get("run_id", ""), p.get("round_id", ""))
             with self._lock:
                 if round_key not in self._round_models:
-                    torch.manual_seed(424242)  # fixed round seed — never per-assignment
+                    from rc5_3_multiworker import server_model_from_bytes
+                    self._round_models[round_key] = server_model_from_bytes(
+                        base64.b64decode(round_model["server_model_b64"]),
+                        round_model["server_model_hash"])
+                server = self._round_models[round_key]
+        elif p.get("shard_id"):
+            round_key = (p.get("run_id", ""), p.get("round_id", ""))
+            with self._lock:
+                if round_key not in self._round_models:
+                    torch.manual_seed(424242)  # legacy RC5.3-R2 path (no registered model)
                     self._round_models[round_key] = SplitServerNumericalModel()
                 server = self._round_models[round_key]
         else:

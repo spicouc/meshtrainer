@@ -13,6 +13,10 @@ BASE_TMP="${TMPDIR:-/tmp}"
 LOG_DIR="${LOG_DIR:-$(mktemp -d)}"
 mkdir -p "$LOG_DIR"
 export LOG_DIR PYTHON_BIN
+PYBIN_DIR="$(dirname "$PYTHON_BIN")"
+if [ "$PYBIN_DIR" != "." ] && [ -x "$PYTHON_BIN" ]; then
+    export PATH="$PYBIN_DIR:$PATH"
+fi
 
 echo "============================================"
 echo "  RC5.3 Stage B R6.1 — CLEAN EXTRACTION GATE"

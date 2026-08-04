@@ -10,6 +10,14 @@
 #  - cap subgate no executat pot comptar com a PASS
 #  - resum SEMPRE imprès al final
 set -uo pipefail
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+export PYTHON_BIN
+# portable: si PYTHON_BIN és explícit, prepend del seu directori al PATH
+# perquè tots els `python3` interns resolguin al mateix intèrpret
+PYBIN_DIR="$(dirname "$PYTHON_BIN")"
+if [ "$PYBIN_DIR" != "." ] && [ -x "$PYTHON_BIN" ]; then
+    export PATH="$PYBIN_DIR:$PATH"
+fi
 LOG_DIR="${LOG_DIR:-$(mktemp -d)}"
 mkdir -p "$LOG_DIR"
 export LOG_DIR
@@ -33,7 +41,7 @@ run_sub() {
 
 # --- 1) dependency check (set +e, continuar sempre) ---
 echo ""; echo "=== [1/20] dependency check ===" | tee -a "$LOG"
-python3 - <<'PY' >> "$LOG" 2>&1
+"$PYTHON_BIN" - <<'PY' >> "$LOG" 2>&1
 import os, sys
 need = ["rc5_3_multiworker.py","rc5_3_tests.py","rc5_3_adversarial_tests.py",
         "rc5_2_http_server.py","rc5_2_worker_runtime.py",
@@ -58,7 +66,7 @@ else echo "  dependency check: FAIL (exit $DEP)" | tee -a "$LOG"; OVERALL=1; fi
 
 # --- 2) py_compile ---
 echo ""; echo "=== [2/20] py_compile ===" | tee -a "$LOG"
-python3 -m py_compile *.py >> "$LOG" 2>&1; PC=$?
+"$PYTHON_BIN" -m py_compile *.py >> "$LOG" 2>&1; PC=$?
 [ $PC -eq 0 ] && echo "  py_compile: PASS" | tee -a "$LOG" || { echo "  py_compile: FAIL" | tee -a "$LOG"; OVERALL=1; }
 
 # --- 3) RC5.3 normal (RUN_RC5_3_TESTS.sh ja executa x2 internament) ---
@@ -87,7 +95,7 @@ run_sub "[12/20] RC5.1 mutation" "bash RUN_RC5_1_MUTATION_GATE.sh" 2500
 
 # --- 17) restart subprocess ---
 echo ""; echo "=== [13/16] restart subprocess ===" | tee -a "$LOG"
-timeout 400 python3 -c "
+timeout 400 "$PYTHON_BIN" -c "
 import rc5_3_tests as t
 t.test_process_restart_real()
 print('restart subprocess: PASS')
@@ -108,7 +116,7 @@ else echo "  controlled-failure RC5.2: FAIL (exit $CF2)" | tee -a "$LOG"; OVERAL
 # --- 19) manifest (cobertura COMPLETA: tots els fitxers regulars menys MANIFEST.sha256) ---
 echo ""; echo "=== [16/16] manifest ===" | tee -a "$LOG"
 sha256sum -c MANIFEST.sha256 >> "$LOG" 2>&1; MF=$?
-python3 - <<'PY' >> "$LOG" 2>&1
+"$PYTHON_BIN" - <<'PY' >> "$LOG" 2>&1
 import os, sys
 covered = set()
 if os.path.exists("MANIFEST.sha256"):

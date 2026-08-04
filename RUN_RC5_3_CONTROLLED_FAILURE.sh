@@ -45,6 +45,10 @@ echo "py_compile exit: $C (ha de ser 0)"
 # 5. executar la suite
 export PYTHON_BIN="${PYTHON_BIN:-python3}"
 export TMPDIR="${TMPDIR:-/tmp}"
+PYBIN_DIR="$(dirname "$PYTHON_BIN")"
+if [ "$PYBIN_DIR" != "." ] && [ -x "$PYTHON_BIN" ]; then
+    export PATH="$PYBIN_DIR:$PATH"
+fi
 timeout 590 "$PYTHON_BIN" rc5_3_tests.py > "$LOG_DIR/RC5_3_CONTROLLED_FAILURE.log" 2>&1
 S=$?
 echo "suite exit: $S (ha de ser no-zero)"

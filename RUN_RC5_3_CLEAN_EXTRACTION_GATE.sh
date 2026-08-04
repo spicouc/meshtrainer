@@ -35,6 +35,17 @@ if [ $SHA_EC -eq 0 ]; then echo "  SHA extern: PASS"; else
 
 # 2) executar el gate en 2 directoris buits A i B (mktemp -d)
 for D in A B; do
+    # TIME_WAIT: esperar que els ports de test (198xx) es netegin entre gates
+    if [ "$D" = "B" ]; then
+        echo ""; echo "=== esperant alliberament de ports (TIME_WAIT) abans de B ==="
+        for i in $(seq 1 40); do
+            P=$(ss -tlnp 2>/dev/null | grep -oE ':(198[0-9][0-9])\b' | sort -u | tr '\n' ' ')
+            if [ -z "$P" ]; then echo "  ports lliures després de ${i}s"; break; fi
+            sleep 3
+        done
+        P=$(ss -tlnp 2>/dev/null | grep -oE ':(198[0-9][0-9])\b' | sort -u | tr '\n' ' ')
+        [ -z "$P" ] || echo "  AVÍS: ports encara ocupats: $P"
+    fi
     echo ""; echo "=== [2/6] extracció neta al directori buit $D ==="
     DIR="$(mktemp -d "$BASE_TMP/ce_${D}_XXXXXX")"
     tar -xzf "$TARBALL" -C "$DIR"

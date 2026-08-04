@@ -16,7 +16,7 @@ cp -r "$SRC"/. "$CFD"/
 cd "$CFD"
 
 # 2. substitució EXACTA (sense sed): patró literal únic
-python3 - <<'PY'
+"$PYTHON_BIN" - <<'PY'
 src = open("rc5_3_tests.py").read()
 old = 'check("W1: two workers completed", ra["worker_id"] == "wa" and rb["worker_id"] == "wb")'
 new = 'check("W1: two workers completed", False)'
@@ -36,15 +36,16 @@ echo "línies que difereixen: $DIFFLINES (ha de ser 2)"
 [ "$DIFFLINES" -ne 2 ] && echo "CF-R53: FAIL (diff=$DIFFLINES)" && exit 1
 
 # 4. py_compile PASS + cap SyntaxError
-python3 -m py_compile rc5_3_tests.py 2>"$LOG_DIR/cf_r53_pycompile.err"
+"$PYTHON_BIN" -m py_compile rc5_3_tests.py 2>"$LOG_DIR/cf_r53_pycompile.err"
 C=$?
 echo "py_compile exit: $C (ha de ser 0)"
 [ $C -ne 0 ] && echo "CF-R53: FAIL (py_compile)" && exit 1
 [ -s "$LOG_DIR/cf_r53_pycompile.err" ] && echo "CF-R53: FAIL (SyntaxError)" && exit 1
 
 # 5. executar la suite
-export PATH=/root/meshtrainer/.venv/bin:$PATH TMPDIR=/root/tmp_r53
-timeout 590 python3 rc5_3_tests.py > "$LOG_DIR/RC5_3_CONTROLLED_FAILURE.log" 2>&1
+export PYTHON_BIN="${PYTHON_BIN:-python3}"
+export TMPDIR="${TMPDIR:-/tmp}"
+timeout 590 "$PYTHON_BIN" rc5_3_tests.py > "$LOG_DIR/RC5_3_CONTROLLED_FAILURE.log" 2>&1
 S=$?
 echo "suite exit: $S (ha de ser no-zero)"
 [ $S -eq 0 ] && echo "CF-R53: FAIL (suite exit 0)" && exit 1

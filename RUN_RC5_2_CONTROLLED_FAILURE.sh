@@ -15,7 +15,7 @@ cp -r "$SRC"/. "$CFD"/
 cd "$CFD"
 
 # substitució EXACTA (sense sed)
-python3 - <<'PY'
+"$PYTHON_BIN" - <<'PY'
 src = open("rc5_2_phase2_tests.py").read()
 old = 'check("J4: open returns state", r["state"] == "SERVER_ACTIVATION_READY")'
 new = 'check("J4: open returns state", False)'
@@ -33,14 +33,15 @@ DIFFLINES=$(diff "$SRC/rc5_2_phase2_tests.py" "$CFD/rc5_2_phase2_tests.py" | gre
 echo "línies que difereixen: $DIFFLINES (ha de ser 2)"
 [ "$DIFFLINES" -ne 2 ] && echo "CF-R52: FAIL (diff=$DIFFLINES)" && exit 1
 
-python3 -m py_compile rc5_2_phase2_tests.py 2>"$LOG_DIR/cf_r52_pycompile.err"
+"$PYTHON_BIN" -m py_compile rc5_2_phase2_tests.py 2>"$LOG_DIR/cf_r52_pycompile.err"
 C=$?
 echo "py_compile exit: $C (ha de ser 0)"
 [ $C -ne 0 ] && echo "CF-R52: FAIL (py_compile)" && exit 1
 [ -s "$LOG_DIR/cf_r52_pycompile.err" ] && echo "CF-R52: FAIL (SyntaxError)" && exit 1
 
-export PATH=/root/meshtrainer/.venv/bin:$PATH TMPDIR=/root/tmp_r53
-timeout 300 python3 rc5_2_phase2_tests.py > "$LOG_DIR/RC5_2_CONTROLLED_FAILURE.log" 2>&1
+export PYTHON_BIN="${PYTHON_BIN:-python3}"
+export TMPDIR="${TMPDIR:-/tmp}"
+timeout 300 "$PYTHON_BIN" rc5_2_phase2_tests.py > "$LOG_DIR/RC5_2_CONTROLLED_FAILURE.log" 2>&1
 S=$?
 echo "suite exit: $S (ha de ser no-zero)"
 [ $S -eq 0 ] && echo "CF-R52: FAIL (suite exit 0)" && exit 1

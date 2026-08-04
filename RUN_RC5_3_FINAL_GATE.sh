@@ -61,36 +61,32 @@ echo ""; echo "=== [2/20] py_compile ===" | tee -a "$LOG"
 python3 -m py_compile *.py >> "$LOG" 2>&1; PC=$?
 [ $PC -eq 0 ] && echo "  py_compile: PASS" | tee -a "$LOG" || { echo "  py_compile: FAIL" | tee -a "$LOG"; OVERALL=1; }
 
-# --- 3/4) RC5.3 normal x2 ---
-run_sub "[3/20] RC5.3 normal Run 1" "bash RUN_RC5_3_TESTS.sh" 1200
-run_sub "[4/20] RC5.3 normal Run 2" "python3 rc5_3_tests.py" 600
-# --- 5) RC5.3 adversarial ---
-run_sub "[5/20] RC5.3 adversarial" "bash RUN_RC5_3_ADVERSARIAL_GATE.sh" 700
-# --- 6) RC5.3 mutation ---
-run_sub "[6/20] RC5.3 mutation" "bash RUN_RC5_3_MUTATION_GATE.sh" 5000
+# --- 3) RC5.3 normal (RUN_RC5_3_TESTS.sh ja executa x2 internament) ---
+run_sub "[3/20] RC5.3 normal x2" "bash RUN_RC5_3_TESTS.sh" 1200
+# --- 4) RC5.3 adversarial ---
+run_sub "[4/20] RC5.3 adversarial" "bash RUN_RC5_3_ADVERSARIAL_GATE.sh" 700
+# --- 5) RC5.3 mutation ---
+run_sub "[5/20] RC5.3 mutation" "bash RUN_RC5_3_MUTATION_GATE.sh" 5000
 
-# --- 7/8) RC5.2 normal x2 ---
-run_sub "[7/20] RC5.2 normal Run 1" "python3 rc5_2_phase2_tests.py" 400
-run_sub "[8/20] RC5.2 normal Run 2" "python3 rc5_2_phase2_tests.py" 400
-# --- 9) RC5.2 adversarial ---
-run_sub "[9/20] RC5.2 adversarial" "bash RUN_RC5_2_PHASE2_ADVERSARIAL_GATE.sh" 500
-# --- 10) RC5.2 mutation ---
-run_sub "[10/20] RC5.2 mutation" "bash RUN_RC5_2_PHASE2_MUTATION_GATE.sh" 5000
+# --- 6) RC5.2 normal (runner oficial, x2 internament) ---
+run_sub "[6/20] RC5.2 normal x2" "bash RUN_RC5_2_PHASE2_TESTS.sh" 700
+# --- 7) RC5.2 adversarial ---
+run_sub "[7/20] RC5.2 adversarial" "bash RUN_RC5_2_PHASE2_ADVERSARIAL_GATE.sh" 500
+# --- 8) RC5.2 mutation ---
+run_sub "[8/20] RC5.2 mutation" "bash RUN_RC5_2_PHASE2_MUTATION_GATE.sh" 5000
 
-# --- 11/12) Phase 1 x2 ---
-run_sub "[11/20] Phase 1 Run 1" "python3 rc5_2_phase1_tests.py" 400
-run_sub "[12/20] Phase 1 Run 2" "python3 rc5_2_phase1_tests.py" 400
-# --- 13) Phase 1 mutation ---
-run_sub "[13/20] Phase 1 mutation" "bash RUN_RC5_2_PHASE1_MUTATION_GATE.sh" 2500
+# --- 9) Phase 1 (runner oficial, x2 internament) ---
+run_sub "[9/20] Phase 1 x2" "bash RUN_RC5_2_PHASE1_TESTS.sh" 700
+# --- 10) Phase 1 mutation ---
+run_sub "[10/20] Phase 1 mutation" "bash RUN_RC5_2_PHASE1_MUTATION_GATE.sh" 2500
 
-# --- 14/15) RC5.1 x2 ---
-run_sub "[14/20] RC5.1 Run 1" "bash RUN_RC5_1_TESTS.sh" 700
-run_sub "[15/20] RC5.1 Run 2" "bash RUN_RC5_1_TESTS.sh" 700
-# --- 16) RC5.1 mutation ---
-run_sub "[16/20] RC5.1 mutation" "bash RUN_RC5_1_MUTATION_GATE.sh" 2500
+# --- 11) RC5.1 (RUN_RC5_1_TESTS.sh ja executa x2 internament) ---
+run_sub "[11/20] RC5.1 x2" "bash RUN_RC5_1_TESTS.sh" 700
+# --- 12) RC5.1 mutation ---
+run_sub "[12/20] RC5.1 mutation" "bash RUN_RC5_1_MUTATION_GATE.sh" 2500
 
 # --- 17) restart subprocess ---
-echo ""; echo "=== [17/20] restart subprocess ===" | tee -a "$LOG"
+echo ""; echo "=== [13/16] restart subprocess ===" | tee -a "$LOG"
 timeout 400 python3 -c "
 import rc5_3_tests as t
 t.test_process_restart_real()
@@ -99,18 +95,18 @@ print('restart subprocess: PASS')
 [ $RS -eq 0 ] && echo "  restart subprocess: PASS" | tee -a "$LOG" || { echo "  restart subprocess: FAIL" | tee -a "$LOG"; OVERALL=1; }
 
 # --- 18) controlled-failure RC5.3 + RC5.2 (REAL, substitució exacta) ---
-echo ""; echo "=== [18/20] controlled-failure RC5.3 ===" | tee -a "$LOG"
+echo ""; echo "=== [14/16] controlled-failure RC5.3 ===" | tee -a "$LOG"
 bash RUN_RC5_3_CONTROLLED_FAILURE.sh >> "$LOG" 2>&1; CF3=$?
 if [ $CF3 -eq 0 ]; then echo "  controlled-failure RC5.3: PASS" | tee -a "$LOG"
 else echo "  controlled-failure RC5.3: FAIL (exit $CF3)" | tee -a "$LOG"; OVERALL=1; fi
 
-echo ""; echo "=== [18b/20] controlled-failure RC5.2 ===" | tee -a "$LOG"
+echo ""; echo "=== [15/16] controlled-failure RC5.2 ===" | tee -a "$LOG"
 bash RUN_RC5_2_CONTROLLED_FAILURE.sh >> "$LOG" 2>&1; CF2=$?
 if [ $CF2 -eq 0 ]; then echo "  controlled-failure RC5.2: PASS" | tee -a "$LOG"
 else echo "  controlled-failure RC5.2: FAIL (exit $CF2)" | tee -a "$LOG"; OVERALL=1; fi
 
 # --- 19) manifest (cobertura COMPLETA: tots els fitxers regulars menys MANIFEST.sha256) ---
-echo ""; echo "=== [19/20] manifest ===" | tee -a "$LOG"
+echo ""; echo "=== [16/16] manifest ===" | tee -a "$LOG"
 sha256sum -c MANIFEST.sha256 >> "$LOG" 2>&1; MF=$?
 python3 - <<'PY' >> "$LOG" 2>&1
 import os, sys
@@ -144,7 +140,7 @@ else
 fi
 
 # --- 20) clean extraction ---
-echo ""; echo "=== [20/20] clean extraction ===" | tee -a "$LOG"
+echo ""; echo "=== [16b/16] clean extraction ===" | tee -a "$LOG"
 TARBALL=$(ls meshtrainer_rc53_stageb_r6_final_*.tar.gz 2>/dev/null | head -1 || true)
 if [ -n "$TARBALL" ]; then
     EX_DIR="${TMPDIR:-/tmp}/rc53_extract_$$"

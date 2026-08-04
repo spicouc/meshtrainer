@@ -5,7 +5,7 @@ echo "============================================"
 echo "  RC5.1 R9 — REAL MUTATION GATE"
 echo "============================================"
 SRC="$(pwd)"
-TMPDIR="/tmp/rc5_mutation_$$"
+TMPDIR="${TMPDIR:-/tmp}/rc5_mutation_$$"
 
 echo ""
 echo "=== BASELINE ==="

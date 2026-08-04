@@ -3,7 +3,7 @@ set -euo pipefail
 echo "============================================"
 echo "  RC5.2 Phase 1 R5 — FINAL MUTATION GATE"
 echo "============================================"
-SRC="$(pwd)"; TMPDIR="/tmp/p1r3_mut_$$"
+SRC="$(pwd)"; TMPDIR="${TMPDIR:-/tmp}/p1r3_mut_$$"
 echo ""; echo "=== BASELINE ==="
 python3 -m py_compile *.py && echo "  py_compile: PASS"
 set +e; timeout 300 python3 rc5_2_phase1_tests.py > /dev/null 2>&1; S=$?; set -e

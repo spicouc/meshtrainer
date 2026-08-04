@@ -1,0 +1,150 @@
+============================================================
+  RC5.3 Stage B R5 — REAL Two-Worker Tests (binding API)
+============================================================
+
+--- test_server_model_v1_binding ---
+/root/tmp_r53/mf_probe_aFCyzH/rc5_2_tensor_bundle.py:71: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
+  arr = torch.frombuffer(chunk, dtype=torch.float32).reshape(t["shape"]).clone()
+  ✅ SM1: real server hash accepted
+  ✅ SM2: zero missing/unexpected (validation passes)
+  ✅ SM3: reconstruction deterministic
+  ✅ SM4: fake server hash rejected
+  ✅ SM5: altered server bytes rejected
+  ✅ SM6: different seed -> different artifact
+  ✅ SM7: different server models -> different activations
+  ✅ SM8: same bytes -> identical activations
+  ✅ SM9: step.open fake server_model_hash rejected
+  ✅ SM10: step.open real server_model_hash accepted
+
+--- test_atomic_registration ---
+  ✅ AT1: valid model registered
+  ✅ AT2: inconsistent adapter REJECTED
+  ✅ AT3: original server_model_hash intact
+  ✅ AT4: original adapter_0_hash intact
+  ✅ AT5: original worker_model_hash intact
+  ✅ AT6: no partial round_adapter row
+
+--- test_assignment_idempotency ---
+  ✅ AS1: new assignment ACCEPTED
+  ✅ AS2: same id + same payload -> same response
+  ✅ AS3: changed shard REJECTED
+  ✅ AS4: changed ETT REJECTED
+  ✅ AS5: changed worker REJECTED
+  ✅ AS6: changed hashes REJECTED
+  ✅ AS7: request_sha + created_at persisted
+
+--- test_calibration_idempotency ---
+  ✅ CA1: calibration accepted
+  ✅ CA2: same key + same payload -> same response
+  ✅ CA3: same nonce + different payload REJECTED
+  ✅ CA4: no nonce / defaults REJECTED
+  ✅ CA5: uncalibrated worker rejected
+
+--- test_round_lineage_explicit ---
+  ✅ LN1: round 1 index
+  ✅ LN4: missing parent rejected
+  ✅ LN2: round 2 index
+  ✅ LN3: round 10 index (explicit parent)
+  ✅ LN5: non-CLOSED parent rejected
+  ✅ LN6: parent_round_id persisted
+  ✅ LN7: round2 wrong parent adapter REJECTED
+  ✅ LN8: parent_adapter_hash == parent global
+
+--- test_secure_contributions ---
+  ✅ SC1: fake cid rejected
+  ✅ SC2: real contribution accepted
+  ✅ SC3: receipt mismatch rejected
+  ✅ SC4: source_request_sha persisted
+  ✅ SC5: same cid + same source -> same response
+
+--- test_adapter_worker_base_invariants ---
+  ✅ IW1: worker A adapter == worker B adapter
+  ✅ IW2: worker adapter == round.base_adapter_hash
+  ✅ IW3: worker adapter == round.adapter_0_hash
+  ✅ IW4: base_adapter_hash == adapter_0_hash
+  ✅ IW5: worker A base == worker B base
+  ✅ IW6: worker base invariant across rounds
+  ✅ IW7: round2 base_adapter == parent global adapter
+  ✅ IW8: round2 parent_adapter_hash == adapter_0
+  ✅ IW9: worker adapter != adapter_0 rejected
+  ✅ IW10: different worker base between rounds rejected
+  ✅ IW11: stale parent adapter rejected
+  ✅ IW12: server model != registered rejected
+
+--- test_fedavg_oracle_independent ---
+  ✅ OR1: exactly 2 ACTIVE contributions
+  ✅ OR2: all ETT > 0
+  ✅ OR3: oracle adapter_1 == Coordinator adapter_1
+  ✅ OR4: oracle order-invariant
+  ✅ OR5: weighted != simple average (ETT-dependent)
+  ✅ OR8: fedavg excludes SUPERSEDED
+  ✅ OR9: oracle adapter_2 == Coordinator adapter_2
+
+--- test_two_real_workers_full_flow ---
+  ✅ W1: two workers completed
+  ✅ W2: distinct ETT (real shards)
+  ✅ W3: distinct receipts
+  ✅ W4: distinct backward_ids
+  ✅ W5: real delta hashes
+  ✅ W6: ETT derived from labels
+  ✅ W8: worker A adapter hash == worker B
+  ✅ W9: worker adapter == round.base_adapter_hash
+  ✅ W10: worker adapter == round.adapter_0_hash
+  ✅ W11: round.base_adapter_hash == adapter_0_hash
+  ✅ W7: quorum met
+
+--- test_shards_real_data ---
+  ✅ S1: token content differs
+  ✅ S2: label content differs
+  ✅ S3: ETT A
+  ✅ S4: ETT B
+
+--- test_fedavg_ett_weighted_real ---
+  ✅ F1: FedAvg A == offline oracle
+  ✅ F2: deltas are REAL (non-zero)
+  ✅ F3: FedAvg order-invariant
+
+--- test_round2_lineage_real ---
+  ✅ R1: round1 closed
+  ✅ R2: round2 adapter == adapter1 + delta2
+  ✅ R4: adapter1 != adapter0 (real training)
+  ✅ R7: worker base invariant across rounds
+  ✅ R8: different worker base in round 2 rejected
+  ✅ R3: stale adapter rejected
+  ✅ R5: wrong worker_model_hash rejected
+  ✅ R6: duplicate worker assignment rejected
+
+--- test_budget_enforced ---
+  ✅ BE1: over-budget assignment rejected
+  ✅ BE2: no partial over-budget assignment persisted
+
+--- test_revisions_real ---
+  ✅ RV1: rev1 ACTIVE
+  ✅ RV2: rev2 ACTIVE after full flow
+  ✅ RV4: rev1 SUPERSEDED after rev2 ACTIVE
+  ✅ RV5: only rev2 ACTIVE
+  ✅ RV6: FedAvg excludes SUPERSEDED
+
+--- test_quorum_exact_set ---
+  ✅ Q1: quorum not met with 1/2
+  ✅ Q2: close before quorum rejected
+
+--- test_state_machine_real ---
+  ✅ ST1: calibration before OPEN rejected
+  ✅ ST2: assignment before calibration rejected
+
+--- test_process_restart_real ---
+  ✅ P1: worker A process OK (COMMITTED)
+  ✅ P2: worker B process OK (after restart)
+  ✅ P3: receipt recovered byte-for-byte
+  ✅ P4: upload idempotent after restart
+  ✅ P5: round closed after restart
+  ✅ P6: restart adapter == no-restart adapter
+
+--- test_isolation_real ---
+  ✅ I1: alien backward_id rejected
+  ✅ I2: alien contribution rejected
+
+============================================================
+  Resultat: 105/105 PASS, 0 FAIL
+============================================================

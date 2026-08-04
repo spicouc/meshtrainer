@@ -1,0 +1,62 @@
+  MUT-R3-01: DETECTED
+      file: rc5_3_multiworker.py
+      pattern: WHERE status='ACTIVE' AND run_id=? AND round_id=?
+      substitution: WHERE status IN ('ACTIVE','SUPERSEDED') AND run_id=? AND round_id=?
+      applied_count: 1  assertion: RV6  exit: 1  tracebacks: 0
+  MUT-R3-02: DETECTED
+      file: rc5_3_multiworker.py
+      pattern: w = r["ett"] / total_ett
+      substitution: w = 1.0 / len(rows)
+      applied_count: 1  assertion: OR3  exit: 1  tracebacks: 0
+  MUT-R3-03: DETECTED
+      file: rc5_3_multiworker.py
+      pattern: WHERE status='ACTIVE' AND run_id=? AND round_id=?
+      substitution: WHERE status='ACTIVE' AND run_id=? AND round_id=? LIMIT 1
+      applied_count: 1  assertion: OR3  exit: 1  tracebacks: 0
+  MUT-R3-04: DETECTED
+      file: rc5_3_multiworker.py
+      pattern: post_A, post_B = pre_A + dA, pre_B + dB
+      substitution: post_A, post_B = pre_A + dA + dA, pre_B + dB + dB
+      applied_count: 1  assertion: OR3  exit: 1  tracebacks: 0
+  MUT-R3-05: DETECTED
+      file: rc5_3_multiworker.py
+      pattern: if hashes.get("base_adapter_hash", "") != expected_base:
+      substitution: if False and hashes.get("base_adapter_hash", "") != expected_base:
+      applied_count: 1  assertion: R3  exit: 1  tracebacks: 0
+  MUT-R3-06: DETECTED
+      file: rc5_3_multiworker.py
+      pattern: if hashes.get(hk, "") != rnd[hk]:
+      substitution: if hk != "worker_model_hash" and hashes.get(hk, "") != rnd[hk]:
+      applied_count: 1  assertion: R5  exit: 1  tracebacks: 0
+  MUT-R3-07: DETECTED
+      file: rc5_3_multiworker.py
+      pattern: if strict_budget and hashes.get("max_micro_batch", mb) > mb:
+      substitution: if False and strict_budget and hashes.get("max_micro_batch", mb) > mb:
+      applied_count: 1  assertion: BE1  exit: 1  tracebacks: 0
+  MUT-R3-08: DETECTED
+      file: rc5_3_multiworker.py
+      pattern: pre_A = pre_tensors["local_layers.0.linear1.lora_A.weight"].clone()
+      substitution: pre_A = torch.zeros(8, 256)  # round2 uses old (zero) adapter
+      applied_count: 1  assertion: OR9  exit: 1  tracebacks: 0
+  MUT-R3-09: DETECTED
+      file: rc5_3_multiworker.py
+      pattern: (cur["assignment_id"], cur["worker_id"], cid)
+      substitution: (cur["assignment_id"], cur["assignment_id"], cid)
+      applied_count: 1  assertion: RV4  exit: 1  tracebacks: 0
+  MUT-R3-10: DETECTED
+      file: rc5_3_multiworker.py
+      pattern: if len(acts) != 1:
+      substitution: if False and len(acts) != 1:
+      applied_count: 1  assertion: Q1  exit: 1  tracebacks: 0
+  MUT-R3-11: DETECTED
+      file: rc5_3_multiworker.py
+      pattern: avg_A += w * tensors["local_layers.0.linear1.lora_A.weight"]
+      substitution: avg_A += w * 0.5 * tensors["local_layers.0.linear1.lora_A.weight"]
+      applied_count: 1  assertion: OR3  exit: 1  tracebacks: 0
+  MUT-R3-12: DETECTED
+      file: rc5_3_multiworker.py
+      pattern: if existing["request_sha"] == sha:
+      substitution: if existing["request_sha"] == sha or existing["request_sha"] != sha:
+      applied_count: 1  assertion: AS3  exit: 1  tracebacks: 0
+Score: 12/12 Invalid: 0 Runtime: 0 Not_applied: 0 Timeouts: 0
+Not detected: 0

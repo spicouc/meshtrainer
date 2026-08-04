@@ -1,0 +1,935 @@
+=== [1/20] dependency check ===
+deps: OK
+  dependency check: PASS
+=== [2/20] py_compile ===
+  py_compile: PASS
+=== [3/20] RC5.3 normal x2 ===
+============================================
+  RC5.3 Stage B R6 — Test Runner
+  LOG_DIR: /root/tmp_r53/tmp.o3LwPQP4cP/ce_gate_B
+============================================
+
+=== RC5.3 Run 1 ===
+Run 1 exit: 0
+
+=== RC5.3 Run 2 ===
+Run 2 exit: 0
+BOTH RUNS: PASS
+  [3/20] RC5.3 normal x2: PASS
+=== [4/20] RC5.3 adversarial ===
+============================================
+  RC5.3 Stage B R6 — ADVERSARIAL GATE (33/33)
+  LOG_DIR: /root/tmp_r53/tmp.o3LwPQP4cP/ce_gate_B
+============================================
+
+=== Adversarial suite ===
+Exit: 0
+  Resultat: 33/33 PASS, 0 FAIL
+============================================================
+  [4/20] RC5.3 adversarial: PASS
+=== [5/20] RC5.3 mutation ===
+============================================
+  RC5.3 Stage B R5 — MUTATION GATE (12/12)
+============================================
+
+=== BASELINE ===
+  py_compile: PASS
+  Baseline: PASS
+  MUT-R3-01: DETECTED
+  MUT-R3-02: DETECTED
+  MUT-R3-03: DETECTED
+  MUT-R3-04: DETECTED
+  MUT-R3-05: DETECTED
+  MUT-R3-06: DETECTED
+  MUT-R3-07: DETECTED
+  MUT-R3-08: DETECTED
+  MUT-R3-09: DETECTED
+  MUT-R3-10: DETECTED
+  MUT-R3-11: DETECTED
+  MUT-R3-12: DETECTED
+
+Score: 12/12 Invalid: 0 Runtime: 0 Not_applied: 0 Timeouts: 0
+Not detected: 0
+  [5/20] RC5.3 mutation: PASS
+=== [6/20] RC5.2 normal x2 ===
+============================================
+  RC5.2 Phase 2 R12 — Test Runner
+  LOG_DIR: /root/tmp_r53/tmp.o3LwPQP4cP/ce_gate_B
+============================================
+
+=== Phase 2 Run 1 ===
+Run 1 exit: 0
+
+=== Phase 2 Run 2 ===
+Run 2 exit: 0
+BOTH RUNS: PASS
+  [6/20] RC5.2 normal x2: PASS
+=== [7/20] RC5.2 adversarial ===
+============================================
+  RC5.2 Phase 2 R12 — ADVERSARIAL GATE
+  LOG_DIR: /root/tmp_r53/tmp.o3LwPQP4cP/ce_gate_B
+============================================
+
+=== Adversarial suite ===
+Exit: 0
+============================================================
+  Resultat: 21/21 PASS, 0 FAIL
+============================================================
+  [7/20] RC5.2 adversarial: PASS
+=== [8/20] RC5.2 mutation ===
+============================================
+  RC5.2 Phase 2 R12 — MUTATION GATE (12/12)
+============================================
+
+=== BASELINE ===
+  py_compile: PASS
+  Baseline: PASS
+  MUT-P2-01: DETECTED
+  MUT-P2-02: DETECTED
+  MUT-P2-03: DETECTED
+  MUT-P2-04: DETECTED
+  MUT-P2-05: DETECTED
+  MUT-P2-06: DETECTED
+  MUT-P2-07: DETECTED
+  MUT-P2-08: DETECTED
+  MUT-P2-09: DETECTED
+  MUT-P2-10: DETECTED
+  MUT-P2-11: DETECTED
+  MUT-P2-12: DETECTED
+
+Score: 12/12 Invalid: 0 Runtime: 0 Not_applied: 0 Timeouts: 0
+  [8/20] RC5.2 mutation: PASS
+=== [9/20] Phase 1 x2 ===
+============================================
+  RC5.2 Phase 1 — Test Runner
+============================================
+Python: Python 3.13.5
+Found: rc5_2_numerical_profile.py
+Found: rc5_2_lora.py
+Found: rc5_2_numerical_models.py
+Found: rc5_2_phase1_tests.py
+All deps present.
+=== RUN 1 ===
+============================================================
+  RC5.2 Phase 1 R5 — Numerical Tests
+============================================================
+
+--- P1-N01 ---
+  ✅ P1-N01: hash stable
+
+--- P1-N02 ---
+  ✅ P1-N02: all state identical, 0 missing, 0 unexpected
+
+--- P1-N03 ---
+  ✅ P1-N03: server activation
+
+--- P1-N04 ---
+  ✅ P1-N04: cut activation
+
+--- P1-N05 ---
+  ✅ P1-N05: logits
+
+--- P1-N06 ---
+  ✅ P1-N06: loss
+
+--- P1-N07 ---
+  ✅ P1-N07: cut gradient
+
+--- P1-N08 ---
+  ✅ P1-N08: LoRA-A gradient
+
+--- P1-N09 ---
+  ✅ P1-N09: LoRA-B gradient
+
+--- P1-N10 ---
+  ✅ P1-N10: optimizer == LoRA
+
+--- P1-N11 ---
+  ✅ P1-N11: base requires_grad False
+
+--- P1-N12 ---
+  ✅ P1-N12: base grad None after backward
+
+--- P1-N13 ---
+  ✅ P1-N13: base weights unchanged
+
+--- P1-N14 ---
+  ✅ P1-N14: LoRA-A post-step
+
+--- P1-N15 ---
+  ✅ P1-N15: LoRA-B post-step
+
+--- P1-N16 ---
+  ✅ P1-N16: delta-A
+
+--- P1-N17 ---
+  ✅ P1-N17: delta-B
+
+--- P1-N18 ---
+  ✅ P1-N18: delta non-zero
+
+--- P1-N19 ---
+  ✅ P1-N19: deterministic
+
+--- P1-N20 ---
+  ✅ P1-N20: step2 loss
+  ✅ P1-N20: grad A
+  ✅ P1-N20: grad B
+  ✅ P1-N20: LoRA-A
+  ✅ P1-N20: LoRA-B
+  ✅ P1-N20: delta-A
+  ✅ P1-N20: delta-B
+
+--- P1-N21 ---
+  ✅ P1-N21: loss matches oracle
+  ✅ P1-N21: label change alters loss
+
+--- P1-N22 ---
+  ✅ P1-N22: ETT=127
+
+--- P1-N23 ---
+  ✅ P1-N23: early positions unaffected by future
+  ✅ P1-N23: late positions differ (non-trivial)
+  ✅ P1-N23: causal_mask[0,1]==-inf
+
+--- P1-N24 ---
+  ✅ P1-N24: monolithic base frozen
+
+--- P1-N25 ---
+  ✅ P1-N25: monolithic base grad None
+
+--- P1-N26 ---
+  ✅ P1-N26: monolithic base unchanged
+
+============================================================
+  Resultat: 35/35 PASS, 0 FAIL
+============================================================
+
+=== RUN 2 ===
+============================================================
+  RC5.2 Phase 1 R5 — Numerical Tests
+============================================================
+
+--- P1-N01 ---
+  ✅ P1-N01: hash stable
+
+--- P1-N02 ---
+  ✅ P1-N02: all state identical, 0 missing, 0 unexpected
+
+--- P1-N03 ---
+  ✅ P1-N03: server activation
+
+--- P1-N04 ---
+  ✅ P1-N04: cut activation
+
+--- P1-N05 ---
+  ✅ P1-N05: logits
+
+--- P1-N06 ---
+  ✅ P1-N06: loss
+
+--- P1-N07 ---
+  ✅ P1-N07: cut gradient
+
+--- P1-N08 ---
+  ✅ P1-N08: LoRA-A gradient
+
+--- P1-N09 ---
+  ✅ P1-N09: LoRA-B gradient
+
+--- P1-N10 ---
+  ✅ P1-N10: optimizer == LoRA
+
+--- P1-N11 ---
+  ✅ P1-N11: base requires_grad False
+
+--- P1-N12 ---
+  ✅ P1-N12: base grad None after backward
+
+--- P1-N13 ---
+  ✅ P1-N13: base weights unchanged
+
+--- P1-N14 ---
+  ✅ P1-N14: LoRA-A post-step
+
+--- P1-N15 ---
+  ✅ P1-N15: LoRA-B post-step
+
+--- P1-N16 ---
+  ✅ P1-N16: delta-A
+
+--- P1-N17 ---
+  ✅ P1-N17: delta-B
+
+--- P1-N18 ---
+  ✅ P1-N18: delta non-zero
+
+--- P1-N19 ---
+  ✅ P1-N19: deterministic
+
+--- P1-N20 ---
+  ✅ P1-N20: step2 loss
+  ✅ P1-N20: grad A
+  ✅ P1-N20: grad B
+  ✅ P1-N20: LoRA-A
+  ✅ P1-N20: LoRA-B
+  ✅ P1-N20: delta-A
+  ✅ P1-N20: delta-B
+
+--- P1-N21 ---
+  ✅ P1-N21: loss matches oracle
+  ✅ P1-N21: label change alters loss
+
+--- P1-N22 ---
+  ✅ P1-N22: ETT=127
+
+--- P1-N23 ---
+  ✅ P1-N23: early positions unaffected by future
+  ✅ P1-N23: late positions differ (non-trivial)
+  ✅ P1-N23: causal_mask[0,1]==-inf
+
+--- P1-N24 ---
+  ✅ P1-N24: monolithic base frozen
+
+--- P1-N25 ---
+  ✅ P1-N25: monolithic base grad None
+
+--- P1-N26 ---
+  ✅ P1-N26: monolithic base unchanged
+
+============================================================
+  Resultat: 35/35 PASS, 0 FAIL
+============================================================
+
+============================================
+  Phase 1 Run 1: PASS
+  Phase 1 Run 2: PASS
+  Timeouts: 0
+  Flaky: 0
+  Mandatory skips: 0
+============================================
+  [9/20] Phase 1 x2: PASS
+=== [10/20] Phase 1 mutation ===
+============================================
+  RC5.2 Phase 1 R5 — FINAL MUTATION GATE
+============================================
+
+=== BASELINE ===
+  py_compile: PASS
+  Baseline: PASS
+  MUT-P1-01-randn-grad: DETECTED
+  MUT-P1-02-server-ignore-labels: DETECTED
+  MUT-P1-03-bypass-worker-diff: DETECTED
+  MUT-P1-04-extra-param: DETECTED
+  MUT-P1-05-alter-gradient: DETECTED
+MUT-06 applied: ReLU in WorkerNumericalModel only
+  MUT-P1-06-relu-worker-lora: DETECTED
+
+Score: 6/6 Invalid: 0 Runtime: 0 Not_applied: 0 Timeouts: 0
+  [10/20] Phase 1 mutation: PASS
+=== [11/20] RC5.1 x2 ===
+============================================
+  RC5.1-R10 — Test Runner
+============================================
+Python: Python 3.13.5
+Dir:    /root/tmp_r53/ce_B_OV3sut
+
+All deps present.
+
+=== RUN 1 ===
+============================================================
+  RC5.1-R10 — T-R2 Tests
+============================================================
+
+--- T-R2-01 ---
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+
+--- T-R2-02 ---
+  ✅ T-R2-02: activation no deadlock
+
+--- T-R2-03 ---
+  ✅ T-R2-03: unique ACTIVE for same key
+
+--- T-R2-04 ---
+  ✅ T-R2-04: unknown worker rejected
+
+--- T-R2-05 ---
+  ✅ T-R2-05: wrong token rejected
+
+--- T-R2-06 ---
+  ✅ T-R2-06: retired key verifies old receipt
+
+--- T-R2-07 ---
+  ✅ T-R2-07: retired key cannot sign (raised)
+
+--- T-R2-08 ---
+  ✅ T-R2-08: delta_b64 is valid base64
+  ✅ T-R2-08: delta_sha256 is 64 hex
+
+--- T-R2-09 ---
+  ✅ T-R2-09: wrong SHA rejected
+
+--- T-R2-10 ---
+  ✅ T-R2-10: nonce not consumed on failed upload
+
+--- T-R2-11 ---
+  ✅ T-R2-11: missing delta blocks round.close
+
+--- T-R2-12 ---
+  ✅ T-R2-12: corrupted delta blocks round.close
+
+--- T-R2-13 ---
+  ✅ T-R2-13: FedAvg result
+  ✅ T-R2-13: round.close handles empty
+
+--- T-R2-14 ---
+  ✅ T-R2-14: base + delta
+
+--- T-R2-15 ---
+  ✅ T-R2-15: hashes differ
+
+--- T-R2-16 ---
+  ✅ T-R2-16: round.close returns COMPLETED
+
+--- T-R2-17 ---
+  ✅ T-R2-17: double close rejected
+
+--- T-R2-18 ---
+  ✅ T-R2-18: checkpoint persisted
+
+--- T-R2-19 ---
+  ✅ T-R2-19: session restored
+  ✅ T-R2-19: nonces restored
+  ✅ T-R2-19: contributions restored
+
+--- T-R2-20 ---
+  ✅ T-R2-20: round closed
+  ✅ T-R2-20: 1 contribution aggregated
+
+--- R4-expired ---
+  ✅ R4-expired: status REJECTED
+  ✅ R4-expired: reason is 'receipt expired'
+
+--- R4-hash-evidence ---
+  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "23f7d46a2e4fd4f4", "revision": 1, "status": "RECEIVED"}, "id": "1"}
+  ✅ R4-hash-evidence: upload accepted
+  ✅ R4-hash-evidence: file SHA matches our_hash
+
+--- R5-08-fedavg ---
+  ✅ R5-08: round COMPLETED
+  ✅ R5-08: 2 contributions
+  ✅ R5-08: ett=40
+  ✅ R5-08: global delta file exists
+  ✅ R5-08: w = 2.5
+  ✅ R5-08: adapter file exists
+
+--- MUT-1-hmac ---
+  ✅ MUT-1: HMAC check alive
+
+--- MUT-2-ownership ---
+  ✅ MUT-2: ownership check alive
+
+--- MUT-3-nonce ---
+  ✅ MUT-3a: first upload RECEIVED
+  ✅ MUT-3b: nonce replay REJECTED
+
+--- MUT-4-sha ---
+  ✅ MUT-4: delta SHA verification alive
+
+--- MUT-5-rc3 ---
+  ✅ MUT-5: RC3 join check alive
+
+============================================================
+  Resultat: 45/45 PASS, 0 FAIL
+  Timeouts: 0
+============================================================
+============================================================
+  RC5.1-R10 — Tests
+============================================================
+
+--- R6-01-e2e ---
+[SPLIT SERVER] 127.0.0.1:18802  d_model=32
+  ✅ R6-01: step.open
+  ✅ R6-01: step.embedding
+/root/tmp_r53/ce_B_OV3sut/rc5_split_server.py:230: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
+  act = torch.frombuffer(base64.b64decode(act_b64), dtype=torch.float32).reshape(1, -1)
+  ✅ R6-01: step.cut_activation
+  ✅ R6-01: step.cut_gradient
+  ✅ R6-01: loss
+  ✅ R6-01: step.commit
+  ✅ R6-01: receipt
+  ✅ R6-01: delta non-zero (not zero-SHA)
+  DEBUG: delta_sha[:16]=8db590f119444001, zero_sha[:16]=ad7facb2586fc6e9, match=False
+  ✅ R6-01: delta != zero-tensor SHA
+
+--- R6-02-revisions ---
+  ✅ R6-A: v1 ACTIVE
+  ✅ R6-A: v2 RECEIVED
+  ✅ R6-B: v1 still ACTIVE
+  ✅ R6-B: v2 VALIDATED
+  ✅ R6-C: v1 SUPERSEDED
+  ✅ R6-C: v2 ACTIVE
+  ✅ R6-D: v2 still ACTIVE
+  ✅ R6-D: 1 aggregated
+
+--- R6-03-negative ---
+  ✅ R6-03-1: SHA diff
+  ✅ R6-03-2: bytes diff
+  ✅ R6-03-3: SHA absent
+  ✅ R6-03-4: 63 chars
+  ✅ R6-03-5: non-hex
+  ✅ R6-03-6: b64 absent
+  ✅ R6-03-7: bad b64
+  ✅ R6-03-8: byte alter
+  ✅ R6-03-9: nonces not consumed after reject
+  ✅ R6-03-10a: first fail nonce not consumed
+  ✅ R6-03-10b: second success nonce exists
+  ✅ R6-03-10c: retry OK
+
+--- R6-05-split-direct ---
+[SPLIT SERVER] 127.0.0.1:18803  d_model=32
+  ✅ R6-05-1: alien -32003
+  ✅ R6-05-2: illegal transition -32003
+============================================================
+  Resultat: 31/31 PASS, 0 FAIL
+  COUNTS: {'protocol': 0, 'security': 2, 'integrity': 12, 'numerical': 0, 'ledger': 8, 'persistence': 0, 'e2e': 9}
+============================================================
+
+=== RUN 2 ===
+============================================================
+  RC5.1-R10 — T-R2 Tests
+============================================================
+
+--- T-R2-01 ---
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+  ✅ T-R2-01: work.request no deadlock
+
+--- T-R2-02 ---
+  ✅ T-R2-02: activation no deadlock
+
+--- T-R2-03 ---
+  ✅ T-R2-03: unique ACTIVE for same key
+
+--- T-R2-04 ---
+  ✅ T-R2-04: unknown worker rejected
+
+--- T-R2-05 ---
+  ✅ T-R2-05: wrong token rejected
+
+--- T-R2-06 ---
+  ✅ T-R2-06: retired key verifies old receipt
+
+--- T-R2-07 ---
+  ✅ T-R2-07: retired key cannot sign (raised)
+
+--- T-R2-08 ---
+  ✅ T-R2-08: delta_b64 is valid base64
+  ✅ T-R2-08: delta_sha256 is 64 hex
+
+--- T-R2-09 ---
+  ✅ T-R2-09: wrong SHA rejected
+
+--- T-R2-10 ---
+  ✅ T-R2-10: nonce not consumed on failed upload
+
+--- T-R2-11 ---
+  ✅ T-R2-11: missing delta blocks round.close
+
+--- T-R2-12 ---
+  ✅ T-R2-12: corrupted delta blocks round.close
+
+--- T-R2-13 ---
+  ✅ T-R2-13: FedAvg result
+  ✅ T-R2-13: round.close handles empty
+
+--- T-R2-14 ---
+  ✅ T-R2-14: base + delta
+
+--- T-R2-15 ---
+  ✅ T-R2-15: hashes differ
+
+--- T-R2-16 ---
+  ✅ T-R2-16: round.close returns COMPLETED
+
+--- T-R2-17 ---
+  ✅ T-R2-17: double close rejected
+
+--- T-R2-18 ---
+  ✅ T-R2-18: checkpoint persisted
+
+--- T-R2-19 ---
+  ✅ T-R2-19: session restored
+  ✅ T-R2-19: nonces restored
+  ✅ T-R2-19: contributions restored
+
+--- T-R2-20 ---
+  ✅ T-R2-20: round closed
+  ✅ T-R2-20: 1 contribution aggregated
+
+--- R4-expired ---
+  ✅ R4-expired: status REJECTED
+  ✅ R4-expired: reason is 'receipt expired'
+
+--- R4-hash-evidence ---
+  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "53571aa15d4c5185", "revision": 1, "status": "RECEIVED"}, "id": "1"}
+  ✅ R4-hash-evidence: upload accepted
+  ✅ R4-hash-evidence: file SHA matches our_hash
+
+--- R5-08-fedavg ---
+  ✅ R5-08: round COMPLETED
+  ✅ R5-08: 2 contributions
+  ✅ R5-08: ett=40
+  ✅ R5-08: global delta file exists
+  ✅ R5-08: w = 2.5
+  ✅ R5-08: adapter file exists
+
+--- MUT-1-hmac ---
+  ✅ MUT-1: HMAC check alive
+
+--- MUT-2-ownership ---
+  ✅ MUT-2: ownership check alive
+
+--- MUT-3-nonce ---
+  ✅ MUT-3a: first upload RECEIVED
+  ✅ MUT-3b: nonce replay REJECTED
+
+--- MUT-4-sha ---
+  ✅ MUT-4: delta SHA verification alive
+
+--- MUT-5-rc3 ---
+  ✅ MUT-5: RC3 join check alive
+
+============================================================
+  Resultat: 45/45 PASS, 0 FAIL
+  Timeouts: 0
+============================================================
+============================================================
+  RC5.1-R10 — Tests
+============================================================
+
+--- R6-01-e2e ---
+[SPLIT SERVER] 127.0.0.1:18802  d_model=32
+  ✅ R6-01: step.open
+  ✅ R6-01: step.embedding
+/root/tmp_r53/ce_B_OV3sut/rc5_split_server.py:230: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
+  act = torch.frombuffer(base64.b64decode(act_b64), dtype=torch.float32).reshape(1, -1)
+  ✅ R6-01: step.cut_activation
+  ✅ R6-01: step.cut_gradient
+  ✅ R6-01: loss
+  ✅ R6-01: step.commit
+  ✅ R6-01: receipt
+  ✅ R6-01: delta non-zero (not zero-SHA)
+  DEBUG: delta_sha[:16]=8db590f119444001, zero_sha[:16]=ad7facb2586fc6e9, match=False
+  ✅ R6-01: delta != zero-tensor SHA
+
+--- R6-02-revisions ---
+  ✅ R6-A: v1 ACTIVE
+  ✅ R6-A: v2 RECEIVED
+  ✅ R6-B: v1 still ACTIVE
+  ✅ R6-B: v2 VALIDATED
+  ✅ R6-C: v1 SUPERSEDED
+  ✅ R6-C: v2 ACTIVE
+  ✅ R6-D: v2 still ACTIVE
+  ✅ R6-D: 1 aggregated
+
+--- R6-03-negative ---
+  ✅ R6-03-1: SHA diff
+  ✅ R6-03-2: bytes diff
+  ✅ R6-03-3: SHA absent
+  ✅ R6-03-4: 63 chars
+  ✅ R6-03-5: non-hex
+  ✅ R6-03-6: b64 absent
+  ✅ R6-03-7: bad b64
+  ✅ R6-03-8: byte alter
+  ✅ R6-03-9: nonces not consumed after reject
+  ✅ R6-03-10a: first fail nonce not consumed
+  ✅ R6-03-10b: second success nonce exists
+  ✅ R6-03-10c: retry OK
+
+--- R6-05-split-direct ---
+[SPLIT SERVER] 127.0.0.1:18803  d_model=32
+  ✅ R6-05-1: alien -32003
+  ✅ R6-05-2: illegal transition -32003
+============================================================
+  Resultat: 31/31 PASS, 0 FAIL
+  COUNTS: {'protocol': 0, 'security': 2, 'integrity': 12, 'numerical': 0, 'ledger': 8, 'persistence': 0, 'e2e': 9}
+============================================================
+
+============================================
+  Normal: Run 1=PASS, Run 2=PASS
+  R6:     Run 1=PASS, Run 2=PASS
+  Timeouts: 0
+  Flaky: 0
+  Mandatory skips: 0
+============================================
+  [11/20] RC5.1 x2: PASS
+=== [12/20] RC5.1 mutation ===
+============================================
+  RC5.1 R9 — REAL MUTATION GATE
+============================================
+
+=== BASELINE ===
+  py_compile: PASS
+  Baseline normal: PASS
+  Baseline R6: PASS
+  Baseline: PASS
+  MUT-01-zero-delta: DETECTED (normal=0, r6=1)
+MUT-02 applied
+  MUT-02-no-superseded: DETECTED (normal=0, r6=1)
+  MUT-03-no-sha-bytes: DETECTED (normal=1, r6=1)
+  MUT-04-transitions-open: DETECTED (normal=0, r6=1)
+  MUT-05-ownership-open: DETECTED (normal=0, r6=1)
+
+============================================
+MUT-01-zero-delta: DETECTED
+MUT-02-no-superseded: DETECTED
+MUT-03-no-sha-bytes: DETECTED
+MUT-04-transitions-open: DETECTED
+MUT-05-ownership-open: DETECTED
+
+Mutation score: 5/5
+Invalid mutants: 0
+Runtime-invalid mutants: 0
+Not applied: 0
+Timeouts: 0
+============================================
+  [12/20] RC5.1 mutation: PASS
+=== [13/16] restart subprocess ===
+/root/tmp_r53/ce_B_OV3sut/rc5_2_tensor_bundle.py:71: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
+  arr = torch.frombuffer(chunk, dtype=torch.float32).reshape(t["shape"]).clone()
+  ✅ P1: worker A process OK (COMMITTED)
+  ✅ P2: worker B process OK (after restart)
+  ✅ P3: receipt recovered byte-for-byte
+  ✅ P4: upload idempotent after restart
+  ✅ P5: round closed after restart
+  ✅ P6: restart adapter == no-restart adapter
+restart subprocess: PASS
+  restart subprocess: PASS
+=== [14/16] controlled-failure RC5.3 ===
+=== CONTROLLED-FAILURE RC5.3 ===
+LOG_DIR: /root/tmp_r53/tmp.o3LwPQP4cP/ce_gate_B
+Substitucions aplicades: 1
+applied_count: 1 (ha de ser 1)
+línies que difereixen: 2 (ha de ser 2)
+py_compile exit: 0 (ha de ser 0)
+suite exit: 1 (ha de ser no-zero)
+FAILs: 1 | W1: 1 | tracebacks: 0 | 104/105 PASS, 1 FAIL
+controlled-failure RC5.3: PASS
+  assertion detectora: W1
+  resultat: 104/105 PASS, 1 FAIL
+  controlled-failure RC5.3: PASS
+=== [15/16] controlled-failure RC5.2 ===
+=== CONTROLLED-FAILURE RC5.2 ===
+LOG_DIR: /root/tmp_r53/tmp.o3LwPQP4cP/ce_gate_B
+Substitucions aplicades: 1
+applied_count: 1 (ha de ser 1)
+línies que difereixen: 2 (ha de ser 2)
+py_compile exit: 0 (ha de ser 0)
+suite exit: 1 (ha de ser no-zero)
+FAILs: 1 | J4: 1 | tracebacks: 0 | 48/49 PASS, 1 FAIL
+controlled-failure RC5.2: PASS
+  assertion detectora: J4
+  resultat: 48/49 PASS, 1 FAIL
+  controlled-failure RC5.2: PASS
+=== [16/16] manifest ===
+./ADR_RC5_2_NUMERICAL_SPLIT.md: OK
+./aggregation.py: OK
+./browser-worker/e2e/rc3_worker.spec.ts: OK
+./browser-worker/package.json: OK
+./browser-worker/playwright.config.ts: OK
+./browser-worker/src/compute.ts: OK
+./browser-worker/src/rpc.ts: OK
+./browser-worker/src/state.ts: OK
+./browser-worker/src/ui.ts: OK
+./browser-worker/src/vite-env.d.ts: OK
+./browser-worker/src/worker.ts: OK
+./browser-worker/tests/compute.test.ts: OK
+./browser-worker/tests/state.test.ts: OK
+./browser-worker/vite.config.ts: OK
+./browser-worker/vitest.config.ts: OK
+./CHANGELOG.md: OK
+./config.example.yaml: OK
+./conftest.py: OK
+./DELIVERY_INFO.txt: OK
+./diff: OK
+./DIFF_R4_R5.patch: OK
+./DIFF_R4_R5_STAT.txt: OK
+./docs/rc5/DELIVERY_INFO.txt: OK
+./docs/rc5/RC5_0_DOCUMENT_REVIEW_REPORT.md: OK
+./docs/rc5/RC5_0_PROTOCOL_FREEZE_REPORT.md: OK
+./docs/rc5/RC5_ARCHITECTURE.md: OK
+./docs/rc5/RC5_GATE_SPECIFICATION.md: OK
+./docs/rc5/RC5_NUMERICAL_VALIDATION_PLAN.md: OK
+./docs/rc5/RC5_PROTOCOL_SPEC.md: OK
+./docs/rc5/RC5_SECURITY_MODEL.md: OK
+./docs/rc5/RC5_SPLIT_SERVER_SPEC.md: OK
+./docs/rc5/RC5_WORK_UNIT_MODEL.md: OK
+./docs/rc5/README.md: OK
+./ENVIRONMENT.txt: OK
+./FINAL_AUDIT_REPORT.md: OK
+./.gitignore: OK
+./HANDOVER_V1.md: OK
+./LICENSE: OK
+./logo.jpg: OK
+./mut02_apply.py: OK
+./mut06_relu_worker.py: OK
+./mutants_p2/mut_p2_01_randn_grad.py: OK
+./mutants_p2/mut_p2_02_ignore_labels.py: OK
+./mutants_p2/mut_p2_03_worker_bypass.py: OK
+./mutants_p2/mut_p2_04_base_in_optimizer.py: OK
+./mutants_p2/mut_p2_05_alter_gradient.py: OK
+./mutants_p2/mut_p2_06_relu_worker_lora.py: OK
+./mutants_p2/mut_p2_07_disable_bundle_sha.py: OK
+./mutants_p2/mut_p2_08_accept_diff_payload.py: OK
+./mutants_p2/mut_p2_09_allow_committed_abort.py: OK
+./mutants_p2/mut_p2_10_premature_nonce.py: OK
+./mutants_p2/mut_p2_11_accept_expired.py: OK
+./mutants_p2/mut_p2_12_bypass_artifact_hash.py: OK
+./mutants_r53/mut_r3_01_superseded.py: OK
+./mutants_r53/mut_r3_02_ignore_ett.py: OK
+./mutants_r53/mut_r3_03_omit_active.py: OK
+./mutants_r53/mut_r3_04_apply_twice.py: OK
+./mutants_r53/mut_r3_05_stale_adapter.py: OK
+./mutants_r53/mut_r3_06_ignore_model_hash.py: OK
+./mutants_r53/mut_r3_07_ignore_budget.py: OK
+./mutants_r53/mut_r3_08_round2_old_adapter.py: OK
+./mutants_r53/mut_r3_09_cross_worker.py: OK
+./mutants_r53/mut_r3_10_close_early.py: OK
+./mutants_r53/mut_r3_11_order_dep.py: OK
+./mutants_r53/mut_r3_12_dup_assignment.py: OK
+./r6_tests.py: OK
+./rc3_coordinator.py: OK
+./rc3_integration_tests.py: OK
+./rc3_state.py: OK
+./rc3_train_state.py: OK
+./rc3_worker_real.py: OK
+./rc3_worker_sim.py: OK
+./RC4_1_PERFORMANCE_TABLE.csv: OK
+./RC4_1_RECOMMENDATIONS.md: OK
+./RC4_1_SCALABILITY_REPORT.md: OK
+./RC4_2B_COMPATIBILITY_REPORT.md: OK
+./RC4_2_BENCHMARK_RESULTS.csv: OK
+./RC4_2_FINAL_GATE.md: OK
+./RC4_2_GATE_REPORT.md: OK
+./RC4_2_INFERENCE_EXAMPLES.md: OK
+./RC4_2_QUALITY_REPORT.md: OK
+./RC4_3_FAILURE_MATRIX.md: OK
+./RC4_3_GATE_REPORT.md: OK
+./RC4_3_RESILIENCE_REPORT.md: OK
+./RC4_4_AUTOMATION_REPORT.md: OK
+./RC4_4_GATE_REPORT.md: OK
+./RC4_4_PIPELINE_LOG.md: OK
+./RC4_4_RELEASE_REPORT.md: OK
+./RC4_5_CONFIGURATION_REFERENCE.md: OK
+./RC4_5_DEPLOYMENT_GUIDE.md: OK
+./RC4_5_GATE_REPORT.md: OK
+./RC4_5_INSTALLATION_GUIDE.md: OK
+./RC4_5_OPERATIONS_MANUAL.md: OK
+./RC4_5_PRODUCTION_CHECKLIST.md: OK
+./RC4_6_GATE_FINAL.md: OK
+./RC4_AUTOMATION_PLAN.md: OK
+./RC4_BASELINE_PLAN.md: OK
+./RC4_GATE_SPECIFICATION.md: OK
+./RC4_MASTER_PLAN.md: OK
+./RC4_PRODUCTION_PLAN.md: OK
+./RC4_RESILIENCE_PLAN.md: OK
+./rc4_run.py: OK
+./RC4_SCALABILITY_PLAN.md: OK
+./RC5_1_FINAL_REPORT.md: OK
+./RC5_1_R10_TEST_MATRIX.md: OK
+./rc5_2_adversarial_tests.py: OK
+./rc5_2_artifacts.py: OK
+./rc5_2_canonical.py: OK
+./rc5_2_coordinator.py: OK
+./rc5_2_db.py: OK
+./rc5_2_http_server.py: OK
+./RC5_2_IMPLEMENTATION_PLAN.md: OK
+./rc5_2_jsonrpc.py: OK
+./rc5_2_lora.py: OK
+./rc5_2_numerical_adapter.py: OK
+./rc5_2_numerical_models.py: OK
+./rc5_2_numerical_profile.py: OK
+./RC5_2_NUMERICAL_TEST_PLAN.md: OK
+./RC5_2_PHASE1_FINAL_REPORT.md: OK
+./RC5_2_PHASE1_MUTATION_REPORT.md: OK
+./RC5_2_PHASE1_R4_TO_R5.diff: OK
+./RC5_2_PHASE1_REPORT.md: OK
+./RC5_2_PHASE1_TEST_MATRIX.md: OK
+./rc5_2_phase1_tests.py: OK
+./rc5_2_phase2_tests.py: OK
+./RC5_2_PROTOCOL_ADDENDUM_FINAL.md: OK
+./RC5_2_PROTOCOL_TENSORS.md: OK
+./RC5_2_R12_CLOSEOUT_REPORT.md: OK
+./rc5_2_receipt.py: OK
+./RC5_2_RISK_REGISTER.md: OK
+./rc5_2_split_server.py: OK
+./RC5_2_STATE_MACHINE.md: OK
+./rc5_2_state.py: OK
+./rc5_2_tensor_bundle.py: OK
+./rc5_2_tensor_envelope.py: OK
+./rc5_2_worker_runtime.py: OK
+./RC5_3_ADVERSARIAL_REPORT.md: OK
+./rc5_3_adversarial_tests.py: OK
+./rc53_design/ADR_RC5_3_MULTIWORKER.md: OK
+./rc53_design/RC5_3_CALIBRATION_PLAN.md: OK
+./rc53_design/RC5_3_IMPLEMENTATION_PLAN.md: OK
+./rc53_design/RC5_3_MUTATION_PLAN.md: OK
+./rc53_design/RC5_3_RISK_REGISTER.md: OK
+./rc53_design/RC5_3_ROUND_PROTOCOL.md: OK
+./rc53_design/RC5_3_TEST_PLAN.md: OK
+./RC5_3_FINAL_REPORT.md: OK
+./rc5_3_multiworker.py: OK
+./RC5_3_MUTATION_REPORT.md: OK
+./RC5_3_RISK_REGISTER.md: OK
+./RC5_3_TEST_MATRIX.md: OK
+./rc5_3_tests.py: OK
+./rc54_design/ADR_RC5_4_RECOVERY.md: OK
+./rc54_design/RC5_4_IMPLEMENTATION_PLAN.md: OK
+./rc54_design/RC5_4_RISK_REGISTER.md: OK
+./rc54_design/RC5_4_TEST_MATRIX.md: OK
+./rc5_coordinator_ext.py: OK
+./rc5_db.py: OK
+./rc5_receipt.py: OK
+./rc5_split_server.py: OK
+./rc5_tests.py: OK
+./README.md: OK
+./RELEASE_NOTES.md: OK
+./requirements-rc5.1.txt: OK
+./requirements-runtime.txt: OK
+./runner.py: OK
+./RUN_RC5_1_MUTATION_GATE.sh: OK
+./RUN_RC5_1_TESTS.sh: OK
+./RUN_RC5_2_CONTROLLED_FAILURE.sh: OK
+./RUN_RC5_2_PHASE1_FINAL_GATE.sh: OK
+./RUN_RC5_2_PHASE1_MUTATION_GATE.sh: OK
+./RUN_RC5_2_PHASE1_TESTS.sh: OK
+./RUN_RC5_2_PHASE2_ADVERSARIAL_GATE.sh: OK
+./RUN_RC5_2_PHASE2_FINAL_GATE.sh: OK
+./RUN_RC5_2_PHASE2_MUTATION_GATE.sh: OK
+./RUN_RC5_2_PHASE2_PREDELIVERY.sh: OK
+./RUN_RC5_2_PHASE2_TESTS.sh: OK
+./RUN_RC5_3_ADVERSARIAL_GATE.sh: OK
+./RUN_RC5_3_CLEAN_EXTRACTION_GATE.sh: OK
+./RUN_RC5_3_CONTROLLED_FAILURE.sh: OK
+./RUN_RC5_3_DEPENDENCY_PROBE.sh: OK
+./RUN_RC5_3_FINAL_GATE.sh: OK
+./RUN_RC5_3_MANIFEST_PROBE.sh: OK
+./RUN_RC5_3_MUTATION_GATE.sh: OK
+./RUN_RC5_3_TESTS.sh: OK
+./synthetic_tensor_store.py: OK
+./verify.txt: OK
+./VERSION_1_CERTIFICATE.md: OK
+coverage: 187 manifest == 187 regulars (sense MANIFEST.sha256)
+  manifest: PASS (ALL FILES OK, cobertura completa)
+=== [16b/16] clean extraction ===
+  clean extraction: SKIPPED (mode delegat RC53_SKIP_CLEAN_EXTRACTION=1)
+============================================
+  RC5.3 COMBINED GATE — Overall: PASS
+============================================

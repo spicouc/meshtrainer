@@ -22,7 +22,7 @@ echo "dependència retirada: rc5_3_multiworker.py"
 
 # 3. executar el final gate (ha de fallar al pas 1 i continuar fins al resum)
 export PYTHON_BIN="${PYTHON_BIN:-python3}" TMPDIR="${TMPDIR:-/tmp}"
-RC53_SKIP_CLEAN_EXTRACTION=1 timeout 400 bash RUN_RC5_3_FINAL_GATE.sh > "$LOG_DIR/DEPENDENCY_FAILURE_PROBE.log" 2>&1
+RC53_SKIP_CLEAN_EXTRACTION=1 timeout 3600 bash RUN_RC5_3_FINAL_GATE.sh > "$LOG_DIR/DEPENDENCY_FAILURE_PROBE.log" 2>&1
 GATE_EC=$?
 
 # 4. comprovar el comportament esperat

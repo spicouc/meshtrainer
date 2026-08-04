@@ -1,0 +1,49 @@
+============================================
+  RC5.3 Stage B R6 — COMBINED FINAL GATE
+  LOG_DIR: /root/meshtrainer/evidence
+============================================
+
+=== [1/20] dependency check ===
+  dependency check: FAIL (exit 1)
+
+=== [2/20] py_compile ===
+  py_compile: PASS
+
+  [3/20] RC5.3 normal x2: FAIL
+
+  [4/20] RC5.3 adversarial: FAIL
+
+  [5/20] RC5.3 mutation: FAIL
+
+  [6/20] RC5.2 normal x2: PASS
+
+  [7/20] RC5.2 adversarial: PASS
+
+  [8/20] RC5.2 mutation: PASS
+
+  [9/20] Phase 1 x2: PASS
+
+  [10/20] Phase 1 mutation: PASS
+
+  [11/20] RC5.1 x2: PASS
+
+  [12/20] RC5.1 mutation: PASS
+
+=== [13/16] restart subprocess ===
+  restart subprocess: FAIL
+
+=== [14/16] controlled-failure RC5.3 ===
+  controlled-failure RC5.3: FAIL (exit 1)
+
+=== [15/16] controlled-failure RC5.2 ===
+  controlled-failure RC5.2: FAIL (exit 1)
+
+=== [16/16] manifest ===
+  manifest: FAIL (sha=1 coverage=1)
+
+=== [16b/16] clean extraction ===
+  clean extraction: SKIPPED (mode delegat RC53_SKIP_CLEAN_EXTRACTION=1)
+
+============================================
+  RC5.3 COMBINED GATE — Overall: FAIL
+============================================

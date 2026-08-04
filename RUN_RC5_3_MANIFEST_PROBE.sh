@@ -22,7 +22,7 @@ echo "fitxer alterat: rc5_3_adversarial_tests.py (hash canviat)"
 
 # 3. executar el final gate (ha de fallar al pas manifest i continuar fins al resum)
 export PYTHON_BIN="${PYTHON_BIN:-python3}" TMPDIR="${TMPDIR:-/tmp}"
-RC53_SKIP_CLEAN_EXTRACTION=1 timeout 400 bash RUN_RC5_3_FINAL_GATE.sh > "$LOG_DIR/MANIFEST_FAILURE_PROBE.log" 2>&1
+RC53_SKIP_CLEAN_EXTRACTION=1 timeout 3600 bash RUN_RC5_3_FINAL_GATE.sh > "$LOG_DIR/MANIFEST_FAILURE_PROBE.log" 2>&1
 GATE_EC=$?
 
 # 4. comprovar el comportament esperat

@@ -1,40 +1,32 @@
-verify.txt — verificació del paquet RC5.3 Stage B R6
-====================================================
-Data: 2026-08-03
+verify.txt — verificació del paquet RC5.3 Stage B R6.1
+=======================================================
+Data: 2026-08-04
 Branch: rc5.3-stageb
 Base: a7b7cf87c9c05139b64cc956104063216d8a6ee6
-Commit complet: 00cda126b327e4431ebd71e80131deda474a4e5c
-Commit curt: 00cda12
-Tag: meshtrainer-v1.1-rc5.2.1 (apunta a 00cda12)
-      meshtrainer-v1.1-rc5.3 (preparada, no publicada)
+Commit complet: 74d3c0a1eb5837c8ed1d92b15cd03fa46a90eb97
+Commit curt: 74d3c0a
 
-Tarball: meshtrainer_rc53_stageb_r6_final_00cda12.tar.gz
-Fitxer sha256: meshtrainer_rc53_stageb_r6_final_00cda12.tar.gz.sha256
+Tarball: meshtrainer_rc53_stageb_r6_1_final_74d3c0a.tar.gz
+Mida: 436875 bytes
+SHA-256: 20c7c21a7febed55f623a5190672fc333eba6098fcfe9ddfefc878356a57084e
+Entrades: 215 | Fitxers regulars: 203 | Directoris: 12
+Manifest: 202 línies | Comprovació: 202 = 203 - 1 (MANIFEST.sha256 exclòs)
+sha256sum -c MANIFEST.sha256: 0 errors (cobertura completa)
 
-Metadades del paquet:
-- Fitxers regulars: 196 (195 al manifest + MANIFEST.sha256)
-- Fitxers coberts pel manifest: 195
-- Directoris: 12
-- Mida del directori (excl. .venv/.git): ~2.7 MB
-- git status: buit
+Entorn real:
+- Python: /root/meshtrainer/.venv/bin/python3, 3.13.5
+- torch 2.13.0+cpu, numpy 2.4.4, requests 2.34.2, httpx 0.28.1
+- Portable: PYTHON_BIN/TMPDIR/LOG_DIR, sense rutes fixes, no-root
 
-Entorn (real, gate final):
-- Python: 3.13.5 (/root/meshtrainer/.venv/bin/python3)
-- PyTorch: torch 2.13.0+cpu
-- NumPy: numpy 2.4.4
-- requests 2.34.2, httpx 0.28.1
-- Vegeu ENVIRONMENT.txt i requirements-runtime.txt
-
-Resultats (logs a evidence/):
-- RC5.3 normal: 105/105 PASS x2
-- RC5.3 adversarial: 33/33 PASS
-- RC5.3 mutation: 12/12 (applied_count=1 x12)
-- RC5.2 normal: 49/49 PASS x2
-- RC5.2 adversarial: 21/21 PASS
-- RC5.2 mutation: 12/12
-- Phase 1: 35/35 PASS x2, mutation 6/6
-- RC5.1: 76/76 PASS x2, mutation 5/5
+Resultats (evidència a evidence/):
+- RC5.3 normal 105/105 x2, adversarial 33/33, mutation 12/12
+- RC5.2 normal 49/49 x2, adversarial 21/21, mutation 12/12
+- Phase 1 35/35 x2, mutation 6/6
+- RC5.1 76/76 x2, mutation 5/5
 - Controlled-failure RC5.3: PASS (104/105, W1, 0 tracebacks)
-- Controlled-failure RC5.2: PASS (48/49, J4, 0 tracebacks)
-- Combined gate: Overall PASS
-- Clean extraction: PASS x2 (directoris buits A i B)
+- Controlled-failure RC5.2: PASS (48/49, J4, applied_count=1, 0 tracebacks)
+- Combined gate: Overall PASS (16 passos)
+- Clean extraction: PASS x2 (A i B, directoris buits)
+- Dependency probe: PASS (FAIL detectat, resum, exit 1)
+- Manifest probe: PASS (FAIL detectat, resum, exit 1)
+- git status: buit

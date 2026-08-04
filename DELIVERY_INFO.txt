@@ -1,119 +1,96 @@
-DELIVERY_INFO — meshtrainer RC5.3 Stage B R6 FINAL CLOSEOUT
-===========================================================
+DELIVERY_INFO — meshtrainer RC5.3 Stage B R6.1 FINAL CLOSEOUT
+=============================================================
 
-DATA: 2026-08-03
+DATA: 2026-08-04
 BRANCH: rc5.3-stageb
 BASE COMMIT: a7b7cf87c9c05139b64cc956104063216d8a6ee6
-FINAL COMMIT (complet): 00cda126b327e4431ebd71e80131deda474a4e5c
-FINAL COMMIT (curt): 00cda12
+FINAL COMMIT (complet): 74d3c0a1eb5837c8ed1d92b15cd03fa46a90eb97
+FINAL COMMIT (curt): 74d3c0a
 GIT STATUS: buit (0 fitxers pendents)
 
 TARBALL
 -------
-Nom: meshtrainer_rc53_stageb_r6_final_00cda12.tar.gz
-Fitxer sha256: meshtrainer_rc53_stageb_r6_final_00cda12.tar.gz.sha256
-(Mida i SHA-256 reals: vegeu el fitxer .sha256 que acompanya el tarball
-i verify.txt)
+Nom: meshtrainer_rc53_stageb_r6_1_final_74d3c0a.tar.gz
+Mida exacta: 436875 bytes
+SHA-256: 20c7c21a7febed55f623a5190672fc333eba6098fcfe9ddfefc878356a57084e
 
 METADADES DEL PAQUET
 --------------------
-- Entrades al tarball: 207 (196 fitxers regulars + 11 directoris)
-- Fitxers regulars: 196
-- Directoris: 12 (al directori d'origen)
-- Fitxers coberts pel manifest: 195 (= fitxers regulars - 1, MANIFEST.sha256 exclòs)
-- Python executable i versió: /root/meshtrainer/.venv/bin/python3, 3.13.5
+- Entrades totals al tarball: 215
+- Fitxers regulars: 203
+- Directoris: 12
+- Línies del manifest: 202
+- Comprovació: manifest (202) = fitxers regulars (203) - 1 (MANIFEST.sha256 exclòs)
+- sha256sum -c MANIFEST.sha256: 0 errors (cobertura completa)
+
+ENTORN (REAL, GATE FINAL)
+-------------------------
+- Python executable real: /root/meshtrainer/.venv/bin/python3 (Python 3.13.5)
 - PyTorch: torch 2.13.0+cpu
 - NumPy: numpy 2.4.4
-- git status: buit
+- requests 2.34.2, httpx 0.28.1
+- El paquet és portable: ${PYTHON_BIN:-python3}, ${TMPDIR:-/tmp}, ${LOG_DIR:-$(mktemp -d)},
+  mktemp -d, sense rutes fixes; funciona com a usuari no-root amb Python extern.
+  Vegeu ENVIRONMENT.txt i requirements-runtime.txt.
 
-TAGS
-----
-meshtrainer-v1.1-rc5.1: intacte (no tocat)
-meshtrainer-v1.1-rc5.2: WITHDRAWN — apunta a cfe0a5e (closeout NO certificat).
-  Documentat, NO mogut.
-meshtrainer-v1.1-rc5.2.1: apunta a 00cda12 (commit final real R6)
-meshtrainer-v1.1-rc5.3: preparada sobre 00cda12, NO publicada
-  (pendent d'auditoria del Supervisor)
-
-RESULTATS (logs certificats a evidence/)
------------------------------------------
-- RC5.3 normal: 105/105 PASS x2
+RESULTATS (evidència a evidence/, generada amb els runners del mateix tarball)
+------------------------------------------------------------------------------
+- RC5.3 normal: 105/105 PASS x2 (BOTH RUNS: PASS)
 - RC5.3 adversarial: 33/33 PASS
-- RC5.3 mutation: 12/12 (applied_count=1 x12; Invalid 0, Runtime 0,
-  Not_applied 0, Timeouts 0)
+- RC5.3 mutation: 12/12 (Invalid 0, Runtime 0, Not_applied 0, Timeouts 0)
 - RC5.2 normal: 49/49 PASS x2
 - RC5.2 adversarial: 21/21 PASS
 - RC5.2 mutation: 12/12
 - Phase 1: 35/35 PASS x2, mutation 6/6
 - RC5.1: 76/76 PASS x2, mutation 5/5
 - Controlled-failure RC5.3: PASS (104/105, W1, 0 tracebacks)
-- Controlled-failure RC5.2: PASS (48/49, J4, 0 tracebacks)
-- Combined gate: Overall PASS
+- Controlled-failure RC5.2: PASS (48/49, J4, applied_count=1, 0 tracebacks)
+- Combined gate (16 passos, sense redundàncies): Overall PASS
 - Clean extraction: PASS x2 (directoris buits A i B)
 
-CONTROLLED-FAILURE RC5.3 (substitució exacta)
-----------------------------------------------
-check("W1: two workers completed", ra["worker_id"] == "wa" and rb["worker_id"] == "wb")
- -> check("W1: two workers completed", False)
-Verificat: 1 substitució, 1 línia funcional modificada, py_compile PASS,
-cap SyntaxError, cap Traceback. Resultat: 104/105, 1 FAIL, W1, exit no-zero.
+CLEAN EXTRACTION (real, sobre el tarball definitiu)
+---------------------------------------------------
+- Directori A (buit, mktemp): SHA extern PASS, extracció 203 fitxers, manifest PASS,
+  gate combinat complet Overall PASS
+- Directori B (buit, mktemp): mateix procés, Overall PASS
+- Ports residuals: cap. Fitxers externs: cap.
+- Evidència: evidence/CLEAN_EXTRACTION_A.log, evidence/CLEAN_EXTRACTION_B.log
+- Directoris temporals eliminats després de la prova.
 
-CONTROLLED-FAILURE RC5.2 (substitució exacta)
-----------------------------------------------
-check("J4: open returns state", r["state"] == "SERVER_ACTIVATION_READY")
- -> check("J4: open returns state", False)
-Verificat: applied_count=1, py_compile PASS, exactament 1 assertion falla
-(J4), cap traceback, exit no-zero, paquet original intacte.
+PROVES NEGATIVES DEL RUNNER
+---------------------------
+- DEPENDENCY_FAILURE_PROBE (evidence/DEPENDENCY_FAILURE_PROBE.log): dependència retirada
+  (rc5_3_multiworker.py) -> dependency check FAIL, resum complet imprès, Overall FAIL,
+  exit no-zero (1). PASS.
+- MANIFEST_FAILURE_PROBE (evidence/MANIFEST_FAILURE_PROBE.log): fitxer alterat
+  (rc5_3_adversarial_tests.py) -> manifest FAIL, resum complet imprès, Overall FAIL,
+  exit no-zero (1). PASS.
+- Controlled-failure: cap SyntaxError, cap import error, assertion exacta (W1/J4).
 
-DEPENDENCY CHECK
-----------------
-Executat amb set +e, exit code capturat, continuació fins al resum.
-Dependència absent -> dependency check: FAIL, Overall: FAIL, exit no-zero,
-resum complet imprès. (Verificat eliminant rc5_3_multiworker.py.)
+RECOMPTE D'EXECUCIONS (sense redundàncies)
+------------------------------------------
+- RUN_RC5_3_TESTS.sh cridat 1 cop (executa x2 internament)
+- RUN_RC5_1_TESTS.sh cridat 1 cop (executa x2 internament)
+- RC5.2 i Phase 1 usen els seus runners oficials (x2 internament)
+- Els reports coincideixen exactament amb les execucions reals.
 
-MANIFEST
---------
-Cobreix TOTS els fitxers regulars del paquet excepte MANIFEST.sha256.
-Inclou: codi, runners, mutants, documentació, evidence/ logs, DELIVERY_INFO,
-verify.txt, requirements, ENVIRONMENT, diff.
-Fitxers del manifest = fitxers regulars - 1 (195 = 196 - 1).
-Si el manifest falla -> OVERALL=1. No s'imprimeix "ALL FILES OK" si hi ha
-fitxers no coberts (cobertura completa verificada).
+TAGS
+----
+meshtrainer-v1.1-rc5.2: WITHDRAWN (apunta a cfe0a5e, no certificat; no mogut)
+meshtrainer-v1.1-rc5.2.1: apunta a 74d3c0a (commit final real R6.1)
+meshtrainer-v1.1-rc5.3: preparada sobre 74d3c0a, NO publicada
+  (pendent d'auditoria del Supervisor)
 
-CLEAN EXTRACTION
-----------------
-RUN_RC5_3_CLEAN_EXTRACTION_GATE.sh <tarball>:
-- SHA extern verificat
-- directori buit A: extracció + manifest complet + final gate amb
-  RC53_SKIP_CLEAN_EXTRACTION=1 -> Overall PASS
-- directori buit B: idem -> Overall PASS
-- zero fitxers externs, zero ports residuals
-El final gate intern salta l'extracció recursiva quan RC53_SKIP_CLEAN_EXTRACTION=1.
+RC5.4 implementation: NOT AUTHORIZED — no iniciada.
 
-FINAL RUNNER (RUN_RC5_3_FINAL_GATE.sh)
---------------------------------------
-- resum SEMPRE imprès
-- dependency FAIL -> OVERALL=1
-- manifest FAIL -> OVERALL=1
-- controlled-failure exigeix py_compile PASS; qualsevol traceback -> FAIL
-- clean extraction NOT EXECUTED -> FAIL (excepte mode delegat)
-- cap subgate no executat compta com a PASS
-
-DEPENDÈNCIES
-------------
-ENVIRONMENT.txt i requirements-runtime.txt amb versions reals del gate.
-El paquet funciona amb un Python preparat externament, executant-se
-íntegrament des del directori extret (cap ruta absoluta al codi).
-
-FITXERS MODIFICATS RESPECTE A LA BASE a7b7cf87 (resum)
--------------------------------------------------------
-Nucli (no tocat a R6): rc5_3_multiworker.py, rc5_2_worker_runtime.py,
-rc5_2_http_server.py, rc5_3_tests.py, rc5_3_adversarial_tests.py,
-rc5_2_phase2_tests.py.
-Runners corregits/nous a R6: RUN_RC5_3_FINAL_GATE.sh, RUN_RC5_3_TESTS.sh,
-RUN_RC5_3_MUTATION_GATE.sh, RUN_RC5_3_ADVERSARIAL_GATE.sh,
-RUN_RC5_3_CONTROLLED_FAILURE.sh (nou), RUN_RC5_2_CONTROLLED_FAILURE.sh (nou),
-RUN_RC5_3_CLEAN_EXTRACTION_GATE.sh (nou).
-Altres: MANIFEST.sha256 (cobertura completa 195), ENVIRONMENT.txt,
-requirements-runtime.txt, verify.txt, evidence/ (11 logs certificats),
-DELIVERY_INFO.txt.
+FITXERS PRINCIPALS DEL PAQUET
+-----------------------------
+- Nucli (no modificat): rc5_3_multiworker.py, rc5_3_tests.py, rc5_3_adversarial_tests.py,
+  rc5_2_worker_runtime.py, rc5_2_http_server.py, rc5_2_phase2_tests.py, mutants_r53/ (12)
+- Runners: RUN_RC5_3_FINAL_GATE.sh (16 passos), RUN_RC5_3_CLEAN_EXTRACTION_GATE.sh
+  (portable), RUN_RC5_3_TESTS.sh, RUN_RC5_3_ADVERSARIAL_GATE.sh, RUN_RC5_3_MUTATION_GATE.sh,
+  RUN_RC5_3_CONTROLLED_FAILURE.sh, RUN_RC5_2_CONTROLLED_FAILURE.sh,
+  RUN_RC5_3_DEPENDENCY_PROBE.sh, RUN_RC5_3_MANIFEST_PROBE.sh,
+  RUN_RC5_2_PHASE2_FINAL_GATE.sh (CF dedicat, sense A1), RUN_RC5_1_*.sh, RUN_RC5_2_*.sh
+- Docs: DELIVERY_INFO.txt, verify.txt, ENVIRONMENT.txt, requirements-runtime.txt,
+  MANIFEST.sha256, evidence/ (16 logs), DIFF_R4_R5.patch

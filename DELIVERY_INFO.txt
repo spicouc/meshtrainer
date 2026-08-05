@@ -1,96 +1,62 @@
-DELIVERY_INFO — meshtrainer RC5.3 Stage B R6.1 FINAL CLOSEOUT
-=============================================================
+DELIVERY_INFO — meshtrainer RC5.4 Stage A FINAL
+================================================
 
-DATA: 2026-08-04
-BRANCH: rc5.3-stageb
-BASE COMMIT: a7b7cf87c9c05139b64cc956104063216d8a6ee6
-FINAL COMMIT (complet): 74d3c0a1eb5837c8ed1d92b15cd03fa46a90eb97
-FINAL COMMIT (curt): 74d3c0a
-GIT STATUS: buit (0 fitxers pendents)
+DATA: 2026-08-05
+BRANCH: rc5.4-stagea
+BASE COMMIT: 9c46f65ea288fcbb351d4744fa1cec4e2ec11d64 (RC5.3 R6.1 certificada)
+COMMIT FINAL: d46dc1b9384c8b4aa1646aed2d3c7d6d54a2bd18
+COMMIT CURT: d46dc1b
+GIT STATUS: buit
 
 TARBALL
--------
-Nom: meshtrainer_rc53_stageb_r6_1_final_74d3c0a.tar.gz
-Mida exacta: 436875 bytes
-SHA-256: 20c7c21a7febed55f623a5190672fc333eba6098fcfe9ddfefc878356a57084e
+meshtrainer_rc54_stagea_final_d46dc1b.tar.gz
+SHA-256: 6f52a696d5280782e3672c7fe52903ddb28822e01bd6e167997c10dafdfd106c
+MIDA: 491520 bytes (480K)
+ENTRADES TAR: 238 (225 fitxers regulars + 13 directoris)
+FITXERS REGULARS: 225
+DIRECTORIS: 13
+MANIFEST: 224 línies (225 regulars - 1 MANIFEST.sha256)
+sha256sum -c MANIFEST.sha256: 0 errors (cobertura completa)
 
-METADADES DEL PAQUET
---------------------
-- Entrades totals al tarball: 215
-- Fitxers regulars: 203
-- Directoris: 12
-- Línies del manifest: 202
-- Comprovació: manifest (202) = fitxers regulars (203) - 1 (MANIFEST.sha256 exclòs)
-- sha256sum -c MANIFEST.sha256: 0 errors (cobertura completa)
+ENTORN
+Python: 3.13.5
+torch: 2.13.0+cpu
+numpy: 2.4.4
+requests: 2.34.2
+httpx: 0.28.1
 
-ENTORN (REAL, GATE FINAL)
--------------------------
-- Python executable real: /root/meshtrainer/.venv/bin/python3 (Python 3.13.5)
-- PyTorch: torch 2.13.0+cpu
-- NumPy: numpy 2.4.4
-- requests 2.34.2, httpx 0.28.1
-- El paquet és portable: ${PYTHON_BIN:-python3}, ${TMPDIR:-/tmp}, ${LOG_DIR:-$(mktemp -d)},
-  mktemp -d, sense rutes fixes; funciona com a usuari no-root amb Python extern.
-  Vegeu ENVIRONMENT.txt i requirements-runtime.txt.
+RESULTATS RC5.4 STAGE A (SAFE RECOVERY)
+- RC5.4 normal x2: PASS (crash matrix 24/24 + adversarial 27/27)
+- RC5.4 adversarial: PASS (14 probes mínimes, 27/27)
+- RC5.4 mutation: PASS (12/12 DETECTED, Invalid 0, Runtime 0, Not_applied 0, Timeouts 0)
+- Restart real: PASS (PID_A != PID_B, journal recuperat, delta byte-for-byte,
+  cap segon optimizer, receipt byte-for-byte, checkpoint idempotent)
+- Controlled-failure RC5.4: PASS (1 sola FAIL, 0 tracebacks, exit 1)
+- Gate combinat 17 passos: Overall PASS
 
-RESULTATS (evidència a evidence/, generada amb els runners del mateix tarball)
-------------------------------------------------------------------------------
-- RC5.3 normal: 105/105 PASS x2 (BOTH RUNS: PASS)
-- RC5.3 adversarial: 33/33 PASS
-- RC5.3 mutation: 12/12 (Invalid 0, Runtime 0, Not_applied 0, Timeouts 0)
-- RC5.2 normal: 49/49 PASS x2
-- RC5.2 adversarial: 21/21 PASS
-- RC5.2 mutation: 12/12
-- Phase 1: 35/35 PASS x2, mutation 6/6
-- RC5.1: 76/76 PASS x2, mutation 5/5
-- Controlled-failure RC5.3: PASS (104/105, W1, 0 tracebacks)
-- Controlled-failure RC5.2: PASS (48/49, J4, applied_count=1, 0 tracebacks)
-- Combined gate (16 passos, sense redundàncies): Overall PASS
-- Clean extraction: PASS x2 (directoris buits A i B)
+REGRESSIONS (fitxers congelats vs 9c46f65: 0 diferències)
+- RC5.3 combined: PASS (105/105, adv 33/33, mut 12/12, RC5.2, Phase1, RC5.1)
+- RC5.2 Phase 2: PASS
+- Phase 1: PASS
+- RC5.1: PASS
+- Controlled-failure RC5.3 (W1): PASS
+- Controlled-failure RC5.2 (J4): PASS
+- Dependency probe: PASS
+- Manifest probe: PASS
 
-CLEAN EXTRACTION (real, sobre el tarball definitiu)
----------------------------------------------------
-- Directori A (buit, mktemp): SHA extern PASS, extracció 203 fitxers, manifest PASS,
-  gate combinat complet Overall PASS
-- Directori B (buit, mktemp): mateix procés, Overall PASS
-- Ports residuals: cap. Fitxers externs: cap.
-- Evidència: evidence/CLEAN_EXTRACTION_A.log, evidence/CLEAN_EXTRACTION_B.log
-- Directoris temporals eliminats després de la prova.
+CLEAN EXTRACTION: PASS x2 (A i B, dirs buits mktemp)
+- SHA extern PASS, extracció 225 fitxers, manifest PASS, gate complet Overall PASS x2
+- Ports residuals: cap | Fitxers externs: cap
 
-PROVES NEGATIVES DEL RUNNER
----------------------------
-- DEPENDENCY_FAILURE_PROBE (evidence/DEPENDENCY_FAILURE_PROBE.log): dependència retirada
-  (rc5_3_multiworker.py) -> dependency check FAIL, resum complet imprès, Overall FAIL,
-  exit no-zero (1). PASS.
-- MANIFEST_FAILURE_PROBE (evidence/MANIFEST_FAILURE_PROBE.log): fitxer alterat
-  (rc5_3_adversarial_tests.py) -> manifest FAIL, resum complet imprès, Overall FAIL,
-  exit no-zero (1). PASS.
-- Controlled-failure: cap SyntaxError, cap import error, assertion exacta (W1/J4).
+STOP CONDITIONS: cap activada
+- No cal persistir graf autograd (journal de deltas deterministes)
+- Kernel numèric congelat no modificat
+- Exactly-once en APPLIED garantit i testejat
+- Reassignació no permet dues contribucions ACTIVE
+- Rellotge/TTL determinista
 
-RECOMPTE D'EXECUCIONS (sense redundàncies)
-------------------------------------------
-- RUN_RC5_3_TESTS.sh cridat 1 cop (executa x2 internament)
-- RUN_RC5_1_TESTS.sh cridat 1 cop (executa x2 internament)
-- RC5.2 i Phase 1 usen els seus runners oficials (x2 internament)
-- Els reports coincideixen exactament amb les execucions reals.
-
-TAGS
-----
-meshtrainer-v1.1-rc5.2: WITHDRAWN (apunta a cfe0a5e, no certificat; no mogut)
-meshtrainer-v1.1-rc5.2.1: apunta a 74d3c0a (commit final real R6.1)
-meshtrainer-v1.1-rc5.3: preparada sobre 74d3c0a, NO publicada
-  (pendent d'auditoria del Supervisor)
-
-RC5.4 implementation: NOT AUTHORIZED — no iniciada.
-
-FITXERS PRINCIPALS DEL PAQUET
------------------------------
-- Nucli (no modificat): rc5_3_multiworker.py, rc5_3_tests.py, rc5_3_adversarial_tests.py,
-  rc5_2_worker_runtime.py, rc5_2_http_server.py, rc5_2_phase2_tests.py, mutants_r53/ (12)
-- Runners: RUN_RC5_3_FINAL_GATE.sh (16 passos), RUN_RC5_3_CLEAN_EXTRACTION_GATE.sh
-  (portable), RUN_RC5_3_TESTS.sh, RUN_RC5_3_ADVERSARIAL_GATE.sh, RUN_RC5_3_MUTATION_GATE.sh,
-  RUN_RC5_3_CONTROLLED_FAILURE.sh, RUN_RC5_2_CONTROLLED_FAILURE.sh,
-  RUN_RC5_3_DEPENDENCY_PROBE.sh, RUN_RC5_3_MANIFEST_PROBE.sh,
-  RUN_RC5_2_PHASE2_FINAL_GATE.sh (CF dedicat, sense A1), RUN_RC5_1_*.sh, RUN_RC5_2_*.sh
-- Docs: DELIVERY_INFO.txt, verify.txt, ENVIRONMENT.txt, requirements-runtime.txt,
-  MANIFEST.sha256, evidence/ (16 logs), DIFF_R4_R5.patch
+AUTORITZACIONS
+- Finalització RC5.4 Stage A: AUTHORIZED
+- Qwen3TrainingBackend: NOT AUTHORIZED (pendent d'auditoria)
+- Dataset real: NOT AUTHORIZED
+- Interfície gràfica: NOT AUTHORIZED

@@ -1,32 +1,23 @@
-verify.txt — verificació del paquet RC5.3 Stage B R6.1
-=======================================================
-Data: 2026-08-04
-Branch: rc5.3-stageb
-Base: a7b7cf87c9c05139b64cc956104063216d8a6ee6
-Commit complet: 74d3c0a1eb5837c8ed1d92b15cd03fa46a90eb97
-Commit curt: 74d3c0a
+verify.txt — verificació del paquet RC5.4 Stage A
+==================================================
+Data: 2026-08-05
+Branch: rc5.4-stagea
+Base: 9c46f65ea288fcbb351d4744fa1cec4e2ec11d64
+Commit complet: d46dc1b9384c8b4aa1646aed2d3c7d6d54a2bd18
+Commit curt: d46dc1b
 
-Tarball: meshtrainer_rc53_stageb_r6_1_final_74d3c0a.tar.gz
-Mida: 436875 bytes
-SHA-256: 20c7c21a7febed55f623a5190672fc333eba6098fcfe9ddfefc878356a57084e
-Entrades: 215 | Fitxers regulars: 203 | Directoris: 12
-Manifest: 202 línies | Comprovació: 202 = 203 - 1 (MANIFEST.sha256 exclòs)
-sha256sum -c MANIFEST.sha256: 0 errors (cobertura completa)
+Tarball: meshtrainer_rc54_stagea_final_d46dc1b.tar.gz
+SHA-256: 6f52a696d5280782e3672c7fe52903ddb28822e01bd6e167997c10dafdfd106c
+Mida: 491520 bytes
+Entrades: 238 (225 fitxers + 13 directoris)
+Manifest: 224 línies = 225 regulars - 1
+sha256sum -c: 0 errors
 
-Entorn real:
-- Python: /root/meshtrainer/.venv/bin/python3, 3.13.5
-- torch 2.13.0+cpu, numpy 2.4.4, requests 2.34.2, httpx 0.28.1
-- Portable: PYTHON_BIN/TMPDIR/LOG_DIR, sense rutes fixes, no-root
+Python: 3.13.5 | torch 2.13.0+cpu | numpy 2.4.4 | requests 2.34.2 | httpx 0.28.1
+git status: buit
 
-Resultats (evidència a evidence/):
-- RC5.3 normal 105/105 x2, adversarial 33/33, mutation 12/12
-- RC5.2 normal 49/49 x2, adversarial 21/21, mutation 12/12
-- Phase 1 35/35 x2, mutation 6/6
-- RC5.1 76/76 x2, mutation 5/5
-- Controlled-failure RC5.3: PASS (104/105, W1, 0 tracebacks)
-- Controlled-failure RC5.2: PASS (48/49, J4, applied_count=1, 0 tracebacks)
-- Combined gate: Overall PASS (16 passos)
-- Clean extraction: PASS x2 (A i B, directoris buits)
-- Dependency probe: PASS (FAIL detectat, resum, exit 1)
-- Manifest probe: PASS (FAIL detectat, resum, exit 1)
-- git status: buit
+RC5.4 normal x2: PASS | adversarial: PASS (27/27) | mutation: PASS (12/12)
+Restart real: PASS | CF-RC5.4: PASS
+Gate combinat 17 passos: Overall PASS
+Regressions (RC5.3/RC5.2/Phase1/RC5.1/CF/probes): PASS
+Clean extraction A/B: PASS x2 | Ports residuals: cap | Fitxers externs: cap

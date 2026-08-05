@@ -54,8 +54,8 @@ for D in A B; do
     echo "  extracció: $([ $N -gt 100 ] && echo OK || echo FAIL) ($N fitxers)"
     [ $N -gt 100 ] || OVERALL=1
     echo "=== [3/6] manifest complet a $D ==="
-    (cd "$DIR" && sha256sum -c MANIFEST.sha256 > ce_mf_$D.log 2>&1)
-    MFERR=$(grep -cv ': OK' "$DIR/ce_mf_$D.log" 2>/dev/null || true); MFERR=${MFERR:-0}
+    (cd "$DIR" && sha256sum -c MANIFEST.sha256 > "$LOG_DIR/ce_mf_$D.log" 2>&1)
+    MFERR=$(grep -cv ': OK' "$LOG_DIR/ce_mf_$D.log" 2>/dev/null || true); MFERR=${MFERR:-0}
     echo "  manifest: $([ "$MFERR" -eq 0 ] && echo PASS || echo FAIL) (err=$MFERR)"
     [ "$MFERR" -eq 0 ] || OVERALL=1
     echo "=== [4/6] final gate complet a $D (RC54_SKIP_CLEAN_EXTRACTION=1) ==="
@@ -63,7 +63,7 @@ for D in A B; do
     GEC=$?
     echo "  gate a $D: $([ $GEC -eq 0 ] && echo PASS || echo FAIL) (exit $GEC)"
     [ $GEC -eq 0 ] || OVERALL=1
-    cp "$DIR/RUN_RC5_4_FINAL_GATE.sh" "$LOG_DIR/CLEAN_EXTRACTION_$D.log" 2>/dev/null || true
+    cp "$LOG_DIR/ce_gate_$D.out" "$LOG_DIR/CLEAN_EXTRACTION_$D.log" 2>/dev/null || true
     rm -rf "$DIR"
     echo "  directori temporal $D eliminat"
 done

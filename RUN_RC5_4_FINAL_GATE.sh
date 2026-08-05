@@ -65,8 +65,8 @@ run_sub "[4/17] RC5.4 adversarial" "bash RUN_RC5_4_ADVERSARIAL_GATE.sh" 600
 # 5) RC5.4 mutation (runner oficial)
 run_sub "[5/17] RC5.4 mutation" "bash RUN_RC5_4_MUTATION_GATE.sh" 3600
 
-# 6) RC5.3 combined gate (regressió, runner R6.1)
-run_sub "[6/17] RC5.3 combined" "bash RUN_RC5_3_FINAL_GATE.sh" 3600
+# 6) RC5.3 combined gate (regressió, runner R6.1; mode delegat per al CE)
+run_sub "[6/17] RC5.3 combined" "RC53_SKIP_CLEAN_EXTRACTION=1 bash RUN_RC5_3_FINAL_GATE.sh" 3600
 
 # 7) RC5.2 Phase 2 (regressió, runner R6.1)
 run_sub "[7/17] RC5.2 Phase 2" "bash RUN_RC5_2_PHASE2_FINAL_GATE.sh" 1800

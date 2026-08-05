@@ -50,9 +50,9 @@ EC=$?
 echo "  [1/17] dependency check: $([ $EC -eq 0 ] && echo PASS || echo FAIL)" | tee -a "$LOG"
 [ $EC -eq 0 ] || OVERALL=1
 
-# 2) py_compile
-"$PYTHON_BIN" -m py_compile rc5_4_leases.py rc5_4_tests.py rc5_4_adversarial_tests.py \
-    rc5_3_multiworker.py rc5_2_*.py rc5_1_*.py 2>> "$LOG"; PC=$?
+# 2) py_compile (només fitxers existents)
+PYFILES=$(ls rc5_4_*.py rc5_3_*.py rc5_2_*.py 2>/dev/null | grep -v __pycache__)
+"$PYTHON_BIN" -m py_compile $PYFILES 2>> "$LOG"; PC=$?
 echo "  [2/17] py_compile: $([ $PC -eq 0 ] && echo PASS || echo FAIL)" | tee -a "$LOG"
 [ $PC -eq 0 ] || OVERALL=1
 

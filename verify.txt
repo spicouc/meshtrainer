@@ -7,8 +7,8 @@ Commit complet: d46dc1b9384c8b4aa1646aed2d3c7d6d54a2bd18
 Commit curt: d46dc1b
 
 Tarball: meshtrainer_rc54_stagea_final_d46dc1b.tar.gz
-SHA-256: 6f52a696d5280782e3672c7fe52903ddb28822e01bd6e167997c10dafdfd106c
-Mida: 491520 bytes
+SHA-256: df51f9b512ed6a5f8ba665c8c10a502c7b7b1a3fb7926a4522a992126d8f3313
+Mida: 491938 bytes
 Entrades: 238 (225 fitxers + 13 directoris)
 Manifest: 224 línies = 225 regulars - 1
 sha256sum -c: 0 errors

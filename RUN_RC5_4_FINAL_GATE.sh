@@ -95,15 +95,15 @@ run_sub "[14/17] dependency probe" "bash RUN_RC5_3_DEPENDENCY_PROBE.sh" 3600
 # 15) manifest probe (negativa)
 run_sub "[15/17] manifest probe" "bash RUN_RC5_3_MANIFEST_PROBE.sh" 3600
 
-# 16) manifest complet (regulars - 1)
+# 16) manifest complet (els fitxers coberts == línies del manifest)
 FILES=$(find . -type f ! -path './.venv/*' ! -path './.git/*' ! -path '*/__pycache__/*' ! -name '*.pyc' ! -name 'MANIFEST.sha256' | wc -l)
 MF=$(wc -l < MANIFEST.sha256 2>/dev/null || echo 0)
-if [ "$((FILES - 1))" -eq "$MF" ] && [ -f MANIFEST.sha256 ]; then
+if [ "$FILES" -eq "$MF" ] && [ -f MANIFEST.sha256 ]; then
     ERR=$(sha256sum -c MANIFEST.sha256 2>&1 | grep -cv ': OK')
-    echo "  [16/17] manifest: $([ "$ERR" -eq 0 ] && echo PASS || echo FAIL) (regulars=$FILES manifest=$MF err=$ERR)" | tee -a "$LOG"
+    echo "  [16/17] manifest: $([ "$ERR" -eq 0 ] && echo PASS || echo FAIL) (coberts=$FILES manifest=$MF err=$ERR)" | tee -a "$LOG"
     [ "$ERR" -eq 0 ] || OVERALL=1
 else
-    echo "  [16/17] manifest: FAIL (regulars=$FILES manifest=$MF, esperat $((FILES-1)))" | tee -a "$LOG"
+    echo "  [16/17] manifest: FAIL (coberts=$FILES manifest=$MF, han de coincidir)" | tee -a "$LOG"
     OVERALL=1
 fi
 

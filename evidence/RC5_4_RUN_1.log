@@ -1,0 +1,26 @@
+OK  REC-01 no lease before open 
+OK  REC-02 PREPARED after open 
+OK  REC-02 retry resumes without contribution 
+OK  REC-03 server activation journal ok 
+OK  REC-04 before backward -> no delta 
+OK  REC-05 mid-backward -> EXPIRED 
+OK  REC-05 reassignable after EXPIRED 
+OK  REC-05 worker B acquires after expiry 
+OK  REC-05 B committed, only B's delta in FedAvg 
+OK  REC-05 A renewal after expiry rejected 
+OK  REC-06 APPLIED retry returns same delta 
+OK  REC-06 delta deterministic (byte-equal) 
+OK  REC-07 SUBMITTED retry same update_id 
+OK  REC-08 COMMITTED retry same receipt byte-for-byte 
+OK  REC-09 checkpoint retry same response 
+OK  REC-07b update_id no overwrite 
+OK  REC-08b receipt no overwrite (byte-for-byte) 
+OK  REC-09b checkpoint response no overwrite 
+OK  REC-10 ACTIVE lease persisted 
+OK  REC-10 status ACTIVE 
+OK  REC-10b unit_key retorna lease més recent (worker B) 
+OK  REC-11 round.close aborts leases 
+OK  REC-12 round 2 independent lease 
+OK  REC-12 no cross-round contamination 
+
+=== RC5.4 CRASH MATRIX: 24/24 PASS, 0 FAIL ===

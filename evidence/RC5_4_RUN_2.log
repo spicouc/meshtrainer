@@ -1,0 +1,29 @@
+OK  ADV-01 lease aliena rebutjada 
+OK  ADV-02 renewal aliena rebutjada 
+OK  ADV-03 renewal després d'expiry rebutjada 
+OK  ADV-03 lease EXPIRED automàticament 
+OK  ADV-04 contribució després d'expiry rebutjada 
+OK  ADV-05 stale lease nonce rebutjat 
+OK  ADV-06 doble lease ACTIVE rebutjada 
+OK  ADV-07 reassign abans expiry rebutjat 
+OK  ADV-08 unitat u5 EXPIRED 
+OK  ADV-08 unit EXPIRED no és active per unit_key 
+OK  ADV-08 receipt de unitat expirada rebutjat 
+OK  ADV-09 reassign u9 a B (lease expirada reassignable) 
+OK  ADV-09 revision antiga persistida 
+OK  ADV-09 revisió nova ACTIVE 
+OK  ADV-10 double APPLIED retry mateix delta 
+OK  ADV-10 no overwrite delta after APPLIED 
+OK  ADV-11 adapter stale detectat (adapter_v1_old != actual) 
+OK  ADV-11 worker B adapter v2 
+OK  ADV-11 adapter no overwrite (exactly-once) 
+OK  ADV-12 abort -> ABORTED 
+OK  ADV-12 ABORTED reassignable 
+OK  ADV-13 reassign u13 a B 
+OK  ADV-13 journal resol a lease més recent (B) 
+OK  ADV-13 worker original no pot completar 
+OK  ADV-14 TTL determinista (7s) 
+OK  ADV-14 just abans d'expiry -> ACTIVE 
+OK  ADV-14 just després d'expiry -> EXPIRED 
+
+=== RC5.4 ADVERSARIAL: 27/27 PASS, 0 FAIL ===

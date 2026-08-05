@@ -1,0 +1,114 @@
+=== BASELINE ===
+  py_compile: PASS
+Baseline: PASS
+=== mut_r4_01_ignore_expiry ===
+  mutant: mut_r4_01_ignore_expiry | fitxer: mut_r4_01_ignore_expiry.py
+  patró: now = self._now_f()
+  substitució: now = self._now_f() - 1e9
+  ocurrències patró: 4 | applied_count: 1 (ha de ser 1)
+  py_compile: PASS
+  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  assertion detectora: FAIL ADV-03 renewal després d'expiry rebutjada 
+  mut_r4_01_ignore_expiry: DETECTED
+=== mut_r4_02_accept_expired_contribution ===
+  mutant: mut_r4_02_accept_expired_contribution | fitxer: mut_r4_02_accept_expired_contribution.py
+  patró: if lease["status"] in (LEASE_EXPIRED, LEASE_ABORTED):
+  substitució: if lease["status"] in (LEASE_ABORTED,):
+  ocurrències patró: 1 | applied_count: 1 (ha de ser 1)
+  py_compile: PASS
+  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  assertion detectora: FAIL ADV-04 contribució després d'expiry rebutjada 
+  mut_r4_02_accept_expired_contribution: DETECTED
+=== mut_r4_03_double_active_lease ===
+  mutant: mut_r4_03_double_active_lease | fitxer: mut_r4_03_double_active_lease.py
+  patró: if existing is not None:
+  substitució: if existing is not None and existing["worker_id"] == "__never__":
+  ocurrències patró: 1 | applied_count: 1 (ha de ser 1)
+  py_compile: PASS
+  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  assertion detectora: FAIL ADV-01 lease aliena rebutjada 
+  mut_r4_03_double_active_lease: DETECTED
+=== mut_r4_04_alien_renewal ===
+  mutant: mut_r4_04_alien_renewal | fitxer: mut_r4_04_alien_renewal.py
+  patró: if row["worker_id"] != worker_id or row["session_id"] != session_id:
+  substitució: if False:
+  ocurrències patró: 2 | applied_count: 1 (ha de ser 1)
+  py_compile: PASS
+  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  assertion detectora: FAIL ADV-02 renewal aliena rebutjada 
+  mut_r4_04_alien_renewal: DETECTED
+=== mut_r4_05_ignore_nonce ===
+  mutant: mut_r4_05_ignore_nonce | fitxer: mut_r4_05_ignore_nonce.py
+  patró: if row["lease_nonce"] != lease_nonce:
+  substitució: if False:
+  ocurrències patró: 2 | applied_count: 1 (ha de ser 1)
+  py_compile: PASS
+  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  assertion detectora: FAIL ADV-05 stale lease nonce rebutjat 
+  mut_r4_05_ignore_nonce: DETECTED
+=== mut_r4_06_reassign_before_expiry ===
+  mutant: mut_r4_06_reassign_before_expiry | fitxer: mut_r4_06_reassign_before_expiry.py
+  patró: return row["status"] in (LEASE_EXPIRED, LEASE_ABORTED)
+  substitució: return True
+  ocurrències patró: 1 | applied_count: 1 (ha de ser 1)
+  py_compile: PASS
+  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  assertion detectora: FAIL ADV-07 reassign abans expiry rebutjat 
+  mut_r4_06_reassign_before_expiry: DETECTED
+=== mut_r4_07_double_optimizer ===
+  mutant: mut_r4_07_double_optimizer | fitxer: mut_r4_07_double_optimizer.py
+  patró: delta_bundle_sha256=CASE WHEN recovery_journal_r54.delta_bundle_sha256 IS NULL THEN excluded.delta_bundle_sha256 ELSE recovery_journal_r54.delta_bundle_sha256 END,
+  substitució: delta_bundle_sha256=excluded.delta_bundle_sha256,
+  ocurrències patró: 1 | applied_count: 1 (ha de ser 1)
+  py_compile: PASS
+  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  assertion detectora: FAIL ADV-10 no overwrite delta after APPLIED 
+  mut_r4_07_double_optimizer: DETECTED
+=== mut_r4_08_different_receipt ===
+  mutant: mut_r4_08_different_receipt | fitxer: mut_r4_08_different_receipt.py
+  patró: receipt_json=CASE WHEN recovery_journal_r54.receipt_json IS NULL THEN excluded.receipt_json ELSE recovery_journal_r54.receipt_json END,
+  substitució: receipt_json=excluded.receipt_json,
+  ocurrències patró: 1 | applied_count: 1 (ha de ser 1)
+  py_compile: PASS
+  suite executada: crash matrix + adversarial | exit: 1 (crash=1 adv=0) | tracebacks: 0 (0+0) | falla a: crash
+  assertion detectora: FAIL REC-08b receipt no overwrite (byte-for-byte) 
+  mut_r4_08_different_receipt: DETECTED
+=== mut_r4_09_stale_adapter ===
+  mutant: mut_r4_09_stale_adapter | fitxer: mut_r4_09_stale_adapter.py
+  patró: adapter_hash=CASE WHEN recovery_journal_r54.adapter_hash IS NULL THEN excluded.adapter_hash ELSE recovery_journal_r54.adapter_hash END,
+  substitució: adapter_hash=excluded.adapter_hash,
+  ocurrències patró: 1 | applied_count: 1 (ha de ser 1)
+  py_compile: PASS
+  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  assertion detectora: FAIL ADV-11 adapter no overwrite (exactly-once) 
+  mut_r4_09_stale_adapter: DETECTED
+=== mut_r4_10_expired_in_fedavg ===
+  mutant: mut_r4_10_expired_in_fedavg | fitxer: mut_r4_10_expired_in_fedavg.py
+  patró: return row["status"] in (LEASE_EXPIRED, LEASE_ABORTED)
+  substitució: return row["status"] in (LEASE_ABORTED,)
+  ocurrències patró: 1 | applied_count: 1 (ha de ser 1)
+  py_compile: PASS
+  suite executada: crash matrix + adversarial | exit: 1 (crash=1 adv=0) | tracebacks: 0 (0+0) | falla a: crash
+  assertion detectora: FAIL REC-05 reassignable after EXPIRED 
+  mut_r4_10_expired_in_fedavg: DETECTED
+=== mut_r4_11_old_revision_commit ===
+  mutant: mut_r4_11_old_revision_commit | fitxer: mut_r4_11_old_revision_commit.py
+  patró: q += " ORDER BY updated_at DESC LIMIT 1"
+  substitució: q += " ORDER BY updated_at ASC LIMIT 1"
+  ocurrències patró: 1 | applied_count: 1 (ha de ser 1)
+  py_compile: PASS
+  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  assertion detectora: FAIL ADV-13 journal resol a lease més recent (B) 
+  mut_r4_11_old_revision_commit: DETECTED
+=== mut_r4_12_mid_backward_safe ===
+  mutant: mut_r4_12_mid_backward_safe | fitxer: mut_r4_12_mid_backward_safe.py
+  patró: if row["status"] not in (LEASE_ACTIVE, LEASE_RENEWED):
+  substitució: if False:
+  ocurrències patró: 2 | applied_count: 1 (ha de ser 1)
+  py_compile: PASS
+  suite executada: crash matrix + adversarial | exit: 1 (crash=1 adv=1) | tracebacks: 0 (0+0) | falla a: crash adv
+  assertion detectora: FAIL REC-05 A renewal after expiry rejected 
+  mut_r4_12_mid_backward_safe: DETECTED
+=== RESUM ===
+Score: 12/12 Invalid: 0 Runtime: 0 Not_applied: 0 Timeouts: 0
+Mutation gate RC5.4: PASS

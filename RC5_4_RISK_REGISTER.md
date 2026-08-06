@@ -1,40 +1,32 @@
-# RC5.4 RISK REGISTER
+# RC5.4 RISK REGISTER — R2 (addenda)
 
-**Data**: 2026-08-05 | **Branch**: rc5.4-stagea | **Base**: 9c46f65
+**Data**: 2026-08-06 | **Base**: d46dc1b
 
-## Riscos identificats i mitigacions
+## Riscos nous identificats a la integració real (R2)
 
 | ID | Risc | Severitat | Mitigació | Estat |
 |---|---|---|---|---|
-| RISK-01 | Contribució acceptada després d'EXPIRED | CRÍTIC | Guard al journal_set: lease EXPIRED/ABORTED -> LeaseError; testejat ADV-04, MUT-R4-02 | MITIGAT |
-| RISK-02 | Doble optimizer step en retry APPLIED | CRÍTIC | Exactly-once: primer delta guanya (CASE WHEN ... IS NULL); testejat REC-06, ADV-10, MUT-R4-07 | MITIGAT |
-| RISK-03 | Receipt duplicat/diferent en retry COMMITTED | CRÍTIC | Exactly-once: primer receipt guanya; testejat REC-08, REC-08b, MUT-R4-08 | MITIGAT |
-| RISK-04 | Doble contribució al FedAvg per reassignació | CRÍTIC | Una lease ACTIVE per unitat; reassignació només després d'EXPIRED/ABORTED; testejat REC-05, ADV-06 | MITIGAT |
-| RISK-05 | Reassignació abans d'expiry | ALT | can_reassign només per EXPIRED/ABORTED; testejat ADV-07, MUT-R4-06 | MITIGAT |
-| RISK-06 | Renewal aliena (worker/session no propietari) | ALT | Validació worker_id + session_id + lease_nonce; testejat ADV-02, ADV-05 | MITIGAT |
-| RISK-07 | Stale lease nonce | ALT | Nonce validat a renew i journal_set; testejat ADV-05, MUT-R4-05 | MITIGAT |
-| RISK-08 | Adapter stale acceptat en recovery | ALT | adapter_hash no-overwrite; testejat ADV-11, MUT-R4-09 | MITIGAT |
-| RISK-09 | Commit de revisió antiga | ALT | journal resol a la lease més recent; testejat ADV-09, ADV-13, MUT-R4-11 | MITIGAT |
-| RISK-10 | Expiry ignorat (TTL) | ALT | _expire_overdue transaccional; testejat ADV-14, MUT-R4-01 | MITIGAT |
-| RISK-11 | Crash a mig backward recuperat com a segur | CRÍTIC | Mid-backward -> EXPIRED + reassign; testejat REC-05, MUT-R4-12 | MITIGAT |
-| RISK-12 | Rellotge no determinista als tests | MITJÀ | Rellotge injectable (now fictici); testejat ADV-14 | MITIGAT |
-| RISK-13 | EXPIRED inclòs al FedAvg | CRÍTIC | can_reassign exclou EXPIRED de contribució; testejat REC-05, MUT-R4-10 | MITIGAT |
-| RISK-14 | Regressió del nucli congelat RC5.3 | ALT | Hashes verificats vs 9c46f65; regressions al gate combinat (pas 6) | MITIGAT |
+| RISK-17 | Journal cross-run/round/assignment/unit (binding incomplet) | CRÍTIC | Binding complet dels 8 camps a journal_set; ADV-R4-15..19, MUT-R4-13..17 | MITIGAT |
+| RISK-18 | Escriptura amb lease RELEASED | ALT | Només ACTIVE/RENEWED escriuen; ADV-R4-20, MUT-R4-18 | MITIGAT |
+| RISK-19 | Regressió d'estat del journal (COMMITTED->PREPARED) | CRÍTIC | Màquina d'estats estricta; ADV-R4-25, MUT-R4-19 | MITIGAT |
+| RISK-20 | Receipt/update_id conflictius acceptats | CRÍTIC | Exactly-once conflictiu (REJECTED); ADV-R4-27/28, MUT-R4-20 | MITIGAT |
+| RISK-21 | Reacquire després de RELEASED | ALT | acquire només després EXPIRED/ABORTED; ADV-R4-21, MUT-R4-21 | MITIGAT |
+| RISK-22 | Expiració amb `<` (límit exacte no expira) | MITJÀ | `<=` a _expire_overdue; ADV-R4-23, MUT-R4-22 | MITIGAT |
+| RISK-23 | expire sense fila modificada retorna èxit | MITJÀ | rowcount==1 obligatori; ADV-R4-23b, MUT-R4-23 | MITIGAT |
+| RISK-24 | Pipeline operatiu sense lease | CRÍTIC | _require_lease_params a tots els mètodes; ADV-R4-29, MUT-R4-24 | MITIGAT |
+| RISK-25 | Worker antic continua després de reassign | CRÍTIC | Lease EXPIRED no renovable ni contributiva; ADV-R4-30 | MITIGAT |
+| RISK-26 | Delta no determinista entre processos (restart) | ALT | WorkerRuntime re-carregat d'artefactes reals; restart real PASS (delta idèntic) | MITIGAT |
+| RISK-27 | Adapter crash != adapter no-crash | CRÍTIC | Comparació real a R8; adapter idèntic 13cb8687... | MITIGAT |
+| RISK-28 | Mid-backward deixa delta parcial | CRÍTIC | Crash abans d'APPLIED -> cap delta; mid-backward real PASS | MITIGAT |
 
-## Riscos residuals acceptats
+## Decisions de disseny R2
 
-| ID | Risc | Justificació |
-|---|---|---|
-| RISK-15 | SQLite és l'única font de veritat de leases | Acceptat: transaccions BEGIN IMMEDIATE, una connexió, WAL no requerit |
-| RISK-16 | El journal emmagatzema deltas deterministes, no grafs autograd | Acceptat: l'ordre exclou la persistència del graf (stop condition 1 no activada) |
-
-## Decisions de disseny
-
-- **Transaccions aniuables** (`_tx`): BEGIN IMMEDIATE només si no hi ha transacció
-  oberta (`in_transaction`), COMMIT/ROLLBACK pel nivell extern. Evita
-  "cannot start a transaction within a transaction".
-- **Exactly-once per CASE WHEN ... IS NULL** (no COALESCE): el primer valor
-  persisteix; un retry amb valor diferent no sobreescriu (COALESCE fallaria
-  perquè excluded no és NULL).
-- **Exit agregat del mutation gate = 1** si qualsevol suite falla (no suma):
-  distingeix fallada d'assertió (exit 1) de timeout (124).
+- **Restart real**: 2 processos OS reals (os._exit a la fase A) sobre la mateixa
+  SQLite; el servidor HTTP es re-arrenca a la fase B; step.open és idempotent
+  (mateixa activation) — verificat experimentalment.
+- **Server exactly-once**: el servidor rebutja un segon forward.fetch amb
+  "Same key, different payload" — el gradient es recupera de l'estat de la
+  fase A (no es re-fetch).
+- **Reassignació de micro_unit**: la clau lògica step.open és
+  run:round:assignment:micro_unit; una nova revisió requereix un micro_unit
+  nou (protocol correcte, no es reutilitza la clau).

@@ -1,54 +1,58 @@
-# RC5.4 FINAL REPORT — Stage A (Safe Recovery)
+# RC5.4 STAGE A R2 — FINAL REPORT (INTEGRACIÓ REAL)
 
-**Data**: 2026-08-05
-**Branch**: rc5.4-stagea
-**Base certificada**: 9c46f65ea288fcbb351d4744fa1cec4e2ec11d64 (RC5.3 R6.1)
-**Autorització**: Finalització RC5.4 Stage A AUTHORIZED pel Supervisor
+**Data**: 2026-08-06 | **Branch**: rc5.4-stagea | **Base**: d46dc1b9384c8b4aa1646aed2d3c7d6d54a2bd18
 
 ## Resum executiu
 
-RC5.4 Stage A implementa **Safe Recovery** per al pipeline multiworker:
-leases persistents, expiració/reassignació, exactly-once del journal
-(PREPARED/APPLIED/SUBMITTED/COMMITTED), i crash matrix completa.
-No requereix persistir el graf autograd; els deltas es regeneren de manera
-determinista (seed derivada de run/round/assignment/unit/worker).
+R2 integra Safe Recovery amb el pipeline RC5.3/RC5.2 real: capa
+RC54RecoveryCoordinator que exigeix lease vàlida (8 paràmetres) a totes les
+operacions, binding complet del journal, estats autoritzats, màquina
+d'estats estricta, exactly-once conflictiu (REJECTED), restart real de
+processos i mid-backward real. Cap oracle sintètic (torch.randn, SHA de
+strings, adapter inventat): tots els deltas/adapter provenen del pipeline
+real.
 
-## Canvis respecte a la base 9c46f65 (additius, cap fitxer congelat modificat)
+## Canvis (additius, cap fitxer congelat modificat)
 
-- `rc5_4_leases.py` (nou): LeaseManager + taula leases_r54 + recovery_journal_r54
-- `rc5_4_tests.py` (nou): crash matrix REC-01..12 (24 checks)
-- `rc5_4_adversarial_tests.py` (nou): 14 probes mínimes (27 checks)
-- `mutants_r54/mut_r4_01..12.py` (nous): 12 mutants PATTERN/SUBST
-- Runners nous: RUN_RC5_4_TESTS.sh, RUN_RC5_4_ADVERSARIAL_GATE.sh,
-  RUN_RC5_4_MUTATION_GATE.sh, RUN_RC5_4_RESTART_GATE.sh,
-  RUN_RC5_4_CONTROLLED_FAILURE.sh, RUN_RC5_4_CLEAN_EXTRACTION_GATE.sh,
-  RUN_RC5_4_FINAL_GATE.sh
-- `MANIFEST.sha256` regenerat: 224 fitxers coberts = 224 línies
+- `rc5_4_integration.py` (nou): RC54RecoveryCoordinator
+- `rc5_4_restart_real.py` (nou): restart real de 2 processos
+- `rc5_4_mid_backward_real.py` (nou): mid-backward real
+- `rc5_4_leases.py`: binding complet, estats, màquina d'estats, exactly-once
+  conflictiu, índex parcial únic, expire rowcount=1, TTL>0, expiració <=
+- `rc5_4_tests.py` / `rc5_4_adversarial_tests.py`: adaptats + 16 ADV noves
+- `mutants_r54/`: 12 mutants nous (MUT-R4-13..24), antics reajustats
+- Runners: RUN_RC5_4_RESTART_REAL_GATE.sh, RUN_RC5_4_MID_BACKWARD_GATE.sh,
+  RUN_RC5_4_TESTS.sh (normal x2 real)
 
-## Resultats
+## Resultats R2
 
 | Gate | Resultat |
 |---|---|
 | Crash matrix | 24/24 PASS |
-| Adversarial | 27/27 PASS |
-| Mutation | 12/12 DETECTED (Invalid 0, Runtime 0, Not_applied 0, Timeouts 0) |
-| Combined gate (17 passos) | **Overall PASS** |
-| Restart real | PASS (PID_A != PID_B) |
-| Controlled-failure RC5.4 | PASS (1 sola FAIL, 0 tracebacks, exit 1) |
+| Adversarial (16 noves incl.) | 51/51 PASS |
+| Mutation (24 mutants) | 24/24 DETECTED (Invalid 0, Runtime 0, Not_applied 0, Timeouts 0) |
+| Restart real (2 processos) | PASS (PID_A != PID_B, mateix delta, adapter igual) |
+| Mid-backward real | PASS (A EXPIRED, A no contribueix, B guanya) |
+| Normal ×2 real | PASS (Run1 PASS, Run2 PASS, Flaky 0) |
+| Combined gate 18 passos | **Overall PASS** |
+| Controlled-failure RC5.4 | PASS (1 FAIL, 0 tracebacks, exit 1) |
 
-## Integritat dels fitxers congelats
+## Restart real (R8) — evidència
 
-Els 6 fitxers del nucli (rc5_3_multiworker.py, rc5_3_tests.py,
-rc5_3_adversarial_tests.py, rc5_2_worker_runtime.py, rc5_2_http_server.py,
-rc5_2_phase2_tests.py) tenen hashes idèntics als del commit 9c46f65
-(verificat amb sha256sum contra el MANIFEST de 9c46f65).
+- PID_A=3849458 (procés A: Coordinator+HTTP, worker A fins APPLIED, crash real)
+- PID_B=3849563 (procés B: recupera la mateixa SQLite, PID diferent)
+- Journal recuperat: APPLIED amb delta 2c8a7dcc7334f53b...
+- Delta re-derivat idèntic (determinisme real, cap segon optimizer)
+- Adapter final = no-crash: 13cb86871456bbb95937221d6c127e4edb295ef97043b06aad0d3817681d8c1c
 
-## Stop conditions
+## Mid-backward real (R9) — evidència
 
-Cap condició d'aturada activada:
-1. No cal persistir el graf autograd (journal de deltas deterministes) ✓
-2. No s'ha modificat el kernel numèric congelat ✓
-3. No es trenca RC5.3 (regressions PASS) ✓
-4. Exactly-once en APPLIED garantit (testejat REC-07b, ADV-10) ✓
-5. La reassignació no permet dues contribucions ACTIVE ✓
-6. Rellotge/TTL determinista (rellotge injectable) ✓
+- Worker A entra en backward, procés cau abans d'APPLIED
+- Lease d'A EXPIRED, A no pot continuar, A no pot aportar cap delta parcial
+- B adquireix revisió nova (ACTIVE), el seu delta es registra
+- Cap delta parcial d'A al journal
+
+## Integritat
+
+- 6 fitxers congelats: hashes idèntics a 9c46f65 (0 diffs)
+- Manifest: 241 fitxers coberts = 241 línies, sha256sum -c 0 errors

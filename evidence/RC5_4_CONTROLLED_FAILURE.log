@@ -1,0 +1,6 @@
+CF-R54: assertion modificada aplicada: 1 (ha de ser 1)
+CF-R54: py_compile: PASS
+CF-R54: suite exit: 1 | FAILs: 1 | tracebacks: 0
+FAIL REC-01 no lease before open 
+CF-R54: PASS (una sola prova FAIL, 0 tracebacks, exit no-zero, gate Overall FAIL)
+CF-R54: original rc5_4_tests.py intacte (match HEAD)

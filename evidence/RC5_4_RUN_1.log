@@ -13,9 +13,9 @@ OK  REC-06 delta deterministic (byte-equal)
 OK  REC-07 SUBMITTED retry same update_id 
 OK  REC-08 COMMITTED retry same receipt byte-for-byte 
 OK  REC-09 checkpoint retry same response 
-OK  REC-07b update_id no overwrite 
-OK  REC-08b receipt no overwrite (byte-for-byte) 
-OK  REC-09b checkpoint response no overwrite 
+OK  REC-07b conflicting update_id REJECTED 
+OK  REC-08b original receipt preserved 
+OK  REC-09b original checkpoint preserved 
 OK  REC-10 ACTIVE lease persisted 
 OK  REC-10 status ACTIVE 
 OK  REC-10b unit_key retorna lease més recent (worker B) 

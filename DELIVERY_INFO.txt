@@ -1,58 +1,52 @@
-DELIVERY_INFO — meshtrainer RC5.4 Stage A FINAL
-================================================
+DELIVERY_INFO — meshtrainer RC5.4 Stage A R2 (INTEGRACIÓ REAL) FINAL
+====================================================================
 
-DATA: 2026-08-05
+DATA: 2026-08-06
 BRANCH: rc5.4-stagea
-BASE COMMIT: 9c46f65ea288fcbb351d4744fa1cec4e2ec11d64 (RC5.3 R6.1 certificada)
-COMMIT FINAL: d46dc1b9384c8b4aa1646aed2d3c7d6d54a2bd18
-COMMIT CURT: d46dc1b
+BASE COMMIT: d46dc1b9384c8b4aa1646aed2d3c7d6d54a2bd18 (candidat R1)
+COMMIT FINAL: 086c030 (codi + documentació R2)
 GIT STATUS: buit
 
 TARBALL
-meshtrainer_rc54_stagea_final_d46dc1b.tar.gz
-SHA-256: df51f9b512ed6a5f8ba665c8c10a502c7b7b1a3fb7926a4522a992126d8f3313
-MIDA: 491938 bytes (480K)
-ENTRADES TAR: 238 (225 fitxers regulars + 13 directoris)
-FITXERS REGULARS: 225
-DIRECTORIS: 13
-MANIFEST: 224 línies (225 regulars - 1 MANIFEST.sha256)
-sha256sum -c MANIFEST.sha256: 0 errors (cobertura completa)
+meshtrainer_rc54_stagea_r2_final_086c030.tar.gz
+SHA-256: 6e1d0fa48bf3759c814580ef4b657983565c64e3c2574708370fff02cde10cea
+MIDA: 504116 bytes
+ENTRADES TAR: 257 (244 fitxers regulars + 13 directoris)
+MANIFEST: 243 línies (244 regulars - 1 MANIFEST.sha256)
+sha256sum -c MANIFEST.sha256: 0 errors
 
 ENTORN
-Python: 3.13.5
-torch: 2.13.0+cpu
-numpy: 2.4.4
-requests: 2.34.2
-httpx: 0.28.1
+Python: 3.13.5 | torch: 2.13.0+cpu | numpy: 2.4.4 | requests: 2.34.2 | httpx: 0.28.1
 
-RESULTATS RC5.4 STAGE A (SAFE RECOVERY)
-- RC5.4 normal x2: PASS (crash matrix 24/24 + adversarial 27/27)
-- RC5.4 adversarial: PASS (14 probes mínimes, 27/27)
-- RC5.4 mutation: PASS (12/12 DETECTED, Invalid 0, Runtime 0, Not_applied 0, Timeouts 0)
-- Restart real: PASS (PID_A != PID_B, journal recuperat, delta byte-for-byte,
-  cap segon optimizer, receipt byte-for-byte, checkpoint idempotent)
-- Controlled-failure RC5.4: PASS (1 sola FAIL, 0 tracebacks, exit 1)
-- Gate combinat 17 passos: Overall PASS
+RESULTATS R2 (INTEGRACIÓ REAL)
+- RC5.4 normal x2 REAL (mateixa suite 2 cops): Run1 PASS, Run2 PASS, Flaky 0
+- Adversarial: 51/51 PASS (14 originals + 16 noves ADV-R4-15..30)
+- Mutation: 24/24 DETECTED (Invalid 0, Runtime 0, Not_applied 0, Timeouts 0)
+- Restart real del pipeline: PASS
+  PID_A=3849458 (Coordinator+HTTP, worker A fins APPLIED, crash real)
+  PID_B=3849563 (recupera mateixa SQLite, PID diferent)
+  mateix delta (determinisme real), cap segon optimizer,
+  adapter final = no-crash: 13cb86871456bbb95937221d6c127e4edb295ef97043b06aad0d3817681d8c1c
+- Mid-backward real: PASS (A EXPIRED, A no pot continuar ni aportar,
+  B adquireix revisió nova, cap delta parcial d'A al journal)
+- Gate combinat 18 passos: Overall PASS
 
 REGRESSIONS (fitxers congelats vs 9c46f65: 0 diferències)
 - RC5.3 combined: PASS (105/105, adv 33/33, mut 12/12, RC5.2, Phase1, RC5.1)
-- RC5.2 Phase 2: PASS
-- Phase 1: PASS
-- RC5.1: PASS
-- Controlled-failure RC5.3 (W1): PASS
-- Controlled-failure RC5.2 (J4): PASS
-- Dependency probe: PASS
-- Manifest probe: PASS
+- RC5.2 Phase 2 / Phase 1 / RC5.1: PASS
+- Controlled-failure RC5.3 (W1) / RC5.2 (J4) / RC5.4 (REC-01): PASS
+- Dependency probe / Manifest probe: PASS
+- Manifest complet: PASS (243 = 243, err 0)
 
-CLEAN EXTRACTION: PASS x2 (A i B, dirs buits mktemp)
-- SHA extern PASS, extracció 225 fitxers, manifest PASS, gate complet Overall PASS x2
+CLEAN EXTRACTION: PASS x2 (A i B, dirs buits)
+- SHA extern PASS, extracció 244 fitxers, manifest PASS, gate complet Overall PASS x2
 - Ports residuals: cap | Fitxers externs: cap
 
 STOP CONDITIONS: cap activada
 - No cal persistir graf autograd (journal de deltas deterministes)
-- Kernel numèric congelat no modificat
-- Exactly-once en APPLIED garantit i testejat
-- Reassignació no permet dues contribucions ACTIVE
+- Kernel numèric congelat no modificat (0 diffs vs 9c46f65)
+- Exactly-once en APPLIED garantit (conflictiu -> REJECTED)
+- Reassignació no permet dues contribucions ACTIVE (índex parcial únic)
 - Rellotge/TTL determinista
 
 AUTORITZACIONS

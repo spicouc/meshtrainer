@@ -37,9 +37,12 @@ def rec_02_mid_backward_crash(lm, now, run, rnd, asg, worker_a, worker_b, sessio
     ttl = 5.0
     ls = lm.acquire(run, rnd, asg, "u1", worker_a, session, ttl_seconds=ttl)
     # worker A applies (APPLIED) then crashes mid-backward -> coordinator expires
-    lm.journal_set("u1", run, rnd, asg, worker_a, ls["lease_id"], ls["lease_nonce"],
+    lm.journal_set("u1", run, rnd, asg, "u1", worker_a, session, ls["lease_id"], ls["lease_nonce"],
+                   JRN_PREPARED)
+    lm.journal_set("u1", run, rnd, asg, "u1", worker_a, session, ls["lease_id"], ls["lease_nonce"],
                    JRN_APPLIED, delta_sha="shaA")
-    lm.expire(run, rnd, asg, "u1", worker_id=worker_a)
+    lm.expire(run, rnd, asg, "u1", worker_id=worker_a, session_id=session,
+              lease_nonce=ls["lease_nonce"], coordinator_only=True)
     # contribution from A after expiry rejected (via journal/lease check)
     lstat = lm.status(lease_id=ls["lease_id"])
     check("REC-05 mid-backward -> EXPIRED", lstat["status"] == LEASE_EXPIRED)
@@ -48,10 +51,17 @@ def rec_02_mid_backward_crash(lm, now, run, rnd, asg, worker_a, worker_b, sessio
     ls_b = lm.acquire(run, rnd, asg, "u1", worker_b, "sessB", ttl_seconds=ttl)
     check("REC-05 worker B acquires after expiry", ls_b["status"] == LEASE_ACTIVE)
     delta_b = stable_delta(run, rnd, asg, "u1", worker_b)
-    lm.journal_set("u1", run, rnd, asg, worker_b, ls_b["lease_id"], ls_b["lease_nonce"],
+    lm.journal_set("u1", run, rnd, asg, "u1", worker_b, "sessB", ls_b["lease_id"], ls_b["lease_nonce"],
+                   JRN_PREPARED)
+    lm.journal_set("u1", run, rnd, asg, "u1", worker_b, "sessB", ls_b["lease_id"], ls_b["lease_nonce"],
                    JRN_APPLIED, delta_sha=hashlib.sha256(delta_b.numpy().tobytes()).hexdigest())
-    lm.journal_set("u1", run, rnd, asg, worker_b, ls_b["lease_id"], ls_b["lease_nonce"],
-                   JRN_COMMITTED)
+    lm.journal_set("u1", run, rnd, asg, "u1", worker_b, "sessB", ls_b["lease_id"], ls_b["lease_nonce"],
+                   JRN_SUBMITTED, delta_sha=hashlib.sha256(delta_b.numpy().tobytes()).hexdigest(),
+                   update_id=f"upd_B_{ls_b['lease_id'][:8]}")
+    lm.journal_set("u1", run, rnd, asg, "u1", worker_b, "sessB", ls_b["lease_id"], ls_b["lease_nonce"],
+                   JRN_COMMITTED, delta_sha=hashlib.sha256(delta_b.numpy().tobytes()).hexdigest(),
+                   update_id=f"upd_B_{ls_b['lease_id'][:8]}",
+                   receipt=json.dumps({"status": "COMMITTED", "worker": "wb"}, sort_keys=True))
     check("REC-05 B committed, only B's delta in FedAvg",
           lm.journal_state("u1", ls_b["lease_id"]) == JRN_COMMITTED)
     # A cannot complete after reassignment
@@ -83,7 +93,7 @@ def run_crash_matrix():
 
     # REC-02 crash després de step.open -> lease ACTIVE; retry ok, sense contribució
     ls = lm.acquire(run, rnd, asg, "u2", worker_a, session, ttl_seconds=10.0)
-    lm.journal_set("u2", run, rnd, asg, worker_a, ls["lease_id"], ls["lease_nonce"],
+    lm.journal_set("u2", run, rnd, asg, "u2", worker_a, session, ls["lease_id"], ls["lease_nonce"],
                    JRN_PREPARED)
     check("REC-02 PREPARED after open", lm.journal_state("u2", ls["lease_id"]) == JRN_PREPARED)
     # retry: resume, no contribution produced yet
@@ -91,7 +101,7 @@ def run_crash_matrix():
           lm.journal_state("u2", ls["lease_id"]) == JRN_PREPARED)
 
     # REC-03 crash després de server activation -> PREPARED/APPLIED boundary ok
-    lm.journal_set("u2", run, rnd, asg, worker_a, ls["lease_id"], ls["lease_nonce"],
+    lm.journal_set("u2", run, rnd, asg, "u2", worker_a, session, ls["lease_id"], ls["lease_nonce"],
                    JRN_PREPARED)
     check("REC-03 server activation journal ok", True)
 
@@ -106,7 +116,9 @@ def run_crash_matrix():
     ls6 = lm.acquire(run, rnd, asg, "u6", worker_a, session, ttl_seconds=10.0)
     d6 = stable_delta(run, rnd, asg, "u6", worker_a)
     sha6 = hashlib.sha256(d6.numpy().tobytes()).hexdigest()
-    lm.journal_set("u6", run, rnd, asg, worker_a, ls6["lease_id"], ls6["lease_nonce"],
+    lm.journal_set("u6", run, rnd, asg, "u6", worker_a, session, ls6["lease_id"], ls6["lease_nonce"],
+                   JRN_PREPARED)
+    lm.journal_set("u6", run, rnd, asg, "u6", worker_a, session, ls6["lease_id"], ls6["lease_nonce"],
                    JRN_APPLIED, delta_sha=sha6)
     # retry: same delta returned (no second optimizer step)
     retry6 = lm.journal_get("u6", ls6["lease_id"])
@@ -118,7 +130,7 @@ def run_crash_matrix():
 
     # REC-07 crash després de SUBMITTED -> same update_id
     upd7 = f"upd_{hashlib.sha256(sha6.encode()).hexdigest()[:16]}"
-    lm.journal_set("u6", run, rnd, asg, worker_a, ls6["lease_id"], ls6["lease_nonce"],
+    lm.journal_set("u6", run, rnd, asg, "u6", worker_a, session, ls6["lease_id"], ls6["lease_nonce"],
                    JRN_SUBMITTED, delta_sha=sha6, update_id=upd7)
     retry7 = lm.journal_get("u6", ls6["lease_id"])
     check("REC-07 SUBMITTED retry same update_id", retry7["update_id"] == upd7)
@@ -126,7 +138,7 @@ def run_crash_matrix():
     # REC-08 crash després de COMMITTED -> same receipt byte-for-byte
     receipt8 = json.dumps({"update_id": upd7, "status": "COMMITTED",
                            "receipt_nonce": "rcpt8"}, sort_keys=True)
-    lm.journal_set("u6", run, rnd, asg, worker_a, ls6["lease_id"], ls6["lease_nonce"],
+    lm.journal_set("u6", run, rnd, asg, "u6", worker_a, session, ls6["lease_id"], ls6["lease_nonce"],
                    JRN_COMMITTED, delta_sha=sha6, update_id=upd7, receipt=receipt8)
     retry8 = lm.journal_get("u6", ls6["lease_id"])
     check("REC-08 COMMITTED retry same receipt byte-for-byte",
@@ -134,22 +146,23 @@ def run_crash_matrix():
 
     # REC-09 crash després de checkpoint.upload -> same checkpoint response
     ckpt9 = json.dumps({"checkpoint_id": "ck9", "status": "UPLOADED"}, sort_keys=True)
-    lm.journal_set("u6", run, rnd, asg, worker_a, ls6["lease_id"], ls6["lease_nonce"],
+    lm.journal_set("u6", run, rnd, asg, "u6", worker_a, session, ls6["lease_id"], ls6["lease_nonce"],
                    JRN_COMMITTED, delta_sha=sha6, update_id=upd7, receipt=receipt8,
                    checkpoint_response=ckpt9)
     retry9 = lm.journal_get("u6", ls6["lease_id"])
     check("REC-09 checkpoint retry same response", retry9["checkpoint_response"] == ckpt9)
 
-    # REC-07b/08b/09b: exactly-once — cap camp COMMITTED es pot sobreescriure
-    lm.journal_set("u6", run, rnd, asg, worker_a, ls6["lease_id"], ls6["lease_nonce"],
-                   JRN_COMMITTED, delta_sha=sha6, update_id="upd_DIFFERENT",
-                   receipt='{"different":1}', checkpoint_response='{"x":2}')
+    # REC-07b/08b/09b: exactly-once CONFLICTIU — payload diferent -> REJECTED
+    try:
+        lm.journal_set("u6", run, rnd, asg, "u6", worker_a, session, ls6["lease_id"], ls6["lease_nonce"],
+                       JRN_COMMITTED, delta_sha=sha6, update_id="upd_DIFFERENT",
+                       receipt='{"different":1}', checkpoint_response='{"x":2}')
+        check("REC-07b conflicting update_id REJECTED", False)
+    except LeaseError:
+        check("REC-07b conflicting update_id REJECTED", True)
     j_b = lm.journal_get("u6", ls6["lease_id"])
-    check("REC-07b update_id no overwrite", j_b["update_id"] == upd7)
-    check("REC-08b receipt no overwrite (byte-for-byte)",
-          j_b["receipt_json"] == receipt8)
-    check("REC-09b checkpoint response no overwrite",
-          j_b["checkpoint_response"] == ckpt9)
+    check("REC-08b original receipt preserved", j_b["receipt_json"] == receipt8)
+    check("REC-09b original checkpoint preserved", j_b["checkpoint_response"] == ckpt9)
 
     # REC-10 crash després d'ACTIVE -> lease ACTIVE, retry reusa la mateixa lease
     ls10 = lm.acquire(run, rnd, asg, "u10", worker_a, session, ttl_seconds=10.0)
@@ -158,7 +171,7 @@ def run_crash_matrix():
     check("REC-10 status ACTIVE", st10["status"] == LEASE_ACTIVE)
 
     # REC-10b: unit_key retorna la lease MÉS RECENT (no una antiga EXPIRED)
-    lm.expire(run, rnd, asg, "u10", worker_id=worker_a)
+    lm.expire(run, rnd, asg, "u10", coordinator_only=True)
     ls10b = lm.acquire(run, rnd, asg, "u10", worker_b, "sessB", ttl_seconds=10.0)
     uk10 = lm.status(unit_key=(run, rnd, asg, "u10"))
     check("REC-10b unit_key retorna lease més recent (worker B)",

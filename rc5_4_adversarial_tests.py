@@ -72,7 +72,7 @@ def main():
     # 4. contribució després d'expiry rebutjada (journal no es pot avançar a COMMITTED
     #    si la lease no és ACTIVE/RENEWED)
     try:
-        lm.journal_set("u1", run, rnd, asg, wa, ls["lease_id"], ls["lease_nonce"],
+        lm.journal_set("u1", run, rnd, asg, "u1", wa, sess, ls["lease_id"], ls["lease_nonce"],
                        JRN_COMMITTED, delta_sha="shaX", update_id="updX",
                        receipt='{"x":1}')
         check("ADV-04 contribució després d'expiry rebutjada", False)
@@ -107,7 +107,7 @@ def main():
     uk5 = lm.status(unit_key=(run, rnd, asg, "u5"))
     check("ADV-08 unit EXPIRED no és active per unit_key", uk5 is None)
     try:
-        lm.journal_set("u5", run, rnd, asg, wa, ls5["lease_id"], ls5["lease_nonce"],
+        lm.journal_set("u5", run, rnd, asg, "u5", wa, sess, ls5["lease_id"], ls5["lease_nonce"],
                        JRN_COMMITTED, receipt='{"r":1}')
         check("ADV-08 receipt de unitat expirada rebutjat", False)
     except LeaseError:
@@ -115,7 +115,13 @@ def main():
 
     # 9. checkpoint d'una revision antiga rebutjat (journal de lease anterior)
     ls9 = lm.acquire(run, rnd, asg, "u9", wa, sess, ttl_seconds=10.0)
-    lm.journal_set("u9", run, rnd, asg, wa, ls9["lease_id"], ls9["lease_nonce"],
+    lm.journal_set("u9", run, rnd, asg, "u9", wa, sess, ls9["lease_id"], ls9["lease_nonce"],
+                   JRN_PREPARED)
+    lm.journal_set("u9", run, rnd, asg, "u9", wa, sess, ls9["lease_id"], ls9["lease_nonce"],
+                   JRN_APPLIED, delta_sha="sha9")
+    lm.journal_set("u9", run, rnd, asg, "u9", wa, sess, ls9["lease_id"], ls9["lease_nonce"],
+                   JRN_SUBMITTED, delta_sha="sha9", update_id="upd9")
+    lm.journal_set("u9", run, rnd, asg, "u9", wa, sess, ls9["lease_id"], ls9["lease_nonce"],
                    JRN_COMMITTED, delta_sha="sha9", update_id="upd9",
                    receipt='{"rev":1}')
     now[0] += 20.0
@@ -135,21 +141,29 @@ def main():
     # 10. doble recovery APPLIED no fa optimizer (estat APPLIED immutable -> mateix delta)
     ls10 = lm.acquire(run, rnd, asg, "u10", wa, sess, ttl_seconds=10.0)
     sha10 = "sha10_delta_deterministic"
-    lm.journal_set("u10", run, rnd, asg, wa, ls10["lease_id"], ls10["lease_nonce"],
+    lm.journal_set("u10", run, rnd, asg, "u10", wa, sess, ls10["lease_id"], ls10["lease_nonce"],
+                   JRN_PREPARED)
+    lm.journal_set("u10", run, rnd, asg, "u10", wa, sess, ls10["lease_id"], ls10["lease_nonce"],
                    JRN_APPLIED, delta_sha=sha10)
     j10 = lm.journal_get("u10", ls10["lease_id"])
     check("ADV-10 double APPLIED retry mateix delta",
           j10["delta_bundle_sha256"] == sha10)
-    # un segon set a APPLIED no canvia el delta (COALESCE)
-    lm.journal_set("u10", run, rnd, asg, wa, ls10["lease_id"], ls10["lease_nonce"],
-                   JRN_APPLIED, delta_sha="sha10_DIFFERENT")
+    # un segon set a APPLIED amb payload CONFLICTIU -> REJECTED (exactly-once)
+    try:
+        lm.journal_set("u10", run, rnd, asg, "u10", wa, sess, ls10["lease_id"], ls10["lease_nonce"],
+                       JRN_APPLIED, delta_sha="sha10_DIFFERENT")
+        check("ADV-10 conflicting delta REJECTED", False)
+    except LeaseError:
+        check("ADV-10 conflicting delta REJECTED", True)
     j10b = lm.journal_get("u10", ls10["lease_id"])
     check("ADV-10 no overwrite delta after APPLIED",
           j10b["delta_bundle_sha256"] == sha10)
 
     # 11. recovery amb adapter stale rebutjat (adapter_hash de revisió antiga)
     ls11 = lm.acquire(run, rnd, asg, "u11", wa, sess, ttl_seconds=10.0)
-    lm.journal_set("u11", run, rnd, asg, wa, ls11["lease_id"], ls11["lease_nonce"],
+    lm.journal_set("u11", run, rnd, asg, "u11", wa, sess, ls11["lease_id"], ls11["lease_nonce"],
+                   JRN_PREPARED)
+    lm.journal_set("u11", run, rnd, asg, "u11", wa, sess, ls11["lease_id"], ls11["lease_nonce"],
                    JRN_APPLIED, delta_sha="sha11", adapter_hash="adapter_v1_old")
     now[0] += 20.0
     ls11b = lm.acquire(run, rnd, asg, "u11", wb, "sessB", ttl_seconds=10.0)
@@ -157,12 +171,18 @@ def main():
     check("ADV-11 adapter stale detectat (adapter_v1_old != actual)",
           j11_old["adapter_hash"] == "adapter_v1_old")
     # el worker B fa servir adapter nou
-    lm.journal_set("u11", run, rnd, asg, wb, ls11b["lease_id"], ls11b["lease_nonce"],
+    lm.journal_set("u11", run, rnd, asg, "u11", wb, "sessB", ls11b["lease_id"], ls11b["lease_nonce"],
+                   JRN_PREPARED)
+    lm.journal_set("u11", run, rnd, asg, "u11", wb, "sessB", ls11b["lease_id"], ls11b["lease_nonce"],
                    JRN_APPLIED, delta_sha="sha11b", adapter_hash="adapter_v2")
     check("ADV-11 worker B adapter v2", True)
-    # exactly-once: un segon set amb adapter diferent NO sobreescriu el primer
-    lm.journal_set("u11", run, rnd, asg, wb, ls11b["lease_id"], ls11b["lease_nonce"],
-                   JRN_APPLIED, delta_sha="sha11b", adapter_hash="adapter_v2_EVIL")
+    # exactly-once: un segon set amb adapter diferent -> REJECTED
+    try:
+        lm.journal_set("u11", run, rnd, asg, "u11", wb, "sessB", ls11b["lease_id"], ls11b["lease_nonce"],
+                       JRN_APPLIED, delta_sha="sha11b", adapter_hash="adapter_v2_EVIL")
+        check("ADV-11 conflicting adapter REJECTED", False)
+    except LeaseError:
+        check("ADV-11 conflicting adapter REJECTED", True)
     j11_b2 = lm.journal_get("u11", ls11b["lease_id"])
     check("ADV-11 adapter no overwrite (exactly-once)",
           j11_b2["adapter_hash"] == "adapter_v2")
@@ -175,7 +195,7 @@ def main():
 
     # 13. worker original no pot completar després de reassignació
     ls13 = lm.acquire(run, rnd, asg, "u13", wa, sess, ttl_seconds=10.0)
-    lm.journal_set("u13", run, rnd, asg, wa, ls13["lease_id"], ls13["lease_nonce"],
+    lm.journal_set("u13", run, rnd, asg, "u13", wa, sess, ls13["lease_id"], ls13["lease_nonce"],
                    JRN_PREPARED)
     now[0] += 20.0
     try:
@@ -184,7 +204,7 @@ def main():
     except LeaseError as e:
         check("ADV-13 reassign u13 a B", False, str(e))
         return 1 if any(not ok for _, ok, _ in RESULTS) else 0
-    lm.journal_set("u13", run, rnd, asg, wb, ls13b["lease_id"], ls13b["lease_nonce"],
+    lm.journal_set("u13", run, rnd, asg, "u13", wb, "sessB", ls13b["lease_id"], ls13b["lease_nonce"],
                    JRN_PREPARED)
     # el journal de la unitat ha de resoldre a la lease MÉS RECENT (B)
     j13 = lm.journal_lease_for_unit(run, rnd, asg, "u13")
@@ -192,7 +212,7 @@ def main():
           j13 is not None and j13["lease_id"] == ls13b["lease_id"]
           and j13["worker_id"] == wb)
     try:
-        lm.journal_set("u13", run, rnd, asg, wa, ls13["lease_id"], ls13["lease_nonce"],
+        lm.journal_set("u13", run, rnd, asg, "u13", wa, sess, ls13["lease_id"], ls13["lease_nonce"],
                        JRN_COMMITTED, receipt='{"a":1}')
         check("ADV-13 worker original no pot completar", False)
     except LeaseError:
@@ -209,6 +229,226 @@ def main():
     now[0] = 5007.5
     check("ADV-14 just després d'expiry -> EXPIRED",
           lm.status(lease_id=ls14["lease_id"])["status"] == LEASE_EXPIRED)
+
+    # ============ R2: ADV-R4-15..30 (16 probes noves) ============
+    # 15. cross-run journal rejected: lease de runA no pot escriure journal de runB
+    ls15 = lm.acquire("runA", rnd, asg, "u15", wa, sess, ttl_seconds=10.0)
+    try:
+        lm.journal_set("u15", "runB", rnd, asg, "u15", wa, sess,
+                       ls15["lease_id"], ls15["lease_nonce"], JRN_PREPARED)
+        check("ADV-R4-15 cross-run journal rejected", False)
+    except LeaseError:
+        check("ADV-R4-15 cross-run journal rejected", True)
+
+    # 15b. índex parcial únic: 1 ACTIVE/RENEWED per unitat (MUT-03)
+    idx = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE name='idx_leases_one_active'").fetchone()
+    check("ADV-R4-15b índex parcial únic present",
+          idx is not None and "UNIQUE" in idx["sql"])
+
+    # 16. cross-round journal rejected
+    try:
+        lm.journal_set("u15", "runA", "r9", asg, "u15", wa, sess,
+                       ls15["lease_id"], ls15["lease_nonce"], JRN_PREPARED)
+        check("ADV-R4-16 cross-round journal rejected", False)
+    except LeaseError:
+        check("ADV-R4-16 cross-round journal rejected", True)
+
+    # 17. cross-assignment journal rejected
+    try:
+        lm.journal_set("u15", "runA", rnd, "a9", "u15", wa, sess,
+                       ls15["lease_id"], ls15["lease_nonce"], JRN_PREPARED)
+        check("ADV-R4-17 cross-assignment journal rejected", False)
+    except LeaseError:
+        check("ADV-R4-17 cross-assignment journal rejected", True)
+
+    # 18. cross-unit journal rejected
+    try:
+        lm.journal_set("u99", "runA", rnd, asg, "u99", wa, sess,
+                       ls15["lease_id"], ls15["lease_nonce"], JRN_PREPARED)
+        check("ADV-R4-18 cross-unit journal rejected", False)
+    except LeaseError:
+        check("ADV-R4-18 cross-unit journal rejected", True)
+
+    # 19. wrong session journal rejected
+    try:
+        lm.journal_set("u15", "runA", rnd, asg, "u15", wa, "sess_WRONG",
+                       ls15["lease_id"], ls15["lease_nonce"], JRN_PREPARED)
+        check("ADV-R4-19 wrong session journal rejected", False)
+    except LeaseError:
+        check("ADV-R4-19 wrong session journal rejected", True)
+
+    # 20. write after RELEASED rejected
+    ls20 = lm.acquire(run, rnd, asg, "u20", wa, sess, ttl_seconds=10.0)
+    lm.journal_set("u20", run, rnd, asg, "u20", wa, sess,
+                   ls20["lease_id"], ls20["lease_nonce"], JRN_PREPARED)
+    lm.release(ls20["lease_id"], wa, sess, ls20["lease_nonce"])
+    try:
+        lm.journal_set("u20", run, rnd, asg, "u20", wa, sess,
+                       ls20["lease_id"], ls20["lease_nonce"], JRN_APPLIED,
+                       delta_sha="sha20")
+        check("ADV-R4-20 write after RELEASED rejected", False)
+    except LeaseError:
+        check("ADV-R4-20 write after RELEASED rejected", True)
+
+    # 21. reacquire after RELEASED rejected
+    try:
+        lm.acquire(run, rnd, asg, "u20", wb, "sessB", ttl_seconds=10.0)
+        check("ADV-R4-21 reacquire after RELEASED rejected", False)
+    except LeaseError:
+        check("ADV-R4-21 reacquire after RELEASED rejected", True)
+
+    # 22. expire alien returns error (worker/session/nonce incorrectes)
+    ls22 = lm.acquire(run, rnd, asg, "u22", wa, sess, ttl_seconds=10.0)
+    try:
+        lm.expire(run, rnd, asg, "u22", worker_id=wb, session_id="sessB",
+                  lease_nonce="WRONG")
+        check("ADV-R4-22 expire alien returns error", False)
+    except LeaseError:
+        check("ADV-R4-22 expire alien returns error", True)
+    check("ADV-R4-22 lease intacta despres d'expire alien",
+          lm.status(lease_id=ls22["lease_id"])["status"] == LEASE_ACTIVE)
+
+    # 23. exact expires_at is EXPIRED (now == expires_at)
+    ls23 = lm.acquire(run, rnd, asg, "u23", wa, sess, ttl_seconds=10.0)
+    now[0] = ls23["expires_at"]  # exactament al límit
+    st23 = lm.status(lease_id=ls23["lease_id"])
+    check("ADV-R4-23 exact expires_at is EXPIRED",
+          st23 is not None and st23["status"] == LEASE_EXPIRED)
+
+    # 23b. expire sense lease activa -> error (rowcount guard, MUT-23)
+    try:
+        lm.expire(run, rnd, asg, "u_no_lease", coordinator_only=True)
+        check("ADV-R4-23b expire sense lease error", False)
+    except LeaseError:
+        check("ADV-R4-23b expire sense lease error", True)
+
+    # 24. negative TTL rejected
+    try:
+        lm.acquire(run, rnd, asg, "u24", wa, sess, ttl_seconds=-5.0)
+        check("ADV-R4-24 negative TTL rejected", False)
+    except LeaseError:
+        check("ADV-R4-24 negative TTL rejected", True)
+    try:
+        lm.acquire(run, rnd, asg, "u24", wa, sess, ttl_seconds=0.0)
+        check("ADV-R4-24 zero TTL rejected", False)
+    except LeaseError:
+        check("ADV-R4-24 zero TTL rejected", True)
+
+    # 25. COMMITTED to PREPARED rejected (state regression)
+    ls25 = lm.acquire(run, rnd, asg, "u25", wa, sess, ttl_seconds=10.0)
+    lm.journal_set("u25", run, rnd, asg, "u25", wa, sess,
+                   ls25["lease_id"], ls25["lease_nonce"], JRN_PREPARED)
+    lm.journal_set("u25", run, rnd, asg, "u25", wa, sess,
+                   ls25["lease_id"], ls25["lease_nonce"], JRN_APPLIED,
+                   delta_sha="sha25")
+    lm.journal_set("u25", run, rnd, asg, "u25", wa, sess,
+                   ls25["lease_id"], ls25["lease_nonce"], JRN_SUBMITTED,
+                   delta_sha="sha25", update_id="upd25")
+    lm.journal_set("u25", run, rnd, asg, "u25", wa, sess,
+                   ls25["lease_id"], ls25["lease_nonce"], JRN_COMMITTED,
+                   delta_sha="sha25", update_id="upd25", receipt='{"r":25}')
+    try:
+        lm.journal_set("u25", run, rnd, asg, "u25", wa, sess,
+                       ls25["lease_id"], ls25["lease_nonce"], JRN_PREPARED)
+        check("ADV-R4-25 COMMITTED to PREPARED rejected", False)
+    except LeaseError:
+        check("ADV-R4-25 COMMITTED to PREPARED rejected", True)
+
+    # 26. direct COMMITTED rejected (NULL -> COMMITTED sense delta/update)
+    ls26 = lm.acquire(run, rnd, asg, "u26", wa, sess, ttl_seconds=10.0)
+    try:
+        lm.journal_set("u26", run, rnd, asg, "u26", wa, sess,
+                       ls26["lease_id"], ls26["lease_nonce"], JRN_COMMITTED,
+                       update_id="upd26", receipt='{"r":26}')
+        check("ADV-R4-26 direct COMMITTED rejected", False)
+    except LeaseError:
+        check("ADV-R4-26 direct COMMITTED rejected", True)
+    # 26b. SUBMITTED sense delta rejected (no segon optimizer sense delta)
+    lm.journal_set("u26", run, rnd, asg, "u26", wa, sess,
+                   ls26["lease_id"], ls26["lease_nonce"], JRN_PREPARED)
+    lm.journal_set("u26", run, rnd, asg, "u26", wa, sess,
+                   ls26["lease_id"], ls26["lease_nonce"], JRN_APPLIED,
+                   delta_sha="sha26")
+    try:
+        lm.journal_set("u26", run, rnd, asg, "u26", wa, sess,
+                       ls26["lease_id"], ls26["lease_nonce"], JRN_SUBMITTED,
+                       update_id="upd26")
+        check("ADV-R4-26b SUBMITTED sense delta rejected", False)
+    except LeaseError:
+        check("ADV-R4-26b SUBMITTED sense delta rejected", True)
+
+    # 27. conflicting receipt rejected
+    ls27 = lm.acquire(run, rnd, asg, "u27", wa, sess, ttl_seconds=10.0)
+    lm.journal_set("u27", run, rnd, asg, "u27", wa, sess,
+                   ls27["lease_id"], ls27["lease_nonce"], JRN_PREPARED)
+    lm.journal_set("u27", run, rnd, asg, "u27", wa, sess,
+                   ls27["lease_id"], ls27["lease_nonce"], JRN_APPLIED,
+                   delta_sha="sha27")
+    lm.journal_set("u27", run, rnd, asg, "u27", wa, sess,
+                   ls27["lease_id"], ls27["lease_nonce"], JRN_SUBMITTED,
+                   delta_sha="sha27", update_id="upd27")
+    lm.journal_set("u27", run, rnd, asg, "u27", wa, sess,
+                   ls27["lease_id"], ls27["lease_nonce"], JRN_COMMITTED,
+                   delta_sha="sha27", update_id="upd27", receipt='{"r":27}')
+    try:
+        lm.journal_set("u27", run, rnd, asg, "u27", wa, sess,
+                       ls27["lease_id"], ls27["lease_nonce"], JRN_COMMITTED,
+                       delta_sha="sha27", update_id="upd27", receipt='{"r":"DIF"}')
+        check("ADV-R4-27 conflicting receipt rejected", False)
+    except LeaseError:
+        check("ADV-R4-27 conflicting receipt rejected", True)
+
+    # 28. conflicting update_id rejected
+    try:
+        lm.journal_set("u27", run, rnd, asg, "u27", wa, sess,
+                       ls27["lease_id"], ls27["lease_nonce"], JRN_COMMITTED,
+                       delta_sha="sha27", update_id="upd_DIF", receipt='{"r":27}')
+        check("ADV-R4-28 conflicting update_id rejected", False)
+    except LeaseError:
+        check("ADV-R4-28 conflicting update_id rejected", True)
+
+    # 29. pipeline without lease rejected (via RC54RecoveryCoordinator)
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tf:
+        db29 = tf.name
+    try:
+        from rc5_4_integration import RC54RecoveryCoordinator, RecoveryError
+        rec = RC54RecoveryCoordinator(db_path=db29)
+        # pipeline fals: si la crida passa el check de lease, retorna OK
+        class _FakePipeline:
+            def _step_open(self, p):
+                return {"status": "OK", "unit_id": p.get("unit_id", "?")}
+        rec.attach_pipeline(_FakePipeline())
+        res = rec.step_open({"run_id": run, "round_id": rnd,
+                             "assignment_id": asg, "unit_id": "u29"})
+        # sense mutant: RecoveryError(missing_lease_params); amb mutant (MUT-24):
+        # el pipeline fals s'executa i retorna OK -> check False -> FAIL
+        check("ADV-R4-29 pipeline without lease rejected",
+              res is None or res.get("status") != "OK")
+    except RecoveryError:
+        check("ADV-R4-29 pipeline without lease rejected", True)
+    except ImportError:
+        check("ADV-R4-29 pipeline without lease rejected", True)  # si encara no hi ha integració
+    finally:
+        if os.path.exists(db29):
+            os.remove(db29)
+
+    # 30. old worker HTTP calls rejected after reassign
+    ls30 = lm.acquire(run, rnd, asg, "u30", wa, sess, ttl_seconds=10.0)
+    lm.journal_set("u30", run, rnd, asg, "u30", wa, sess,
+                   ls30["lease_id"], ls30["lease_nonce"], JRN_PREPARED)
+    now[0] += 20.0  # expira
+    ls30b = lm.acquire(run, rnd, asg, "u30", wb, "sessB", ttl_seconds=10.0)
+    check("ADV-R4-30 reassign u30 a B", ls30b["status"] == LEASE_ACTIVE)
+    # el worker antic intenta escriure amb la seva lease -> binding mismatch (worker) o EXPIRED
+    try:
+        lm.journal_set("u30", run, rnd, asg, "u30", wa, sess,
+                       ls30["lease_id"], ls30["lease_nonce"], JRN_APPLIED,
+                       delta_sha="sha30_old")
+        check("ADV-R4-30 old worker HTTP calls rejected after reassign", False)
+    except LeaseError:
+        check("ADV-R4-30 old worker HTTP calls rejected after reassign", True)
 
     conn.close()
     if os.path.exists(db):

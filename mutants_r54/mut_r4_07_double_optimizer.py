@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-# MUT-R4-07: doble optimizer en APPLIED (sobreescriure el delta sempre)
-# PATTERN: delta_bundle_sha256=CASE WHEN recovery_journal_r54.delta_bundle_sha256 IS NULL THEN excluded.delta_bundle_sha256 ELSE recovery_journal_r54.delta_bundle_sha256 END,
-# SUBST: delta_bundle_sha256=excluded.delta_bundle_sha256,
+# MUT-R4-07: permetre SUBMITTED sense delta (segon optimizer)
+# PATTERN: if state == JRN_SUBMITTED and delta_sha is None:
+# SUBST: if state == JRN_SUBMITTED and delta_sha is None and False:

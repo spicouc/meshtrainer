@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# RUN_RC5_4_MUTATION_GATE.sh — 12 mutants MUT-R4-01..12 (PATTERN/SUBST applied_count=1)
+# RUN_RC5_4_MUTATION_GATE.sh — 24 mutants MUT-R4-01..24 (PATTERN/SUBST applied_count=1)
 # Per mutant es registren: mutant, fitxer, patró, substitució, ocurrències,
 # applied_count, py_compile, suite executada, exit code, traceback count,
 # assertion exacta que falla, classificació.
@@ -15,7 +15,7 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
 export PYTHON_BIN
 
 echo "=== BASELINE ===" | tee -a "$REPORT"
-"$PYTHON_BIN" -m py_compile rc5_4_tests.py rc5_4_adversarial_tests.py rc5_4_leases.py && echo "  py_compile: PASS" | tee -a "$REPORT"
+"$PYTHON_BIN" -m py_compile rc5_4_tests.py rc5_4_adversarial_tests.py rc5_4_leases.py rc5_4_integration.py && echo "  py_compile: PASS" | tee -a "$REPORT"
 timeout 300 "$PYTHON_BIN" rc5_4_tests.py > /dev/null 2>&1; S1=$?
 timeout 300 "$PYTHON_BIN" rc5_4_adversarial_tests.py > /dev/null 2>&1; S2=$?
 S=$((S1 + S2))
@@ -27,7 +27,7 @@ for M in mutants_r54/mut_r4_*.py; do
     NAME=$(basename "$M" .py)
     echo ""; echo "=== $NAME ===" | tee -a "$REPORT"
     W="$TMPDIR/$NAME"; mkdir -p "$W"
-    cp rc5_4_tests.py rc5_4_adversarial_tests.py rc5_4_leases.py "$W"/
+    cp rc5_4_tests.py rc5_4_adversarial_tests.py rc5_4_leases.py rc5_4_integration.py "$W"/
     # free disk between mutants (temp DBs)
     find "$TMPDIR" -maxdepth 1 -name "*.db" -delete 2>/dev/null || true
     PATTERN=$(grep -oP '(?<=PATTERN: ).*' "$M" | head -1)
@@ -38,10 +38,11 @@ for M in mutants_r54/mut_r4_*.py; do
     if [ -z "$PATTERN" ] || [ -z "$SUBST" ]; then
         echo "  $NAME: INVALID (patró/substitució buida)" | tee -a "$REPORT"; INVALID=$((INVALID+1)); continue
     fi
-    COUNT=$(grep -oF "$PATTERN" "$W/rc5_4_leases.py" "$W/rc5_4_tests.py" "$W/rc5_4_adversarial_tests.py" 2>/dev/null | wc -l)
-    APPLIED_OUT=$("$PYTHON_BIN" - "$W/rc5_4_leases.py" "$W/rc5_4_tests.py" "$W/rc5_4_adversarial_tests.py" "$PATTERN" "$SUBST" <<'PY'
+    COUNT=$(grep -oF "$PATTERN" "$W/rc5_4_leases.py" "$W/rc5_4_tests.py" "$W/rc5_4_adversarial_tests.py" "$W/rc5_4_integration.py" 2>/dev/null | wc -l)
+    APPLIED_OUT=$("$PYTHON_BIN" - "$W/rc5_4_leases.py" "$W/rc5_4_tests.py" "$W/rc5_4_adversarial_tests.py" "$W/rc5_4_integration.py" "$PATTERN" "$SUBST" <<'PY'
 import sys
-files, pat, subst = sys.argv[1:4], sys.argv[4], sys.argv[5]
+files = sys.argv[1:-2]
+pat, subst = sys.argv[-2], sys.argv[-1]
 applied = 0
 for f in files:
     try:
@@ -61,7 +62,7 @@ PY
         echo "  $NAME: NOT APPLIED (applied_count=$APPLIED)" | tee -a "$REPORT"; NOT_APPLIED=$((NOT_APPLIED+1)); continue
     fi
     # py_compile del paquet mutat
-    (cd "$W" && "$PYTHON_BIN" -m py_compile rc5_4_leases.py rc5_4_tests.py rc5_4_adversarial_tests.py 2>pycompile.err)
+    (cd "$W" && "$PYTHON_BIN" -m py_compile rc5_4_leases.py rc5_4_tests.py rc5_4_adversarial_tests.py rc5_4_integration.py 2>pycompile.err)
     PC=$?
     echo "  py_compile: $([ $PC -eq 0 ] && echo PASS || echo FAIL)" | tee -a "$REPORT"
     if [ $PC -ne 0 ]; then
@@ -100,7 +101,7 @@ PY
 done
 
 echo ""; echo "=== RESUM ===" | tee -a "$REPORT"
-echo "Score: $DETECTED/12 Invalid: $INVALID Runtime: $RUNTIME Not_applied: $NOT_APPLIED Timeouts: $TIMEOUTS" | tee -a "$REPORT"
-[ $DETECTED -eq 12 ] && [ $INVALID -eq 0 ] && [ $RUNTIME -eq 0 ] && [ $NOT_APPLIED -eq 0 ] && [ $TIMEOUTS -eq 0 ] || OVERALL=1
+echo "Score: $DETECTED/24 Invalid: $INVALID Runtime: $RUNTIME Not_applied: $NOT_APPLIED Timeouts: $TIMEOUTS" | tee -a "$REPORT"
+[ $DETECTED -eq 24 ] && [ $INVALID -eq 0 ] && [ $RUNTIME -eq 0 ] && [ $NOT_APPLIED -eq 0 ] && [ $TIMEOUTS -eq 0 ] || OVERALL=1
 echo "Mutation gate RC5.4: $([ $OVERALL -eq 0 ] && echo PASS || echo FAIL)" | tee -a "$REPORT"
 exit $OVERALL

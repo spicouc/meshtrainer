@@ -78,40 +78,42 @@ run_sub "[8/17] Phase 1" "bash RUN_RC5_2_PHASE1_TESTS.sh" 900
 run_sub "[9/17] RC5.1" "bash RUN_RC5_1_TESTS.sh" 1200
 
 # 10) restart subprocess REAL (RC5.4, amb PID inicial/recuperat)
-run_sub "[10/17] restart subprocess real" "bash RUN_RC5_4_RESTART_GATE.sh" 600
+run_sub "[10/18] restart subprocess REAL" "bash RUN_RC5_4_RESTART_REAL_GATE.sh" 900
+
+run_sub "[10b/18] mid-backward real" "bash RUN_RC5_4_MID_BACKWARD_GATE.sh" 900
 
 # 11) controlled-failure RC5.3 (regressió)
-run_sub "[11/17] controlled-failure RC5.3" "bash RUN_RC5_3_CONTROLLED_FAILURE.sh" 900
+run_sub "[11/18] controlled-failure RC5.3" "bash RUN_RC5_3_CONTROLLED_FAILURE.sh" 900
 
 # 12) controlled-failure RC5.2 (regressió)
-run_sub "[12/17] controlled-failure RC5.2" "bash RUN_RC5_2_CONTROLLED_FAILURE.sh" 600
+run_sub "[12/18] controlled-failure RC5.2" "bash RUN_RC5_2_CONTROLLED_FAILURE.sh" 600
 
 # 13) controlled-failure RC5.4 (còpia temporal, una assertion)
-run_sub "[13/17] controlled-failure RC5.4" "bash RUN_RC5_4_CONTROLLED_FAILURE.sh" 600
+run_sub "[13/18] controlled-failure RC5.4" "bash RUN_RC5_4_CONTROLLED_FAILURE.sh" 600
 
 # 14) dependency probe (negativa)
-run_sub "[14/17] dependency probe" "bash RUN_RC5_3_DEPENDENCY_PROBE.sh" 3600
+run_sub "[14/18] dependency probe" "bash RUN_RC5_3_DEPENDENCY_PROBE.sh" 3600
 
 # 15) manifest probe (negativa)
-run_sub "[15/17] manifest probe" "bash RUN_RC5_3_MANIFEST_PROBE.sh" 3600
+run_sub "[15/18] manifest probe" "bash RUN_RC5_3_MANIFEST_PROBE.sh" 3600
 
 # 16) manifest complet (els fitxers coberts == línies del manifest)
 FILES=$(find . -type f ! -path './.venv/*' ! -path './.git/*' ! -path '*/__pycache__/*' ! -name '*.pyc' ! -name 'MANIFEST.sha256' | wc -l)
 MF=$(wc -l < MANIFEST.sha256 2>/dev/null || echo 0)
 if [ "$FILES" -eq "$MF" ] && [ -f MANIFEST.sha256 ]; then
     ERR=$(sha256sum -c MANIFEST.sha256 2>&1 | grep -cv ': OK')
-    echo "  [16/17] manifest: $([ "$ERR" -eq 0 ] && echo PASS || echo FAIL) (coberts=$FILES manifest=$MF err=$ERR)" | tee -a "$LOG"
+    echo "  [16/18] manifest: $([ "$ERR" -eq 0 ] && echo PASS || echo FAIL) (coberts=$FILES manifest=$MF err=$ERR)" | tee -a "$LOG"
     [ "$ERR" -eq 0 ] || OVERALL=1
 else
-    echo "  [16/17] manifest: FAIL (coberts=$FILES manifest=$MF, han de coincidir)" | tee -a "$LOG"
+    echo "  [16/18] manifest: FAIL (coberts=$FILES manifest=$MF, han de coincidir)" | tee -a "$LOG"
     OVERALL=1
 fi
 
 # 17) clean extraction (mode delegat: SKIP si RC54_SKIP_CLEAN_EXTRACTION=1)
 if [ "${RC54_SKIP_CLEAN_EXTRACTION:-0}" = "1" ]; then
-    echo "  [17/17] clean extraction: SKIPPED (mode delegat)" | tee -a "$LOG"
+    echo "  [17/18] clean extraction: SKIPPED (mode delegat)" | tee -a "$LOG"
 else
-    run_sub "[17/17] clean extraction" "bash RUN_RC5_4_CLEAN_EXTRACTION_GATE.sh ${RC54_TARBALL:-meshtrainer_rc54_stagea_candidate.tar.gz}" 5400
+    run_sub "[17/18] clean extraction" "bash RUN_RC5_4_CLEAN_EXTRACTION_GATE.sh ${RC54_TARBALL:-meshtrainer_rc54_stagea_candidate.tar.gz}" 5400
 fi
 
 echo ""; echo "============================================" | tee -a "$LOG"

@@ -7,8 +7,8 @@ Commit complet: 086c030
 git status: buit
 
 Tarball: meshtrainer_rc54_stagea_r2_final_086c030.tar.gz
-SHA-256: 6e1d0fa48bf3759c814580ef4b657983565c64e3c2574708370fff02cde10cea
-Mida: 504116 bytes
+SHA-256: 295294a1ba7031acb9b605d7e11731af051f9e7fea5100ed2537be39e952579a
+Mida: 504293 bytes
 Entrades: 257 (244 fitxers + 13 directoris)
 Manifest: 243 línies = 244 regulars - 1
 sha256sum -c: 0 errors

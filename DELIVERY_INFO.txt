@@ -9,8 +9,8 @@ GIT STATUS: buit
 
 TARBALL
 meshtrainer_rc54_stagea_r2_final_086c030.tar.gz
-SHA-256: 6e1d0fa48bf3759c814580ef4b657983565c64e3c2574708370fff02cde10cea
-MIDA: 504116 bytes
+SHA-256: 295294a1ba7031acb9b605d7e11731af051f9e7fea5100ed2537be39e952579a
+MIDA: 504293 bytes
 ENTRADES TAR: 257 (244 fitxers regulars + 13 directoris)
 MANIFEST: 243 línies (244 regulars - 1 MANIFEST.sha256)
 sha256sum -c MANIFEST.sha256: 0 errors

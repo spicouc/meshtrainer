@@ -21,15 +21,16 @@ from rc5_4_leases import (LeaseManager, LeaseError,
                            JRN_COMMITTED, _JOURNAL_STATES)
 
 # --- journal state machine ------------------------------------------------
-JOURNAL_TRANSITIONS = {
+# R3.1: les transicions i camps immutables ara viuen a LeaseManager
+# (recovery_journal_r54). Es mantenen aquí només com a documentació — el codi
+# delega a LeaseManager.journal_set (una sola state machine autoritativa).
+JOURNAL_TRANSITIONS_REF = {
     None: {JRN_PREPARED},
     JRN_PREPARED: {JRN_APPLIED},
     JRN_APPLIED: {JRN_SUBMITTED},
     JRN_SUBMITTED: {JRN_COMMITTED},
     JRN_COMMITTED: set(),          # terminal
 }
-IMMUTABLE_FIELDS = ["delta_bundle_sha256", "update_id", "receipt_json",
-                    "checkpoint_response", "adapter_hash"]
 
 class RecoveryError(Exception):
     """Rejection with a machine-readable reason."""
@@ -63,48 +64,43 @@ class RC54RecoveryCoordinator:
 
     # -- schema -------------------------------------------------------------
     def _init_db(self):
-        # NOT wrapped in _tx(): with a shared autocommit connection the
-        # nestable _tx would leave the BEGIN open (no outer committer).
-        self._conn.execute("""
-                CREATE TABLE IF NOT EXISTS journal_r54 (
-                    unit_id TEXT NOT NULL,
-                    run_id TEXT NOT NULL,
-                    round_id TEXT NOT NULL,
-                    assignment_id TEXT NOT NULL,
-                    micro_unit_id TEXT NOT NULL,
-                    worker_id TEXT NOT NULL,
-                    session_id TEXT NOT NULL,
-                    lease_id TEXT NOT NULL,
-                    lease_nonce INTEGER NOT NULL,
-                    state TEXT NOT NULL,
-                    delta_bundle_sha256 TEXT,
-                    update_id TEXT,
-                    receipt_json TEXT,
-                    checkpoint_response TEXT,
-                    adapter_hash TEXT,
-                    created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL,
-                    PRIMARY KEY (unit_id, lease_id)
-                )""")
+        # R3.1: journal_r54 DEPRECAT — l'únic journal autoritatiu és
+        # recovery_journal_r54 (creat per LeaseManager). No es crea cap
+        # segona taula de journal aquí perquè NO hi pot haver dues state
+        # machines paral·leles.
         self._conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_journal_r54_unit "
-            "ON journal_r54(unit_id)")
+            "CREATE INDEX IF NOT EXISTS idx_recovery_journal_r54_unit "
+            "ON recovery_journal_r54(unit_id)")
         if not self._conn.in_transaction:
             self._conn.commit()
 
     def _tx(self):
+        """BEGIN IMMEDIATE -> ... -> COMMIT; ROLLBACK on any error.
+        R3.1: mateixa disciplina provada de LeaseManager — outer = state ABANS
+        del BEGIN; COMMIT/ROLLBACK explícits només si no érem outer (el
+        context exterior posseeix la transacció). La versió anterior no feia
+        COMMIT (in_transaction era True després del BEGIN, així que el
+        __exit__ no commita mai)."""
+
         class _Ctx:
             def __init__(self, conn):
                 self.conn = conn
+                self.outer = conn.in_transaction
+
             def __enter__(self):
-                if not self.conn.in_transaction:
+                if not self.outer:
                     self.conn.execute("BEGIN IMMEDIATE")
                 return self.conn
+
             def __exit__(self, exc_type, exc, tb):
-                if exc_type is None and not self.conn.in_transaction:
-                    self.conn.commit()
-                elif exc_type is not None:
-                    self.conn.rollback()
+                if not self.outer:
+                    if exc_type is None:
+                        self.conn.execute("COMMIT")
+                    else:
+                        try:
+                            self.conn.execute("ROLLBACK")
+                        except sqlite3.Error:
+                            pass
                 return False
         return _Ctx(self._conn)
 
@@ -157,87 +153,29 @@ class RC54RecoveryCoordinator:
              session_id, LEASE_ACTIVE, LEASE_RENEWED)).fetchone()
         return dict(row) if row else None
 
-    # -- journal state machine ----------------------------------------------
+    # -- journal state machine (R3.1: UNA sola font de veritat) -------------
+    # journal_r54 queda DEPRECAT. Tots els mètodes deleguen a
+    # recovery_journal_r54 (el journal autoritatiu de LeaseManager) perquè NO
+    # hi hagi dues state machines paral·leles. El CREATE TABLE de journal_r54
+    # ja no s'executa (schema només amb recovery_journal_r54).
+
     def journal_write(self, unit_id, run_id, round_id, assignment_id,
                       micro_unit_id, worker_id, session_id, lease_id,
-                      lease_nonce, state, delta_sha=None, update_id=None,
-                      receipt=None, checkpoint_response=None, adapter_hash=None):
-        """Strict journal write with full binding + state machine + exactly-once."""
-        self._check_lease(lease_id, lease_nonce, worker_id, session_id,
-                          run_id, round_id, assignment_id, micro_unit_id)
-        # state machine guards
-        if state not in _JOURNAL_STATES:
-            raise RecoveryError("invalid_state", state=state)
-        if state == JRN_APPLIED and delta_sha is None:
-            raise RecoveryError("applied_without_delta")
-        if state == JRN_COMMITTED and (update_id is None or receipt is None):
-            raise RecoveryError("committed_without_update_id_or_receipt")
-        with self._tx():
-            row = self._conn.execute(
-                "SELECT * FROM journal_r54 WHERE unit_id=? AND lease_id=?",
-                (unit_id, lease_id)).fetchone()
-            cur = dict(row) if row else None
-            cur_state = cur["state"] if cur else None
-            allowed = JOURNAL_TRANSITIONS.get(cur_state)
-            if allowed is None or state not in allowed:
-                raise RecoveryError(
-                    "illegal_transition",
-                    frm=cur_state, to=state,
-                    allowed=sorted(JOURNAL_TRANSITIONS.get(cur_state, set())))
-            if cur is None:
-                self._conn.execute(
-                    "INSERT INTO journal_r54 (unit_id, run_id, round_id,"
-                    " assignment_id, micro_unit_id, worker_id, session_id,"
-                    " lease_id, lease_nonce, state, delta_bundle_sha256,"
-                    " update_id, receipt_json, checkpoint_response,"
-                    " adapter_hash, created_at, updated_at)"
-                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (unit_id, run_id, round_id, assignment_id, micro_unit_id,
-                     worker_id, session_id, lease_id, lease_nonce, state,
-                     delta_sha, update_id, receipt, checkpoint_response,
-                     adapter_hash, time.time(), time.time()))
-            else:
-                # exactly-once: immutable fields — same value idempotent,
-                # different value REJECTED (no first-wins)
-                payload = {
-                    "delta_bundle_sha256": delta_sha,
-                    "update_id": update_id,
-                    "receipt_json": receipt,
-                    "checkpoint_response": checkpoint_response,
-                    "adapter_hash": adapter_hash,
-                }
-                for f in IMMUTABLE_FIELDS:
-                    existing = cur.get(f)
-                    newv = payload.get(f)
-                    if newv is None:
-                        continue
-                    if existing is None:
-                        continue  # nothing stored yet -> ok
-                    if newv != existing:
-                        raise RecoveryError(
-                            "conflicting_payload", field=f,
-                            existing=existing, proposed=newv)
-                self._conn.execute(
-                    "UPDATE journal_r54 SET state=?,"
-                    " delta_bundle_sha256=CASE WHEN delta_bundle_sha256 IS NULL"
-                    " THEN ? ELSE delta_bundle_sha256 END,"
-                    " update_id=CASE WHEN update_id IS NULL THEN ?"
-                    " ELSE update_id END,"
-                    " receipt_json=CASE WHEN receipt_json IS NULL THEN ?"
-                    " ELSE receipt_json END,"
-                    " checkpoint_response=CASE WHEN checkpoint_response IS NULL"
-                    " THEN ? ELSE checkpoint_response END,"
-                    " adapter_hash=CASE WHEN adapter_hash IS NULL THEN ?"
-                    " ELSE adapter_hash END, updated_at=? WHERE unit_id=? AND lease_id=?",
-                    (state, delta_sha, update_id, receipt, checkpoint_response,
-                     adapter_hash, time.time(), unit_id, lease_id))
-        return {"status": "OK", "state": state}
+                      lease_nonce, state, delta_sha=None, delta_b64=None,
+                      update_id=None, receipt=None, checkpoint_response=None,
+                      adapter_hash=None):
+        """Strict journal write — DELEGA a LeaseManager.journal_set
+        (recovery_journal_r54), l'únic journal autoritatiu."""
+        return self._lm.journal_set(
+            unit_id, run_id, round_id, assignment_id, micro_unit_id,
+            worker_id, session_id, lease_id, lease_nonce, state,
+            delta_sha=delta_sha, delta_b64=delta_b64, update_id=update_id,
+            receipt=receipt, checkpoint_response=checkpoint_response,
+            adapter_hash=adapter_hash)
 
     def journal_read(self, unit_id, lease_id):
-        row = self._conn.execute(
-            "SELECT * FROM journal_r54 WHERE unit_id=? AND lease_id=?",
-            (unit_id, lease_id)).fetchone()
-        return dict(row) if row else None
+        """Read — DELEGA a recovery_journal_r54 (LeaseManager.journal_get)."""
+        return self._lm.journal_get(unit_id, lease_id)
 
     def journal_state(self, unit_id, lease_id):
         row = self.journal_read(unit_id, lease_id)
@@ -253,6 +191,12 @@ class RC54RecoveryCoordinator:
         self._check_lease(p["lease_id"], p["lease_nonce"], p["worker_id"],
                           p["session_id"], p["run_id"], p["round_id"],
                           p["assignment_id"], p["micro_unit_id"])
+
+    def _validate_lease(self, p):
+        """LEASE VALIDATION ONLY (no execution). R3.1: el dispatcher valida
+        la lease ABANS de consultar la cache d'idempotència; l'execució real
+        passa UNA sola vegada."""
+        self._require_lease_params(p)
 
     def step_open(self, p):
         self._require_lease_params(p)

@@ -179,11 +179,25 @@ def phase_b(db_path, art, server_hash, log, log_nocrash):
     unit_id = st["unit_id"]
     lm = LeaseManager(coord._conn, default_ttl_seconds=120.0)
 
-    # RECOVERY: delta read DIRECTLY from the journal (no optimizer.step())
+    # RECOVERY: delta read DIRECTLY from the journal (no optimizer.step()).
+    # R3.1: el journal autoritatiu (recovery_journal_r54) és visible des del
+    # procés B amb una connexió SQLite FRESCA — no necessita la connexió del
+    # procés A (que va morir amb os._exit sense fer commit explícit).
+    assert os.getpid() != st["pid"], "phase B ha de ser un procés diferent"
     j = lm.journal_get(unit_id, st["lease_id"])
     assert j is not None and j["state"] == JRN_APPLIED, f"journal={j}"
     assert j["delta_bundle_sha256"] == st["delta_sha"], "delta SHA mismatch"
     assert j["delta_bundle_b64"] == st["delta_b64"], "delta bytes mismatch"
+    # prova explícita: una 2a connexió independent veu la mateixa fila
+    import sqlite3 as _sq
+    _c2 = _sq.connect(db_path)
+    _c2.row_factory = _sq.Row
+    _r2 = _c2.execute("SELECT state, delta_bundle_sha256 FROM recovery_journal_r54"
+                      " WHERE unit_id=? AND lease_id=?",
+                      (unit_id, st["lease_id"])).fetchone()
+    _c2.close()
+    assert _r2 is not None and _r2["state"] == JRN_APPLIED, "journal no visible"
+    assert _r2["delta_bundle_sha256"] == st["delta_sha"], "journal sha mismatch"
     recovered_b64 = j["delta_bundle_b64"]  # the recovery payload
     recovered_sha = j["delta_bundle_sha256"]
     print(f"[PHASE B] pid={os.getpid()} recovered delta from journal "

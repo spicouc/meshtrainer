@@ -333,6 +333,101 @@ def main():
               {"receipt": {"receipt_id": "r_x"}, "delta_bundle_b64": "eA==",
                "delta_bundle_sha256": "0" * 64})))
 
+    # ================= H-18..H-25: IDEMPOTÈNCIA HTTP (R3.1) =================
+    # Unitat/lease FRESCA (u_idem) amb flux complet per als retries exactes.
+    lease_idem = lm.acquire(RUN, RND, "a1", "mu_idem", WA, "sess_main",
+                            ttl_seconds=10.0)
+    p_idem = _open_payload(art, server_hash, "u_idem", "mu_idem", WA, "sess_main")
+    lp_idem = _lease_params(lease_idem, WA, "sess_main", micro_unit="mu_idem")
+    p_idem.update(lp_idem)
+    # H-18: step.open exact retry -> mateixa resposta
+    # (si el retry llança, NO és idempotent -> DETECTED pel mutant)
+    def _exact_retry(fn, name):
+        """Executa fn dues vegades; retorna True si la resposta és idèntica
+        (idempotent). Si el segon intent llança o difereix -> False."""
+        try:
+            a = fn()
+            b = fn()
+            return a == b
+        except Exception:
+            return False
+    r1a = cl.call("step.open", p_idem)
+    r1b = cl.call("step.open", p_idem)
+    check("H-18 step.open exact retry -> mateixa resposta",
+          _exact_retry(lambda: cl.call("step.open", p_idem), "H-18"))
+    sa_idem = unpack_tensor_envelope(r1a["server_activation"])
+    cut_idem = wr.worker_forward(sa_idem, mask)
+    env_idem = pack_tensor_envelope(cut_idem, "cut_activation", "u_idem", "s1")
+    fwd_idem = {"unit_id": "u_idem", "forward_id": "fwd_idem", "step_id": "s1",
+                "cut_activation": env_idem}
+
+    # H-19: worker_forward.submit exact retry -> mateix backward_id
+    r2a = cl.call("step.worker_forward.submit", {**fwd_idem, **lp_idem})
+    check("H-19 forward exact retry -> mateix backward_id",
+          _exact_retry(lambda: cl.call("step.worker_forward.submit",
+                                       {**fwd_idem, **lp_idem}), "H-19"))
+    bw_idem = r2a["backward_id"]
+
+    # H-20: server_backward.fetch exact retry -> mateix gradient envelope
+    r3a = cl.call("step.server_backward.fetch",
+                  {"unit_id": "u_idem", "backward_id": bw_idem, **lp_idem})
+    check("H-20 backward exact retry -> mateix gradient envelope",
+          _exact_retry(lambda: cl.call("step.server_backward.fetch",
+                                       {"unit_id": "u_idem",
+                                        "backward_id": bw_idem, **lp_idem}),
+                       "H-20"))
+
+    # H-21: worker_update.submit exact retry -> mateix delta_id
+    # (delta REAL del WorkerRuntime: el servidor valida el format del bundle)
+    cg_idem = unpack_tensor_envelope(r3a["cut_gradient"])
+    wr.prepare_update("upd_idem", "u_idem")
+    _delta_b64, _delta_sha = wr.apply_update_once("upd_idem", cut_idem, cg_idem)
+    up_idem = {"unit_id": "u_idem", "update_id": "upd_idem",
+               "delta_bundle_b64": _delta_b64, "delta_bundle_sha256": _delta_sha,
+               **lp_idem}
+    r4a = cl.call("step.worker_update.submit", up_idem)
+    check("H-21 update exact retry -> mateix delta_id",
+          _exact_retry(lambda: cl.call("step.worker_update.submit", up_idem),
+                       "H-21"))
+
+    # H-22: step.commit exact retry -> mateix receipt byte-for-byte
+    cm_idem = {"unit_id": "u_idem", "delta_id": r4a.get("delta_id", ""), **lp_idem}
+    r5a = cl.call("step.commit", cm_idem)
+    _r5x = _exact_retry(lambda: cl.call("step.commit", cm_idem), "H-22")
+    check("H-22 commit exact retry -> mateix receipt byte-for-byte", _r5x)
+
+    # H-23: checkpoint.upload exact retry -> mateixa resposta/contribution_id
+    upld_idem = {"receipt": r5a["receipt"], "delta_bundle_b64": _delta_b64,
+                 "delta_bundle_sha256": _delta_sha, **lp_idem}
+    r6a = cl.call("checkpoint.upload", upld_idem)
+    check("H-23 upload exact retry -> mateixa resposta/contribution_id",
+          _exact_retry(lambda: cl.call("checkpoint.upload", upld_idem), "H-23"))
+
+    # H-24: mateix logical key + payload diferent -> REJECTED (sense crear
+    # una segona unitat per la mateixa run+round+assignment+micro_unit)
+    p_idem2 = dict(p_idem)
+    p_idem2["label_keep"] = 91  # payload diferent, mateixa clau lògica
+    try:
+        cl.call("step.open", p_idem2)
+        check("H-24 same logical key + different payload REJECTED", False)
+    except ValueError as e:
+        check("H-24 same logical key + different payload REJECTED",
+              "different payload" in str(e) or "REJECTED" in str(e))
+    units = coord._conn.execute(
+        "SELECT COUNT(*) AS c FROM units WHERE unit_id=?",
+        ("u_idem",)).fetchone()["c"]
+    check("H-24b no es crea una segona unitat (mateixa clau lògica)",
+          units == 1)
+
+    # H-25: retry exacte després d'expirar la lease -> REJECTED
+    # (certifica: lease gate BEFORE idempotency cache)
+    lm.expire(RUN, RND, "a1", "mu_idem", coordinator_only=True)
+    try:
+        cl.call("step.open", p_idem)
+        check("H-25 retry exacte amb lease expirada REJECTED", False)
+    except ValueError:
+        check("H-25 retry exacte amb lease expirada REJECTED", True)
+
     conn = coord._conn
     conn.close()
     if os.path.exists(db):

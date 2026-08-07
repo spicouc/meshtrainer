@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# RUN_RC5_4_MUTATION_GATE.sh — 34 mutants MUT-R4-01..34 (PATTERN/SUBST applied_count=1)
+# RUN_RC5_4_MUTATION_GATE.sh — 37 mutants MUT-R4-01..37 (PATTERN/SUBST applied_count=1)
 # Per mutant es registren: mutant, fitxer, patró, substitució, ocurrències,
 # applied_count, py_compile, suite executada, exit code, traceback count,
 # assertio...
@@ -74,41 +74,44 @@ PYEOF
     if [ $PC -ne 0 ]; then
         echo "  $NAME: INVALID (py_compile FAIL)" | tee -a "$REPORT"; INVALID=$((INVALID+1)); continue
     fi
-    # suites: crash matrix i adversarial (sense paral·lelitzar; execució seqüencial)
-    (cd "$W" && timeout 300 "$PYTHON_BIN" rc5_4_tests.py > run_crash.log 2>&1); RS1=$?
-    (cd "$W" && timeout 300 "$PYTHON_BIN" rc5_4_adversarial_tests.py > run_adv.log 2>&1); RS2=$?
-    (cd "$W" && timeout 300 "$PYTHON_BIN" rc5_4_http_lease_tests.py > run_http.log 2>&1); RS3=$?
-    if [ $RS1 -eq 124 ] || [ $RS2 -eq 124 ] || [ $RS3 -eq 124 ]; then RS=124; fi
-    if [ $RS1 -ne 0 ] || [ $RS2 -ne 0 ] || [ $RS3 -ne 0 ]; then RS=1; else RS=0; fi
+    # suites: crash matrix, adversarial, HTTP (seqüencial, sense paral·lelitzar)
+    (cd "$W" && timeout 300 "$PYTHON_BIN" rc5_4_tests.py > run_crash.log 2>&1); RS_CRASH=$?
+    (cd "$W" && timeout 300 "$PYTHON_BIN" rc5_4_adversarial_tests.py > run_adv.log 2>&1); RS_ADV=$?
+    (cd "$W" && timeout 300 "$PYTHON_BIN" rc5_4_http_lease_tests.py > run_http.log 2>&1); RS_HTTP=$?
+    # R3.1 classificació: primer TIMEOUT (qualsevol == 124), NO convertir
+    # posteriorment 124 en 1
+    if [ $RS_CRASH -eq 124 ] || [ $RS_ADV -eq 124 ] || [ $RS_HTTP -eq 124 ]; then
+        echo "  suite executada: crash=$RS_CRASH adv=$RS_ADV http=$RS_HTTP" | tee -a "$REPORT"
+        echo "  $NAME: TIMEOUT (exit 124)" | tee -a "$REPORT"; TIMEOUTS=$((TIMEOUTS+1)); rm -rf "$W"; continue
+    fi
     TBC=$(grep -c "Traceback" "$W/run_crash.log" 2>/dev/null); TBC=${TBC:-0}
     TBA=$(grep -c "Traceback" "$W/run_adv.log" 2>/dev/null); TBA=${TBA:-0}
     TBH=$(grep -c "Traceback" "$W/run_http.log" 2>/dev/null); TBH=${TBH:-0}
     TB=$((TBC + TBA + TBH))
-    SUITE=""
-    [ $RS1 -ne 0 ] && SUITE="$SUITE crash"
-    [ $RS2 -ne 0 ] && SUITE="$SUITE adv"
-    [ -z "$SUITE" ] && SUITE=" cap (exit 0)"
-    echo "  suite executada: crash matrix + adversarial | exit: $RS (crash=$RS1 adv=$RS2) | tracebacks: $TB ($TBC+$TBA) | falla a:$SUITE" | tee -a "$REPORT"
-    if [ $RS -eq 124 ]; then
-        echo "  $NAME: TIMEOUT" | tee -a "$REPORT"; TIMEOUTS=$((TIMEOUTS+1)); continue
+    RS=0
+    [ $RS_CRASH -ne 0 ] && RS=1
+    [ $RS_ADV -ne 0 ] && RS=1
+    [ $RS_HTTP -ne 0 ] && RS=1
+    echo "  suite executada: crash=$RS_CRASH adv=$RS_ADV http=$RS_HTTP | tracebacks: $TB ($TBC+$TBA+$TBH)" | tee -a "$REPORT"
+    if [ "$TB" -gt 0 ]; then
+        echo "  $NAME: RUNTIME-INVALID (tracebacks=$TB)" | tee -a "$REPORT"; RUNTIME=$((RUNTIME+1)); rm -rf "$W"; continue
     fi
-    if [ $RS -ne 0 ] && [ "$TB" -eq 0 ]; then
-        # línia FAIL concreta (comença per "FAIL "), mai el resum de la suite
-        ASRT=$(grep -m1 "^FAIL " "$W/run_crash.log" "$W/run_adv.log" 2>/dev/null | head -1 | sed 's/^[^:]*://')
-        [ -z "$ASRT" ] && ASRT=$(grep -m1 "FAIL " "$W/run_crash.log" "$W/run_adv.log" 2>/dev/null | head -1 | sed 's/^[^:]*://')
+    if [ $RS -ne 0 ]; then
+        # assertion detectora concreta (mai el resum de la suite): busca a
+        # TOTES les suites, incloent run_http.log per als mutants del dispatcher
+        ASRT=$(grep -hm1 "^FAIL " "$W/run_crash.log" "$W/run_adv.log" "$W/run_http.log" 2>/dev/null | head -1 | sed 's/^[^:]*://')
+        [ -z "$ASRT" ] && ASRT=$(grep -hm1 "FAIL " "$W/run_crash.log" "$W/run_adv.log" "$W/run_http.log" 2>/dev/null | head -1 | sed 's/^[^:]*://')
         echo "  assertion detectora: $ASRT" | tee -a "$REPORT"
         echo "  $NAME: DETECTED" | tee -a "$REPORT"; DETECTED=$((DETECTED+1))
     elif [ $RS -eq 0 ]; then
         echo "  assertion detectora: cap (suite exit 0)" | tee -a "$REPORT"
         echo "  $NAME: NOT DETECTED (suite exit 0)" | tee -a "$REPORT"
-    elif [ "$TB" -gt 0 ]; then
-        echo "  $NAME: RUNTIME-INVALID (tracebacks=$TB)" | tee -a "$REPORT"; RUNTIME=$((RUNTIME+1))
     fi
     rm -rf "$W"
 done
 
 echo ""; echo "=== RESUM ===" | tee -a "$REPORT"
-echo "Score: $DETECTED/34 Invalid: $INVALID Runtime: $RUNTIME Not_applied: $NOT_APPLIED Timeouts: $TIMEOUTS" | tee -a "$REPORT"
-[ $DETECTED -eq 34 ] && [ $INVALID -eq 0 ] && [ $RUNTIME -eq 0 ] && [ $NOT_APPLIED -eq 0 ] && [ $TIMEOUTS -eq 0 ] || OVERALL=1
+echo "Score: $DETECTED/37 Invalid: $INVALID Runtime: $RUNTIME Not_applied: $NOT_APPLIED Timeouts: $TIMEOUTS" | tee -a "$REPORT"
+[ $DETECTED -eq 37 ] && [ $INVALID -eq 0 ] && [ $RUNTIME -eq 0 ] && [ $NOT_APPLIED -eq 0 ] && [ $TIMEOUTS -eq 0 ] || OVERALL=1
 echo "Mutation gate RC5.4: $([ $OVERALL -eq 0 ] && echo PASS || echo FAIL)" | tee -a "$REPORT"
 exit $OVERALL

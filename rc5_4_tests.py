@@ -189,6 +189,44 @@ def run_crash_matrix():
     st_u10 = lm.status(lease_id=ls10b["lease_id"])
     check("REC-12 no cross-round contamination", st_u10["status"] == LEASE_ABORTED)
 
+    # REC-13 (R3.1): journal autoritatiu PERSISTENT — visible des d'una
+    # segona connexió SQLite; sobreviu a tancar/reobrir; rollback davant
+    # error -> zero escriptures parcials
+    import sqlite3 as _sq
+    lease13 = lm.acquire(run, rnd, "a1", "mu_rec13", worker_a, session,
+                         ttl_seconds=30.0)
+    lm.journal_set("u_rec13", run, rnd, "a1", "mu_rec13", worker_a, session,
+                   lease13["lease_id"], lease13["lease_nonce"], JRN_PREPARED)
+    # 2a connexió: la fila ha de ser visible
+    conn2 = _sq.connect(db)
+    conn2.row_factory = _sq.Row
+    row2 = conn2.execute(
+        "SELECT * FROM recovery_journal_r54 WHERE unit_id='u_rec13'").fetchone()
+    check("REC-13a PREPARED visible des d'una 2a connexió",
+          row2 is not None and row2["state"] == JRN_PREPARED)
+    conn2.close()
+    # tancar i reobrir: la fila continua existint
+    conn.close()
+    conn = _sq.connect(db)
+    conn.row_factory = _sq.Row
+    row3 = conn.execute(
+        "SELECT * FROM recovery_journal_r54 WHERE unit_id='u_rec13'").fetchone()
+    check("REC-13b PREPARED sobreviu a tancar/reobrir",
+          row3 is not None and row3["state"] == JRN_PREPARED)
+    # rollback davant error: una escriptura que llança NO deixa res parcial
+    lm2 = LeaseManager(conn, default_ttl_seconds=30.0)
+    try:
+        lm2.journal_set("u_rec13", run, rnd, "a1", "mu_rec13", worker_a,
+                        session, lease13["lease_id"], lease13["lease_nonce"],
+                        JRN_APPLIED, delta_sha=None)  # APPLIED sense delta -> error
+        check("REC-13c rollback davant error", False)
+    except Exception:
+        row4 = conn.execute(
+            "SELECT state FROM recovery_journal_r54 WHERE unit_id='u_rec13'"
+        ).fetchone()
+        check("REC-13c rollback davant error -> zero escriptures parcials",
+              row4["state"] == JRN_PREPARED)  # segueix PREPARED, no APPLIED
+
     conn.close()
     if os.path.exists(db):
         os.remove(db)

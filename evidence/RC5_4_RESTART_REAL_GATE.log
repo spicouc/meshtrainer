@@ -2,17 +2,17 @@
   no-crash: exit 0
   adapter no-crash: 13cb86871456bbb9...
 === [2/6] FASE A: procés real fins APPLIED (crash) ===
-  fase A: exit 0 | pid_A=3888967
+  fase A: exit 0 | pid_A=445650
 === [3/6] FASE B: procés nou (PID diferent) recupera ===
   fase B: exit 0
-[PHASE B] worker B cid=ed6c05c880454f41b29e72a34392c7d8
+[PHASE B] worker B cid=166679760a9044f5a648c035c52b87bc
 [PHASE B] adapter OK 13cb86871456bbb9
-{"pid_a": 3888967, "pid_b": 3889010, "adapter_hash": "13cb86871456bbb95937221d6c127e4edb295ef97043b06aad0d3817681d8c1c", "delta_sha": "2c8a7dcc7334f53bd320c29c9812c1a63a4f9d2495a2fa605e70ab6c8eaf237f"}
+{"pid_a": 445650, "pid_b": 445741, "adapter_hash": "13cb86871456bbb95937221d6c127e4edb295ef97043b06aad0d3817681d8c1c", "delta_sha": "2c8a7dcc7334f53bd320c29c9812c1a63a4f9d2495a2fa605e70ab6c8eaf237f", "reassigned": false}
 === [4/6] PID A != PID B ===
-  PASS (A=3888967 B=3889010)
+  PASS (A=445650 B=445741)
 === [5/6] delta crash == delta no-crash ===
   delta crash: 2c8a7dcc7334f53b...
   adapter igualat a la fase B (assert intern)
 === [6/6] resum ===
-  PID_A=3888967 PID_B=3889010 delta=2c8a7dcc7334f53b adapter=13cb86871456bbb9
+  PID_A=445650 PID_B=445741 delta=2c8a7dcc7334f53b adapter=13cb86871456bbb9
 RESTART REAL GATE: PASS

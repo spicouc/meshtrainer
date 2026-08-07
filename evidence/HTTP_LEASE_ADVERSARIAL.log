@@ -1,0 +1,21 @@
+/root/meshtrainer/rc5_2_tensor_bundle.py:71: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
+  arr = torch.frombuffer(chunk, dtype=torch.float32).reshape(t["shape"]).clone()
+OK  H-01 step.open sense lease rejected 
+OK  H-02 wrong lease nonce rejected 
+OK  H-03 wrong session rejected 
+OK  H-04 lease cross-run rejected 
+OK  H-05 lease cross-assignment rejected 
+OK  H-16 lease cross-unit rejected 
+OK  H-06 expired lease forward rejected 
+OK  H-07 expired lease backward rejected 
+OK  H-08 expired lease commit rejected 
+OK  H-09 expired lease upload rejected 
+OK  H-10 released lease rejected 
+OK  H-11 old worker rejected after reassign 
+OK  H-12 contribution registration sense lease rejected 
+OK  H-12b registration amb lease inexistent rejected 
+OK  H-13 backward.fetch sense lease rejected 
+OK  H-14 step.commit sense lease rejected 
+OK  H-15 checkpoint.upload sense lease rejected 
+
+=== HTTP LEASE ADVERSARIAL: 17/17 PASS, 0 FAIL ===

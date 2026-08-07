@@ -1,27 +1,28 @@
-# RC5.4 MUTATION REPORT — R3 (34 mutants)
+# RC5.4 MUTATION REPORT — R3.1 (37 mutants)
 
-**Data**: 2026-08-07 | **Resultat: 34/34 DETECTED | Invalid 0 | Runtime 0 | Not_applied 0 | Timeouts 0 | PASS**
+**Data**: 2026-08-07 | **Resultat: 37/37 DETECTED | Invalid 0 | Runtime 0 | Not_applied 0 | Timeouts 0 | PASS**
 
-## MUT-R4-01..24 (R2, revalidats amb el dispatcher real)
-Tots DETECTED (24/24) — vegeu l'informe R2.
+## MUT-R4-01..34 (R3, revalidats)
+Tots DETECTED — vegeu l'informe R3.
 
-## MUT-R4-25..34 (nous, R3 — dispatcher real / check_lease)
+## MUT-R4-35..37 (nous, R3.1 — idempotència del dispatcher)
 
 | Mutant | Patró substituït | Detecció |
 |---|---|---|
-| MUT-R4-25 | bypass lease a step.open (dispatcher) | DETECTED (H-01) |
-| MUT-R4-26 | bypass lease a backward (dispatcher) | DETECTED (H-13) |
-| MUT-R4-27 | bypass lease a commit (dispatcher) | DETECTED (H-14) |
-| MUT-R4-28 | bypass lease a upload (dispatcher) | DETECTED (H-15) |
-| MUT-R4-29 | bypass lease a contribution registration | DETECTED (H-12b) |
-| MUT-R4-30 | acceptar EXPIRED (check_lease) | DETECTED (H-06/07/08/09) |
-| MUT-R4-31 | acceptar RELEASED (check_lease) | DETECTED (H-10) |
-| MUT-R4-32 | ignorar session (check_lease) | DETECTED (H-03) |
-| MUT-R4-33 | ignorar revision (check_lease) | DETECTED (H-16) |
-| MUT-R4-34 | acceptar old worker després de reassignació | DETECTED (H-11) |
+| MUT-R4-35 | eliminar _check_idem (cached=None) | DETECTED (H-18..H-22 fallen: retry no idempotent) |
+| MUT-R4-36 | cache abans del lease gate | DETECTED (H-25 falla: retry cachejat acceptat) |
+| MUT-R4-37 | acceptar same key + different payload (cached=None) | DETECTED (H-24 falla: segona operació creada) |
 
 ## Evidència per mutant
 
 Cada mutant registra: patró, substitució, ocurrències, applied_count,
-py_compile, exit per suite (crash/adv/http), tracebacks i l'assertion exacta
-que falla. Log complet: evidence/RC5_4_MUTATION_GATE.log.
+py_compile, crash=/adv=/http= (exits separats), tracebacks, TIMEOUT si
+qualsevol == 124, i l'assertion detectora exacta (FAIL H-xx). Log complet:
+evidence/RC5_4_MUTATION_GATE.log.
+
+## Classificació (runner R3.1)
+
+1. qualsevol exit == 124 -> TIMEOUT (no es converteix a 1)
+2. tracebacks > 0 -> RUNTIME-INVALID
+3. exit no-zero + assertion FAIL -> DETECTED
+4. exit 0 -> NOT DETECTED

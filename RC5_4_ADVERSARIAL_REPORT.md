@@ -1,38 +1,26 @@
-# RC5.4 ADVERSARIAL REPORT — R3 (51/51 + HTTP 17/17)
+# RC5.4 ADVERSARIAL REPORT — R3.1 (51/51 + HTTP 26/26)
 
-**Data**: 2026-08-07 | **Resultat: 51/51 (unit) + 17/17 (HTTP) PASS**
+**Data**: 2026-08-07 | **Resultat: 51/51 (unit) + 26/26 (HTTP) PASS**
 
 ## Suite unitària (rc5_4_adversarial_tests.py): 51/51 PASS
-ADV-01..14 originals + ADV-R4-15..30 (cross-run/round/assignment/unit/session,
-write after RELEASED, reacquire after RELEASED, expire alien, exact expires_at,
-negative TTL, COMMITTED->PREPARED, direct COMMITTED, SUBMITTED sense delta,
-conflicting receipt/update_id, pipeline sense lease, old worker).
+ADV-01..14 originals + ADV-R4-15..30 (R2).
 
-## Suite HTTP real (rc5_4_http_lease_tests.py): 17/17 PASS
-Totes per HTTP real contra el dispatcher lease-gated (sense _FakePipeline):
+## Suite HTTP real (rc5_4_http_lease_tests.py): 26/26 PASS
+H-01..H-16 (R3, lease-gated) + H-18..H-25 (R3.1, idempotència):
 
 | Test | Cas | Resultat |
 |---|---|---|
-| H-01 | step.open sense lease rejected (missing_lease_params) | PASS |
-| H-02 | wrong lease nonce rejected | PASS |
-| H-03 | wrong session rejected | PASS |
-| H-04 | lease cross-run rejected | PASS |
-| H-05 | lease cross-assignment rejected | PASS |
-| H-06 | expired lease forward rejected | PASS |
-| H-07 | expired lease backward rejected | PASS |
-| H-08 | expired lease commit rejected | PASS |
-| H-09 | expired lease upload rejected | PASS |
-| H-10 | released lease rejected | PASS |
-| H-11 | old worker rejected after reassign (lease de B, worker A) | PASS |
-| H-12 | contribution registration sense lease rejected | PASS |
-| H-12b | registration amb lease inexistent (unknown_lease) rejected | PASS |
-| H-13 | backward.fetch sense lease rejected (dispatcher) | PASS |
-| H-14 | step.commit sense lease rejected (dispatcher) | PASS |
-| H-15 | checkpoint.upload sense lease rejected (dispatcher) | PASS |
-| H-16 | lease cross-unit rejected | PASS |
+| H-18 | step.open exact retry -> mateixa resposta | PASS |
+| H-19 | forward exact retry -> mateix backward_id, no segon backward | PASS |
+| H-20 | backward exact retry -> mateix gradient envelope | PASS |
+| H-21 | update exact retry -> mateix delta_id | PASS |
+| H-22 | commit exact retry -> receipt byte-for-byte | PASS |
+| H-23 | upload exact retry -> mateixa contribution_id | PASS |
+| H-24 | same logical key + different payload REJECTED | PASS |
+| H-24b | no es crea una segona unitat (mateixa clau lògica) | PASS |
+| H-25 | retry exacte després d'expirar -> REJECTED (lease gate BEFORE cache) | PASS |
 
-## Nota de disseny
-El gate de lease s'executa ABANS de la idempotència del dispatcher: un retry
-idempotent amb lease expirada NO pot obtenir la resposta cachejada. Això es
-va descobrir al mid-backward (el backward.fetch d'A tornava cache) i es va
-corregir a ProtocolHandler54.handle.
+## Nota de disseny (R3.1)
+L'ordre LEASE -> IDEMPOTENCY CHECK -> EXECUTION -> IDEMPOTENCY SAVE garanteix
+que un retry idempotent mai no pugui saltar-se el gate de lease (H-25) i que
+un retry exacte amb lease vàlida torni la mateixa resposta (H-18..H-23).

@@ -1,16 +1,16 @@
 ============================================
   RC5.4 Stage A — COMBINED FINAL GATE
   Python: Python 3.13.5
-  LOG_DIR: /root/tmp_r53/ev_r54r3
+  LOG_DIR: /root/tmp_r53/ev_r54r31
 ============================================
 dependency check: PASS (torch 2.13.0+cpu, numpy 2.4.4)
   [1/17] dependency check: PASS
   [2/17] py_compile: PASS
 === [3/17] RC5.4 normal x2 ===
 === RUN 1 (suite normal completa) ===
-=== RC5.4 CRASH MATRIX: 24/24 PASS, 0 FAIL ===
+=== RC5.4 CRASH MATRIX: 27/27 PASS, 0 FAIL ===
 === RUN 2 (suite normal completa) ===
-=== RC5.4 CRASH MATRIX: 24/24 PASS, 0 FAIL ===
+=== RC5.4 CRASH MATRIX: 27/27 PASS, 0 FAIL ===
 === adversarial (report separat) ===
 === RC5.4 ADVERSARIAL: 51/51 PASS, 0 FAIL ===
 RC5.4 normal x2: PASS (R1=0 R2=0) | adversarial: PASS
@@ -28,7 +28,7 @@ Baseline: PASS
   patró: now = self._now_f()
   substitució: now = self._now_f() - 1e9
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-03 lease EXPIRED automàticament 
   mut_r4_01_ignore_expiry: DETECTED
 
@@ -37,7 +37,7 @@ Baseline: PASS
   patró: if lease["status"] not in (LEASE_ACTIVE, LEASE_RENEWED):
   substitució: if lease["status"] not in (LEASE_ACTIVE, LEASE_RENEWED, LEASE_EXPIRED):
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-R4-30 old worker HTTP calls rejected after reassign 
   mut_r4_02_accept_expired_contribution: DETECTED
 
@@ -46,7 +46,7 @@ Baseline: PASS
   patró: CREATE UNIQUE INDEX IF NOT EXISTS idx_leases_one_active
   substitució: CREATE INDEX IF NOT EXISTS idx_leases_one_active
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-R4-15b índex parcial únic present 
   mut_r4_03_double_active_lease: DETECTED
 
@@ -55,7 +55,7 @@ Baseline: PASS
   patró: if row["worker_id"] != worker_id or row["session_id"] != session_id:
   substitució: if False:
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-02 renewal aliena rebutjada 
   mut_r4_04_alien_renewal: DETECTED
 
@@ -64,7 +64,7 @@ Baseline: PASS
   patró: if row["lease_nonce"] != lease_nonce:
   substitució: if False:
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-05 stale lease nonce rebutjat 
   mut_r4_05_ignore_nonce: DETECTED
 
@@ -73,7 +73,7 @@ Baseline: PASS
   patró: return row["status"] in (LEASE_EXPIRED, LEASE_ABORTED)
   substitució: return True
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-07 reassign abans expiry rebutjat 
   mut_r4_06_reassign_before_expiry: DETECTED
 
@@ -82,7 +82,7 @@ Baseline: PASS
   patró: if state == JRN_SUBMITTED and delta_sha is None:
   substitució: if state == JRN_SUBMITTED and delta_sha is None and False:
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-R4-26b SUBMITTED sense delta rejected 
   mut_r4_07_double_optimizer: DETECTED
 
@@ -91,7 +91,7 @@ Baseline: PASS
   patró: ("receipt_json", receipt),
   substitució: # ("receipt_json", receipt),
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-R4-27 conflicting receipt rejected 
   mut_r4_08_different_receipt: DETECTED
 
@@ -100,7 +100,7 @@ Baseline: PASS
   patró: ("adapter_hash", adapter_hash)]:
   substitució: ("adapter_hash", None)]:
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-11 conflicting adapter REJECTED 
   mut_r4_09_stale_adapter: DETECTED
 
@@ -109,7 +109,7 @@ Baseline: PASS
   patró: return row["status"] in (LEASE_EXPIRED, LEASE_ABORTED)
   substitució: return row["status"] in (LEASE_ABORTED,)
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=1 adv=0) | tracebacks: 0 (0+0) | falla a: crash
+  suite executada: crash=1 adv=0 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL REC-05 reassignable after EXPIRED 
   mut_r4_10_expired_in_fedavg: DETECTED
 
@@ -118,7 +118,7 @@ Baseline: PASS
   patró: q += " ORDER BY updated_at DESC LIMIT 1"
   substitució: q += " ORDER BY updated_at ASC LIMIT 1"
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-13 journal resol a lease més recent (B) 
   mut_r4_11_old_revision_commit: DETECTED
 
@@ -127,7 +127,7 @@ Baseline: PASS
   patró: "SELECT lease_id FROM leases_r54 WHERE status IN (?,?) AND expires_at <= ?",
   substitució: "SELECT lease_id FROM leases_r54 WHERE status IN (?,?) AND expires_at <= ? AND 0",
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-03 lease EXPIRED automàticament 
   mut_r4_12_mid_backward_safe: DETECTED
 
@@ -136,7 +136,7 @@ Baseline: PASS
   patró: ("run_id", lease["run_id"] == run_id),
   substitució: ("run_id", True),
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-R4-15 cross-run journal rejected 
   mut_r4_13_no_run_binding: DETECTED
 
@@ -145,7 +145,7 @@ Baseline: PASS
   patró: ("round_id", lease["round_id"] == round_id),
   substitució: ("round_id", True),
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-R4-16 cross-round journal rejected 
   mut_r4_14_no_round_binding: DETECTED
 
@@ -154,7 +154,7 @@ Baseline: PASS
   patró: ("assignment_id", lease["assignment_id"] == assignment_id),
   substitució: ("assignment_id", True),
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-R4-17 cross-assignment journal rejected 
   mut_r4_15_no_assignment_binding: DETECTED
 
@@ -163,7 +163,7 @@ Baseline: PASS
   patró: ("micro_unit_id", lease["micro_unit_id"] == micro_unit_id),
   substitució: ("micro_unit_id", True),
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-R4-18 cross-unit journal rejected 
   mut_r4_16_no_unit_binding: DETECTED
 
@@ -172,7 +172,7 @@ Baseline: PASS
   patró: ("session_id", lease["session_id"] == session_id),
   substitució: ("session_id", True),
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-R4-19 wrong session journal rejected 
   mut_r4_17_no_session_binding: DETECTED
 
@@ -181,7 +181,7 @@ Baseline: PASS
   patró: if lease["status"] not in (LEASE_ACTIVE, LEASE_RENEWED):
   substitució: if lease["status"] not in (LEASE_ACTIVE, LEASE_RENEWED, LEASE_RELEASED):
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-R4-20 write after RELEASED rejected 
   mut_r4_18_allow_released: DETECTED
 
@@ -190,7 +190,7 @@ Baseline: PASS
   patró: if state not in allowed and state != cur_state:
   substitució: if False:
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-R4-25 COMMITTED to PREPARED rejected 
   mut_r4_19_allow_state_regression: DETECTED
 
@@ -199,7 +199,7 @@ Baseline: PASS
   patró: if oldv is not None and newv is not None and newv != oldv:
   substitució: if oldv is not None and newv is not None and newv != oldv and False:
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=1 adv=1) | tracebacks: 0 (0+0) | falla a: crash adv
+  suite executada: crash=1 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL REC-07b conflicting update_id REJECTED 
   mut_r4_20_accept_conflicting_receipt: DETECTED
 
@@ -208,7 +208,7 @@ Baseline: PASS
   patró: if st in (LEASE_ACTIVE, LEASE_RENEWED, LEASE_RELEASED):
   substitució: if st in (LEASE_ACTIVE, LEASE_RENEWED):
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-R4-21 reacquire after RELEASED rejected 
   mut_r4_21_acquire_after_released: DETECTED
 
@@ -217,7 +217,7 @@ Baseline: PASS
   patró: AND expires_at <= ?",
   substitució: AND expires_at < ?",
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-R4-23 exact expires_at is EXPIRED 
   mut_r4_22_expiry_lt: DETECTED
 
@@ -226,7 +226,7 @@ Baseline: PASS
   patró: raise LeaseError(f"No active lease for unit {micro_unit_id}")
   substitució: return {"unit_id": micro_unit_id, "status": LEASE_EXPIRED}
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
+  suite executada: crash=0 adv=1 http=0 | tracebacks: 0 (0+0+0)
   assertion detectora: FAIL ADV-R4-23b expire sense lease error 
   mut_r4_23_ignore_rowcount: DETECTED
 
@@ -235,8 +235,8 @@ Baseline: PASS
   patró: self._require_lease_params(p)
   substitució: pass  # no lease check
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=1) | tracebacks: 0 (0+0) | falla a: adv
-  assertion detectora: FAIL ADV-R4-29 pipeline without lease rejected 
+  suite executada: crash=0 adv=0 http=1 | tracebacks: 0 (0+0+0)
+  assertion detectora: FAIL H-25 retry exacte amb lease expirada REJECTED 
   mut_r4_24_pipeline_no_lease: DETECTED
 
 === mut_r4_25_bypass_step_open ===
@@ -244,8 +244,8 @@ Baseline: PASS
   patró: if self.rc54_enabled and method in RC54_GATED:
   substitució: if self.rc54_enabled and method in RC54_GATED and method != "step.open":
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=0) | tracebacks: 0 (0+0) | falla a: cap (exit 0)
-  assertion detectora: === RC5.4 CRASH MATRIX: 24/24 PASS, 0 FAIL ===
+  suite executada: crash=0 adv=0 http=1 | tracebacks: 0 (0+0+0)
+  assertion detectora: FAIL H-01 step.open sense lease rejected 
   mut_r4_25_bypass_step_open: DETECTED
 
 === mut_r4_26_bypass_backward ===
@@ -253,8 +253,8 @@ Baseline: PASS
   patró: if self.rc54_enabled and method in RC54_GATED:
   substitució: if self.rc54_enabled and method in RC54_GATED and method != "step.server_backward.fetch":
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=0) | tracebacks: 0 (0+0) | falla a: cap (exit 0)
-  assertion detectora: === RC5.4 CRASH MATRIX: 24/24 PASS, 0 FAIL ===
+  suite executada: crash=0 adv=0 http=1 | tracebacks: 0 (0+0+0)
+  assertion detectora: FAIL H-07 expired lease backward rejected 
   mut_r4_26_bypass_backward: DETECTED
 
 === mut_r4_27_bypass_commit ===
@@ -262,8 +262,8 @@ Baseline: PASS
   patró: if self.rc54_enabled and method in RC54_GATED:
   substitució: if self.rc54_enabled and method in RC54_GATED and method != "step.commit":
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=0) | tracebacks: 0 (0+0) | falla a: cap (exit 0)
-  assertion detectora: === RC5.4 CRASH MATRIX: 24/24 PASS, 0 FAIL ===
+  suite executada: crash=0 adv=0 http=1 | tracebacks: 0 (0+0+0)
+  assertion detectora: FAIL H-14 step.commit sense lease rejected 
   mut_r4_27_bypass_commit: DETECTED
 
 === mut_r4_28_bypass_upload ===
@@ -271,8 +271,8 @@ Baseline: PASS
   patró: if self.rc54_enabled and method in RC54_GATED:
   substitució: if self.rc54_enabled and method in RC54_GATED and method != "checkpoint.upload":
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=0) | tracebacks: 0 (0+0) | falla a: cap (exit 0)
-  assertion detectora: === RC5.4 CRASH MATRIX: 24/24 PASS, 0 FAIL ===
+  suite executada: crash=0 adv=0 http=1 | tracebacks: 0 (0+0+0)
+  assertion detectora: FAIL H-15 checkpoint.upload sense lease rejected 
   mut_r4_28_bypass_upload: DETECTED
 
 === mut_r4_29_bypass_contrib_reg ===
@@ -280,8 +280,8 @@ Baseline: PASS
   patró: self._check_lease(lease_id, lease_nonce, worker_id, session_id, run_id, round_id, assignment_id, micro_unit_id)
   substitució: pass  # self._check_lease(lease_id, lease_nonce, worker_id, session_id, run_id, round_id, assignment_id, micro_unit_id)
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=0) | tracebacks: 0 (0+0) | falla a: cap (exit 0)
-  assertion detectora: === RC5.4 CRASH MATRIX: 24/24 PASS, 0 FAIL ===
+  suite executada: crash=0 adv=0 http=1 | tracebacks: 0 (0+0+0)
+  assertion detectora: FAIL H-12b registration amb lease inexistent rejected 
   mut_r4_29_bypass_contrib_reg: DETECTED
 
 === mut_r4_30_accept_expired ===
@@ -289,8 +289,8 @@ Baseline: PASS
   patró: raise RecoveryError("lease_binding_mismatch", fields=bad)\n        if row["status"] not in (LEASE_ACTIVE, LEASE_RENEWED):
   substitució: raise RecoveryError("lease_binding_mismatch", fields=bad)\n        if row["status"] not in (LEASE_ACTIVE, LEASE_RENEWED, LEASE_EXPIRED):
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=0) | tracebacks: 0 (0+0) | falla a: cap (exit 0)
-  assertion detectora: === RC5.4 CRASH MATRIX: 24/24 PASS, 0 FAIL ===
+  suite executada: crash=0 adv=0 http=1 | tracebacks: 0 (0+0+0)
+  assertion detectora: FAIL H-07 expired lease backward rejected 
   mut_r4_30_accept_expired: DETECTED
 
 === mut_r4_31_accept_released ===
@@ -298,8 +298,8 @@ Baseline: PASS
   patró: raise RecoveryError("lease_binding_mismatch", fields=bad)\n        if row["status"] not in (LEASE_ACTIVE, LEASE_RENEWED):
   substitució: raise RecoveryError("lease_binding_mismatch", fields=bad)\n        if row["status"] not in (LEASE_ACTIVE, LEASE_RENEWED, LEASE_RELEASED):
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=0) | tracebacks: 0 (0+0) | falla a: cap (exit 0)
-  assertion detectora: === RC5.4 CRASH MATRIX: 24/24 PASS, 0 FAIL ===
+  suite executada: crash=0 adv=0 http=1 | tracebacks: 0 (0+0+0)
+  assertion detectora: FAIL H-10 released lease rejected 
   mut_r4_31_accept_released: DETECTED
 
 === mut_r4_32_ignore_session ===
@@ -307,8 +307,8 @@ Baseline: PASS
   patró: ("session_id", row["session_id"] == session_id),
   substitució: ("session_id", True),
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=0) | tracebacks: 0 (0+0) | falla a: cap (exit 0)
-  assertion detectora: === RC5.4 CRASH MATRIX: 24/24 PASS, 0 FAIL ===
+  suite executada: crash=0 adv=0 http=1 | tracebacks: 0 (0+0+0)
+  assertion detectora: FAIL H-03 wrong session rejected 
   mut_r4_32_ignore_session: DETECTED
 
 === mut_r4_33_ignore_revision ===
@@ -316,8 +316,8 @@ Baseline: PASS
   patró: ("micro_unit_id", row["micro_unit_id"] == micro_unit_id),
   substitució: ("micro_unit_id", True),
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=0) | tracebacks: 0 (0+0) | falla a: cap (exit 0)
-  assertion detectora: === RC5.4 CRASH MATRIX: 24/24 PASS, 0 FAIL ===
+  suite executada: crash=0 adv=0 http=1 | tracebacks: 0 (0+0+0)
+  assertion detectora: FAIL H-16 lease cross-unit rejected 
   mut_r4_33_ignore_revision: DETECTED
 
 === mut_r4_34_accept_old_worker ===
@@ -325,22 +325,49 @@ Baseline: PASS
   patró: ("worker_id", row["worker_id"] == worker_id),
   substitució: ("worker_id", True),
   py_compile: PASS
-  suite executada: crash matrix + adversarial | exit: 1 (crash=0 adv=0) | tracebacks: 0 (0+0) | falla a: cap (exit 0)
-  assertion detectora: === RC5.4 CRASH MATRIX: 24/24 PASS, 0 FAIL ===
+  suite executada: crash=0 adv=0 http=1 | tracebacks: 0 (0+0+0)
+  assertion detectora: FAIL H-11 old worker rejected after reassign 
   mut_r4_34_accept_old_worker: DETECTED
 
+=== mut_r4_35_no_idem_check ===
+  mutant: mut_r4_35_no_idem_check | fitxer: mut_r4_35_no_idem_check.py
+  patró:                 cached = self._check_idem(lk, sha)
+  substitució:                 cached = None  # _check_idem eliminat
+  py_compile: PASS
+  suite executada: crash=0 adv=0 http=1 | tracebacks: 0 (0+0+0)
+  assertion detectora: FAIL H-19 forward exact retry -> mateix backward_id 
+  mut_r4_35_no_idem_check: DETECTED
+
+=== mut_r4_36_cache_before_lease ===
+  mutant: mut_r4_36_cache_before_lease | fitxer: mut_r4_36_cache_before_lease.py
+  patró:                 self.recovery._validate_lease(params)
+  substitució:                 cached = self._check_idem(lk, sha)
+  py_compile: PASS
+  suite executada: crash=0 adv=0 http=1 | tracebacks: 0 (0+0+0)
+  assertion detectora: FAIL H-25 retry exacte amb lease expirada REJECTED 
+  mut_r4_36_cache_before_lease: DETECTED
+
+=== mut_r4_37_accept_conflict ===
+  mutant: mut_r4_37_accept_conflict | fitxer: mut_r4_37_accept_conflict.py
+  patró:                 cached = self._check_idem(lk, sha)
+  substitució:                 cached = None  # accepta sempre, sense REJECTED
+  py_compile: PASS
+  suite executada: crash=0 adv=0 http=1 | tracebacks: 0 (0+0+0)
+  assertion detectora: FAIL H-19 forward exact retry -> mateix backward_id 
+  mut_r4_37_accept_conflict: DETECTED
+
 === RESUM ===
-Score: 34/34 Invalid: 0 Runtime: 0 Not_applied: 0 Timeouts: 0
+Score: 37/37 Invalid: 0 Runtime: 0 Not_applied: 0 Timeouts: 0
 Mutation gate RC5.4: PASS
   [5/18] RC5.4 mutation: PASS (exit 0)
 === [5b/18] HTTP lease adversarial (dispatcher real) ===
-=== HTTP LEASE ADVERSARIAL: 17/17 PASS, 0 FAIL ===
+=== HTTP LEASE ADVERSARIAL: 26/26 PASS, 0 FAIL ===
 HTTP lease adversarial: PASS (exit 0)
   [5b/18] HTTP lease adversarial (dispatcher real): PASS (exit 0)
 === [6/17] RC5.3 combined ===
 ============================================
   RC5.3 Stage B R6 — COMBINED FINAL GATE
-  LOG_DIR: /root/tmp_r53/ev_r54r3
+  LOG_DIR: /root/tmp_r53/ev_r54r31
 ============================================
 
 === [1/20] dependency check ===
@@ -391,7 +418,7 @@ HTTP lease adversarial: PASS (exit 0)
 === [7/17] RC5.2 Phase 2 ===
 ============================================
   RC5.2 Phase 2 R12 — FINAL GATE
-  LOG_DIR: /root/tmp_r53/ev_r54r3
+  LOG_DIR: /root/tmp_r53/ev_r54r31
 ============================================
 
   Phase 2 Run 1: PASS
@@ -713,7 +740,7 @@ All deps present.
   ✅ R4-expired: reason is 'receipt expired'
 
 --- R4-hash-evidence ---
-  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "68cadb59fec36581", "revision": 1, "status": "RECEIVED"}, "id": "1"}
+  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "f246610984e63dd5", "revision": 1, "status": "RECEIVED"}, "id": "1"}
   ✅ R4-hash-evidence: upload accepted
   ✅ R4-hash-evidence: file SHA matches our_hash
 
@@ -876,7 +903,7 @@ All deps present.
   ✅ R4-expired: reason is 'receipt expired'
 
 --- R4-hash-evidence ---
-  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "420907808a2066b5", "revision": 1, "status": "RECEIVED"}, "id": "1"}
+  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "7b5d2d8f02826e08", "revision": 1, "status": "RECEIVED"}, "id": "1"}
   ✅ R4-hash-evidence: upload accepted
   ✅ R4-hash-evidence: file SHA matches our_hash
 
@@ -973,23 +1000,23 @@ All deps present.
   no-crash: exit 0
   adapter no-crash: 13cb86871456bbb9...
 === [2/6] FASE A: procés real fins APPLIED (crash) ===
-  fase A: exit 0 | pid_A=445650
+  fase A: exit 0 | pid_A=990620
 === [3/6] FASE B: procés nou (PID diferent) recupera ===
   fase B: exit 0
 === [4/6] PID A != PID B ===
-  PASS (A=445650 B=445741)
+  PASS (A=990620 B=990670)
 === [5/6] delta crash == delta no-crash ===
   delta crash: 2c8a7dcc7334f53b...
   adapter igualat a la fase B (assert intern)
 === [6/6] resum ===
-  PID_A=445650 PID_B=445741 delta=2c8a7dcc7334f53b adapter=13cb86871456bbb9
+  PID_A=990620 PID_B=990670 delta=2c8a7dcc7334f53b adapter=13cb86871456bbb9
 RESTART REAL GATE: PASS
   [10/18] restart subprocess REAL: PASS (exit 0)
 === [10b/18] mid-backward real ===
 === [1/3] execució mid-backward real ===
   exit: 0
 === [2/3] resultats ===
-{"pid": 445838, "lease_A_status": "EXPIRED", "a_can_continue": false, "a_could_contribute": false, "a_rejected_http": {"backward": true, "update": true, "commit": true, "upload": true}, "B_acquired": "ACTIVE", "B_delta_sha": "906d6b9939b51028", "no_partial_A_in_journal": true}  PASS lease A EXPIRED
+{"pid": 990803, "lease_A_status": "EXPIRED", "a_can_continue": false, "a_could_contribute": false, "a_rejected_http": {"backward": true, "update": true, "commit": true, "upload": true}, "B_acquired": "ACTIVE", "B_delta_sha": "906d6b9939b51028", "no_partial_A_in_journal": true}  PASS lease A EXPIRED
   PASS A no pot continuar
   PASS A no pot aportar cap delta parcial
   PASS B adquireix nova revisió
@@ -999,7 +1026,7 @@ MID-BACKWARD GATE: PASS
   [10b/18] mid-backward real: PASS (exit 0)
 === [11/18] controlled-failure RC5.3 ===
 === CONTROLLED-FAILURE RC5.3 ===
-LOG_DIR: /root/tmp_r53/ev_r54r3
+LOG_DIR: /root/tmp_r53/ev_r54r31
 Substitucions aplicades: 1
 applied_count: 1 (ha de ser 1)
 línies que difereixen: 2 (ha de ser 2)
@@ -1012,7 +1039,7 @@ controlled-failure RC5.3: PASS
   [11/18] controlled-failure RC5.3: PASS (exit 0)
 === [12/18] controlled-failure RC5.2 ===
 === CONTROLLED-FAILURE RC5.2 ===
-LOG_DIR: /root/tmp_r53/ev_r54r3
+LOG_DIR: /root/tmp_r53/ev_r54r31
 Substitucions aplicades: 1
 applied_count: 1 (ha de ser 1)
 línies que difereixen: 2 (ha de ser 2)
@@ -1033,21 +1060,21 @@ CF-R54: original rc5_4_tests.py intacte (match HEAD)
   [13/18] controlled-failure RC5.4: PASS (exit 0)
 === [14/18] dependency probe ===
 === DEPENDENCY FAILURE PROBE ===
-LOG_DIR: /root/tmp_r53/ev_r54r3
+LOG_DIR: /root/tmp_r53/ev_r54r31
 dependència retirada: rc5_3_multiworker.py
 gate exit: 1 (ha de ser no-zero) | dependency FAIL: 1 | resum FAIL: 1
 dependency failure probe: PASS
-  log: /root/tmp_r53/ev_r54r3/DEPENDENCY_FAILURE_PROBE.log
+  log: /root/tmp_r53/ev_r54r31/DEPENDENCY_FAILURE_PROBE.log
   [14/18] dependency probe: PASS (exit 0)
 === [15/18] manifest probe ===
 === MANIFEST FAILURE PROBE ===
-LOG_DIR: /root/tmp_r53/ev_r54r3
+LOG_DIR: /root/tmp_r53/ev_r54r31
 fitxer alterat: rc5_3_adversarial_tests.py (hash canviat)
 gate exit: 1 (ha de ser no-zero) | manifest FAIL: 1 | resum FAIL: 1
 manifest failure probe: PASS
-  log: /root/tmp_r53/ev_r54r3/MANIFEST_FAILURE_PROBE.log
+  log: /root/tmp_r53/ev_r54r31/MANIFEST_FAILURE_PROBE.log
   [15/18] manifest probe: PASS (exit 0)
-  [16/18] manifest: PASS (coberts=256 manifest=256 err=0)
+  [16/18] manifest: PASS (coberts=260 manifest=260 err=0)
   [17/18] clean extraction: SKIPPED (mode delegat)
 ============================================
   RC5.4 COMBINED GATE — Overall: PASS

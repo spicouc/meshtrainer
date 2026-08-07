@@ -17,5 +17,14 @@ OK  H-12b registration amb lease inexistent rejected
 OK  H-13 backward.fetch sense lease rejected 
 OK  H-14 step.commit sense lease rejected 
 OK  H-15 checkpoint.upload sense lease rejected 
+OK  H-18 step.open exact retry -> mateixa resposta 
+OK  H-19 forward exact retry -> mateix backward_id 
+OK  H-20 backward exact retry -> mateix gradient envelope 
+OK  H-21 update exact retry -> mateix delta_id 
+OK  H-22 commit exact retry -> mateix receipt byte-for-byte 
+OK  H-23 upload exact retry -> mateixa resposta/contribution_id 
+OK  H-24 same logical key + different payload REJECTED 
+OK  H-24b no es crea una segona unitat (mateixa clau lògica) 
+OK  H-25 retry exacte amb lease expirada REJECTED 
 
-=== HTTP LEASE ADVERSARIAL: 17/17 PASS, 0 FAIL ===
+=== HTTP LEASE ADVERSARIAL: 26/26 PASS, 0 FAIL ===

@@ -45,20 +45,27 @@ class RecoveryError(Exception):
 class RC54RecoveryCoordinator:
     """Lease-gated facade over the real pipeline components."""
 
-    def __init__(self, db_path="recovery_r54.db", lease_db=None, signing_key=b"r53_stage_b_real_key_2026"):
+    def __init__(self, db_path="recovery_r54.db", lease_db=None, signing_key=b"r53_stage_b_real_key_2026",
+                 conn=None):
         self.db_path = db_path
-        self._conn = sqlite3.connect(db_path)
+        if conn is not None:
+            self._conn = conn  # share the RoundCoordinator connection
+        else:
+            self._conn = sqlite3.connect(db_path, check_same_thread=False,
+                                         isolation_level=None, timeout=30)
         self._conn.row_factory = sqlite3.Row
         self._lease_db = lease_db or db_path
         self._lm = LeaseManager(self._conn, default_ttl_seconds=60.0)
         self._signing_key = signing_key
         self._init_db()
         self._pipeline = None   # set via attach_pipeline()
+        self._coordinator = None  # set via attach_coordinator()
 
     # -- schema -------------------------------------------------------------
     def _init_db(self):
-        with self._tx():
-            self._conn.execute("""
+        # NOT wrapped in _tx(): with a shared autocommit connection the
+        # nestable _tx would leave the BEGIN open (no outer committer).
+        self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS journal_r54 (
                     unit_id TEXT NOT NULL,
                     run_id TEXT NOT NULL,
@@ -79,9 +86,11 @@ class RC54RecoveryCoordinator:
                     updated_at REAL NOT NULL,
                     PRIMARY KEY (unit_id, lease_id)
                 )""")
-            self._conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_journal_r54_unit "
-                "ON journal_r54(unit_id)")
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_journal_r54_unit "
+            "ON journal_r54(unit_id)")
+        if not self._conn.in_transaction:
+            self._conn.commit()
 
     def _tx(self):
         class _Ctx:
@@ -102,6 +111,11 @@ class RC54RecoveryCoordinator:
     def attach_pipeline(self, pipeline):
         """Attach the real ProtocolHandler (HTTP server state)."""
         self._pipeline = pipeline
+        return self
+
+    def attach_coordinator(self, coordinator):
+        """Attach the RC5.3 RoundCoordinator for contribution registration."""
+        self._coordinator = coordinator
         return self
 
     # -- lease validation (full binding) ------------------------------------
@@ -276,11 +290,16 @@ class RC54RecoveryCoordinator:
             raise RecoveryError("pipeline_not_attached")
         return self._pipeline._step_checkpoint_upload(p)
 
-    def register_uploaded_contribution(self, contribution_id, lease_id=None,
-                                       **lease_params):
-        """RC5.3 contribution registration is lease-gated."""
-        if lease_id is not None:
-            self._require_lease_params(lease_params)
-        if self._pipeline is None or self._pipeline.coordinator is None:
+    def register_uploaded_contribution(self, contribution_id, *,
+                                       lease_id, lease_nonce, run_id, round_id,
+                                       assignment_id, micro_unit_id, worker_id,
+                                       session_id):
+        """RC5.3 contribution registration is ALWAYS lease-gated.
+
+        Full-binding check on the lease (8 dimensions); the contribution is
+        bound to lease_id/revision/assignment/worker/unit. No path without a
+        valid lease."""
+        self._check_lease(lease_id, lease_nonce, worker_id, session_id, run_id, round_id, assignment_id, micro_unit_id)
+        if getattr(self, "_coordinator", None) is None:
             raise RecoveryError("coordinator_not_attached")
-        return self._pipeline.coordinator.register_uploaded_contribution(contribution_id)
+        return self._coordinator.register_uploaded_contribution(contribution_id)

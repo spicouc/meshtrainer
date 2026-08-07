@@ -34,10 +34,10 @@ from rc5_4_leases import (LeaseManager, LeaseError, JRN_PREPARED, JRN_APPLIED,
                           LEASE_RELEASED)
 
 KEY = b"r53_stage_b_real_key_2026"
-PORT = 21000 + (os.getpid() % 400)  # port dinàmic alt: mai col·lideix amb 198xx del RC5.3
 RUN = "run_r54_http"
 RND = "r1"
 WA, WB = "wa_r54", "wb_r54"
+PORT = 21000 + (os.getpid() % 400)  # port dinàmic alt: mai col·lideix amb 198xx del RC5.3
 
 RESULTS = []
 
@@ -106,8 +106,18 @@ def main():
 
     # RoundCoordinator PRIMER; el servidor comparteix la seva connexió
     coord = RoundCoordinator(db, KEY)
-    srv, _ = serve54(port=PORT, db_path=db, signing_key=KEY, coordinator=coord)
-    cl = JsonRpcClient(f"http://127.0.0.1:{PORT}")
+    # port amb retry: si el port calculat està ocupat (TIME_WAIT del mutant
+    # anterior amb el mateix PID%400), provem el següent fins a trobar-ne un
+    srv, port_used = None, PORT
+    for attempt in range(20):
+        try:
+            srv, _ = serve54(port=port_used, db_path=db, signing_key=KEY,
+                             coordinator=coord)
+            break
+        except OSError:
+            port_used += 1
+    assert srv is not None, "no port lliure per al servidor HTTP"
+    cl = JsonRpcClient(f"http://127.0.0.1:{port_used}")
     time.sleep(0.4)
     coord.round_open(RUN, RND, {"max_micro_batch": 4, "max_sequence_length": 128})
     coord.register_round_model(RUN, RND, art["server_bytes"],

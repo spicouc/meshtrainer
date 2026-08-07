@@ -66,14 +66,15 @@ class ProtocolHandler54(ProtocolHandler):
             if self.recovery is None:
                 raise ValueError("RC5.4 recovery not initialized")
             fn = getattr(self.recovery, RC54_GATED[method])
-            # same idempotency envelope as the base dispatcher
+            # LEASE GATE FIRST: expired/invalid lease is rejected even on
+            # idempotent retries (the cached response must NOT bypass the
+            # lease check — R3 requirement: HTTP rejects any op without a
+            # valid lease).
+            result = fn(params)
+            # then idempotency envelope (same response on identical retry)
             with self._lock:
                 lk = self._logical_key(method, params)
                 sha = hashlib.sha256(canonical_json_v1(params)).hexdigest()
-                cached = self._check_idem(lk, sha)
-                if cached:
-                    return cached
-                result = fn(params)
                 self._save_idem(lk, sha, result)
                 return result
         return super().handle(method, params)

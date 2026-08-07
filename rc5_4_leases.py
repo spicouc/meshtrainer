@@ -98,6 +98,7 @@ class LeaseManager:
                 lease_nonce TEXT NOT NULL,
                 state TEXT NOT NULL,
                 delta_bundle_sha256 TEXT,
+                delta_bundle_b64 TEXT,
                 update_id TEXT,
                 receipt_json TEXT,
                 checkpoint_response TEXT,
@@ -324,7 +325,7 @@ class LeaseManager:
 
     def journal_set(self, unit_id, run_id, round_id, assignment_id, micro_unit_id,
                     worker_id, session_id, lease_id, lease_nonce, state,
-                    delta_sha=None, update_id=None, receipt=None,
+                    delta_sha=None, delta_b64=None, update_id=None, receipt=None,
                     checkpoint_response=None, adapter_hash=None):
         """Strict journal write.
 
@@ -380,6 +381,7 @@ class LeaseManager:
                 # exactly-once: immutable fields conflict -> REJECTED
                 conflicts = []
                 for f, newv in [("delta_bundle_sha256", delta_sha),
+                                ("delta_bundle_b64", delta_b64),
                                 ("update_id", update_id),
                                 ("receipt_json", receipt),
                                 ("checkpoint_response", checkpoint_response),
@@ -393,14 +395,18 @@ class LeaseManager:
             self._conn.execute(
                 "INSERT INTO recovery_journal_r54 (unit_id, run_id, round_id,"
                 " assignment_id, micro_unit_id, worker_id, session_id, lease_id,"
-                " lease_nonce, state, delta_bundle_sha256, update_id,"
+                " lease_nonce, state, delta_bundle_sha256, delta_bundle_b64,"
+                " update_id,"
                 " receipt_json, checkpoint_response, adapter_hash, updated_at)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
                 " ON CONFLICT(unit_id, lease_id) DO UPDATE SET"
                 " state=excluded.state,"
                 " delta_bundle_sha256=CASE WHEN recovery_journal_r54.delta_bundle_sha256"
                 " IS NULL THEN excluded.delta_bundle_sha256 ELSE"
                 " recovery_journal_r54.delta_bundle_sha256 END,"
+                " delta_bundle_b64=CASE WHEN recovery_journal_r54.delta_bundle_b64"
+                " IS NULL THEN excluded.delta_bundle_b64 ELSE"
+                " recovery_journal_r54.delta_bundle_b64 END,"
                 " update_id=CASE WHEN recovery_journal_r54.update_id IS NULL THEN"
                 " excluded.update_id ELSE recovery_journal_r54.update_id END,"
                 " receipt_json=CASE WHEN recovery_journal_r54.receipt_json IS NULL THEN"
@@ -413,7 +419,7 @@ class LeaseManager:
                 " updated_at=excluded.updated_at",
                 (unit_id, run_id, round_id, assignment_id, micro_unit_id,
                  worker_id, session_id, lease_id, lease_nonce, state,
-                 delta_sha, update_id, receipt, checkpoint_response,
+                 delta_sha, delta_b64, update_id, receipt, checkpoint_response,
                  adapter_hash, now))
         return {"unit_id": unit_id, "state": state, "lease_id": lease_id}
 

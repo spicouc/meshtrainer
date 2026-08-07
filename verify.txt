@@ -4,6 +4,9 @@ Data: 2026-08-07
 Branch: rc5.4-stagea
 Base: 086c030
 Commit del codi: f726742
+Tarball: meshtrainer_rc54_stagea_r3_final_cf627c2.tar.gz
+SHA-256 (autoritatiu, .sha256 extern): 103b9a463af851f2fffde8a7a59fe1c1ccf897ee06500be0bea8d3b127bc8772
+Mida: 514947 bytes | Entrades: 271 (258 fitxers + 13 dirs)
 Aquest document: PRE-TARBALL (el SHA autoritatiu és el del .sha256 extern)
 
 1. sha256sum -c MANIFEST.sha256   -> 0 errors (257 línies)

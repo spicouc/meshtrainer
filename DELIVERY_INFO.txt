@@ -10,7 +10,7 @@ PRE-TARBALL
 -----------
 AQUEST DOCUMENT ÉS UNA CÒPIA INTERNA DEL TARBALL.
 El SHA autoritatiu del paquet és el del fitxer .sha256 DETACHED extern
-(meshtrainer_rc54_stagea_r3_final_<commit>.tar.gz.sha256).
+(meshtrainer_rc54_stagea_r3_final_cf627c2.tar.gz.sha256 (SHA 103b9a463af851f2fffde8a7a59fe1c1ccf897ee06500be0bea8d3b127bc8772)).
 Aquesta còpia NO conté el SHA del tarball que la conté (marcada PRE-TARBALL
 per evitar circularitat). La mida i el SHA finals consten al .sha256 extern
 i a les còpies acompanyants entregades.
@@ -57,8 +57,8 @@ sha256sum -c: 0 errors.
 
 ENTREGA
 -------
-- meshtrainer_rc54_stagea_r3_final_<commit>.tar.gz
-- meshtrainer_rc54_stagea_r3_final_<commit>.tar.gz.sha256  (AUTORITATIU)
+- meshtrainer_rc54_stagea_r3_final_cf627c2.tar.gz
+- meshtrainer_rc54_stagea_r3_final_cf627c2.tar.gz.sha256 (SHA 103b9a463af851f2fffde8a7a59fe1c1ccf897ee06500be0bea8d3b127bc8772)  (AUTORITATIU)
 - DELIVERY_INFO.txt (aquesta versió, amb SHA real)
 - verify.txt
 

@@ -34,7 +34,7 @@ from rc5_4_leases import (LeaseManager, LeaseError, JRN_PREPARED, JRN_APPLIED,
                           LEASE_RELEASED)
 
 KEY = b"r53_stage_b_real_key_2026"
-PORT = 19889 + (os.getpid() % 400)  # port dinàmic per evitar TIME_WAIT entre mutants
+PORT = 21000 + (os.getpid() % 400)  # port dinàmic alt: mai col·lideix amb 198xx del RC5.3
 RUN = "run_r54_http"
 RND = "r1"
 WA, WB = "wa_r54", "wb_r54"

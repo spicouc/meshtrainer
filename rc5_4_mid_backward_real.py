@@ -28,7 +28,7 @@ from rc5_4_leases import (LeaseManager, LeaseError, JRN_PREPARED, JRN_APPLIED,
                           LEASE_EXPIRED)
 
 KEY = b"r53_stage_b_real_key_2026"
-PORT = 19887
+PORT = 21200 + (os.getpid() % 400)  # port dinàmic alt: mai col·lideix amb 198xx del RC5.3
 RUN = "run_r54_midbwd"
 RND = "r1"
 UNIT_A = "mu_A"

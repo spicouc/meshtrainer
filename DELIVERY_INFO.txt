@@ -1,56 +1,65 @@
-DELIVERY_INFO — meshtrainer RC5.4 Stage A R2 (INTEGRACIÓ REAL) FINAL
-====================================================================
+DELIVERY_INFO — meshtrainer RC5.4 Stage A R3 (INTEGRACIÓ HTTP REAL) FINAL
+========================================================================
 
-DATA: 2026-08-06
+DATA: 2026-08-07
 BRANCH: rc5.4-stagea
-BASE COMMIT: d46dc1b9384c8b4aa1646aed2d3c7d6d54a2bd18 (candidat R1)
-COMMIT FINAL: 086c030 (codi + documentació R2)
-GIT STATUS: buit
+BASE: 086c030 (R2)
+COMMIT DEL CODI: f726742 (RC5.4 R3: retry de port; nucli HTTP lease-gated)
 
-TARBALL
-meshtrainer_rc54_stagea_r2_final_086c030.tar.gz
-SHA-256: 9abcd0a9b3712dd1a10bf937809b4fca14f2f892f78fc50e4ccbae42d26f60c3
-MIDA: 504287 bytes
-ENTRADES TAR: 257 (244 fitxers regulars + 13 directoris)
-MANIFEST: 243 línies (244 regulars - 1 MANIFEST.sha256)
-sha256sum -c MANIFEST.sha256: 0 errors
+PRE-TARBALL
+-----------
+AQUEST DOCUMENT ÉS UNA CÒPIA INTERNA DEL TARBALL.
+El SHA autoritatiu del paquet és el del fitxer .sha256 DETACHED extern
+(meshtrainer_rc54_stagea_r3_final_<commit>.tar.gz.sha256).
+Aquesta còpia NO conté el SHA del tarball que la conté (marcada PRE-TARBALL
+per evitar circularitat). La mida i el SHA finals consten al .sha256 extern
+i a les còpies acompanyants entregades.
 
-ENTORN
-Python: 3.13.5 | torch: 2.13.0+cpu | numpy: 2.4.4 | requests: 2.34.2 | httpx: 0.28.1
+RESUM
+-----
+R3 fa obligatòries les leases DINS del pipeline real: el servidor HTTP
+(rc5_4_http_server.py) governa el dispatcher JSON-RPC de les 6 operacions
+(step.open, worker_forward.submit, server_backward.fetch, worker_update.submit,
+step.commit, checkpoint.upload) a través de RC54RecoveryCoordinator. Cap
+operació sense lease o amb lease caducada arriba als handlers RC5.2: REJECTED.
+El gate de lease s'executa ABANS de la idempotència (un retry idempotent no
+pot saltar-se el check de lease).
 
-RESULTATS R2 (INTEGRACIÓ REAL)
-- RC5.4 normal x2 REAL (mateixa suite 2 cops): Run1 PASS, Run2 PASS, Flaky 0
-- Adversarial: 51/51 PASS (14 originals + 16 noves ADV-R4-15..30)
-- Mutation: 24/24 DETECTED (Invalid 0, Runtime 0, Not_applied 0, Timeouts 0)
-- Restart real del pipeline: PASS
-  PID_A=3849458 (Coordinator+HTTP, worker A fins APPLIED, crash real)
-  PID_B=3849563 (recupera mateixa SQLite, PID diferent)
-  mateix delta (determinisme real), cap segon optimizer,
-  adapter final = no-crash: 13cb86871456bbb95937221d6c127e4edb295ef97043b06aad0d3817681d8c1c
-- Mid-backward real: PASS (A EXPIRED, A no pot continuar ni aportar,
-  B adquireix revisió nova, cap delta parcial d'A al journal)
-- Gate combinat 18 passos: Overall PASS
+CANVIS (additius; 6 fitxers congelats intactes, hashes = 9c46f65)
+------------------------------------------------------------------
+- rc5_4_http_server.py (nou): ProtocolHandler54 + RpcHandler54 + serve54
+- rc5_4_integration.py: register_uploaded_contribution signatura nova
+  (keyword-only, sempre _check_lease)
+- rc5_4_http_lease_tests.py (nou): 17 probes HTTP reals
+- rc5_4_leases.py: columna delta_bundle_b64 (recovery del delta del journal)
+- rc5_4_restart_real.py: totes les peticions HTTP amb lease; delta del journal
+- rc5_4_mid_backward_real.py: mid-backward HTTP (A REJECTED x4)
+- mutants_r54/ MUT-R4-25..34 (dispatcher real); RUN_RC5_4_HTTP_LEASE_GATE.sh
 
-REGRESSIONS (fitxers congelats vs 9c46f65: 0 diferències)
-- RC5.3 combined: PASS (105/105, adv 33/33, mut 12/12, RC5.2, Phase1, RC5.1)
-- RC5.2 Phase 2 / Phase 1 / RC5.1: PASS
-- Controlled-failure RC5.3 (W1) / RC5.2 (J4) / RC5.4 (REC-01): PASS
-- Dependency probe / Manifest probe: PASS
-- Manifest complet: PASS (243 = 243, err 0)
+RESULTATS CERTIFICATS (execucions reals)
+----------------------------------------
+- RC5.4 normal x2: PASS (24/24 + 24/24, Flaky 0)
+- Adversarial unitari: 51/51 PASS
+- HTTP lease adversarial: 17/17 PASS (sense _FakePipeline)
+- Mutation: 34/34 DETECTED (Invalid 0, Runtime 0, Not_applied 0, Timeouts 0)
+- Restart real governat: PASS (PID A != PID B; delta del journal sense
+  optimizer; adapter crash = no-crash 13cb86871456bbb9...)
+- Mid-backward real HTTP: PASS (A REJECTED a backward/update/commit/upload)
+- Gate combinat 20 passos: Overall PASS
+- Controlled-failure RC5.4: PASS (1 FAIL esperat, 0 tracebacks, exit 1)
+- CLEAN EXTRACTION A/B: PASS x2 (dirs buits, manifest err=0, ports cap,
+  fitxers externs cap)
 
-CLEAN EXTRACTION: PASS x2 (A i B, dirs buits)
-- SHA extern PASS, extracció 244 fitxers, manifest PASS, gate complet Overall PASS x2
-- Ports residuals: cap | Fitxers externs: cap
+MANIFEST
+--------
+258 fitxers regulars (incloent MANIFEST.sha256) = 257 línies del manifest
+sha256sum -c: 0 errors.
 
-STOP CONDITIONS: cap activada
-- No cal persistir graf autograd (journal de deltas deterministes)
-- Kernel numèric congelat no modificat (0 diffs vs 9c46f65)
-- Exactly-once en APPLIED garantit (conflictiu -> REJECTED)
-- Reassignació no permet dues contribucions ACTIVE (índex parcial únic)
-- Rellotge/TTL determinista
+ENTREGA
+-------
+- meshtrainer_rc54_stagea_r3_final_<commit>.tar.gz
+- meshtrainer_rc54_stagea_r3_final_<commit>.tar.gz.sha256  (AUTORITATIU)
+- DELIVERY_INFO.txt (aquesta versió, amb SHA real)
+- verify.txt
 
-AUTORITZACIONS
-- Finalització RC5.4 Stage A: AUTHORIZED
-- Qwen3TrainingBackend: NOT AUTHORIZED (pendent d'auditoria)
-- Dataset real: NOT AUTHORIZED
-- Interfície gràfica: NOT AUTHORIZED
+NO INICIAT (pendent d'autorització): Qwen3TrainingBackend, dataset real, UI.

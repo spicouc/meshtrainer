@@ -1,25 +1,18 @@
-verify.txt — verificació del paquet RC5.4 Stage A R2
+verify.txt — verificació del paquet RC5.4 Stage A R3
 =====================================================
-Data: 2026-08-06
+Data: 2026-08-07
 Branch: rc5.4-stagea
-Base: d46dc1b9384c8b4aa1646aed2d3c7d6d54a2bd18
-Commit complet: 086c030
-git status: buit
+Base: 086c030
+Commit del codi: f726742
+Aquest document: PRE-TARBALL (el SHA autoritatiu és el del .sha256 extern)
 
-Tarball: meshtrainer_rc54_stagea_r2_final_086c030.tar.gz
-SHA-256: 9abcd0a9b3712dd1a10bf937809b4fca14f2f892f78fc50e4ccbae42d26f60c3
-Mida: 504287 bytes
-Entrades: 257 (244 fitxers + 13 directoris)
-Manifest: 243 línies = 244 regulars - 1
-sha256sum -c: 0 errors
+1. sha256sum -c MANIFEST.sha256   -> 0 errors (257 línies)
+2. sha256sum -c <tarball>.sha256  -> OK (SHA extern = autoritatiu)
+3. Extracció en directori buit + manifest err=0 + final gate PASS (x2, A/B)
+4. Mutation gate RC5.4: 34/34 DETECTED
+5. HTTP lease adversarial: 17/17 PASS
+6. Restart real: PID_A != PID_B, delta del journal, adapter = no-crash
+7. Mid-backward real: A REJECTED x4 per HTTP, B completa amb lease nova
+8. Kernel congelat: 6 fitxers amb hashes idèntics a 9c46f65
 
-Python: 3.13.5 | torch 2.13.0+cpu | numpy 2.4.4 | requests 2.34.2 | httpx 0.28.1
-
-RC5.4 normal x2: PASS (Run1/Run2, Flaky 0)
-Adversarial: PASS (51/51)
-Mutation: PASS (24/24, 0 invalid/runtime/not-applied/timeout)
-Restart real: PASS (PID_A=3849458 != PID_B=3849563, mateix delta, adapter=13cb8687)
-Mid-backward real: PASS (A EXPIRED, cap delta parcial d'A)
-Gate combinat 18 passos: Overall PASS
-Regressions (RC5.3/RC5.2/Phase1/RC5.1/CF/probes): PASS
-Clean extraction A/B: PASS x2 | Ports residuals: cap | Fitxers externs: cap
+Resultat: PASS

@@ -63,7 +63,9 @@ run_sub "[3/17] RC5.4 normal x2" "bash RUN_RC5_4_TESTS.sh" 900
 run_sub "[4/17] RC5.4 adversarial" "bash RUN_RC5_4_ADVERSARIAL_GATE.sh" 600
 
 # 5) RC5.4 mutation (runner oficial)
-run_sub "[5/17] RC5.4 mutation" "bash RUN_RC5_4_MUTATION_GATE.sh" 3600
+run_sub "[5/18] RC5.4 mutation" "bash RUN_RC5_4_MUTATION_GATE.sh" 3600
+
+run_sub "[5b/18] HTTP lease adversarial (dispatcher real)" "bash RUN_RC5_4_HTTP_LEASE_GATE.sh" 900
 
 # 6) RC5.3 combined gate (regressió, runner R6.1; mode delegat per al CE)
 run_sub "[6/17] RC5.3 combined" "RC53_SKIP_CLEAN_EXTRACTION=1 bash RUN_RC5_3_FINAL_GATE.sh" 3600

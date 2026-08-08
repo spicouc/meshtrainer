@@ -1,21 +1,38 @@
-verify.txt — verificació del paquet RC5.4 Stage A R3
-=====================================================
-Data: 2026-08-07
-Branch: rc5.4-stagea
-Base: 086c030
-Commit del codi: f726742
-Tarball: meshtrainer_rc54_stagea_r3_final_cf627c2.tar.gz
-SHA-256 (autoritatiu, .sha256 extern): 103b9a463af851f2fffde8a7a59fe1c1ccf897ee06500be0bea8d3b127bc8772
-Mida: 514947 bytes | Entrades: 271 (258 fitxers + 13 dirs)
-Aquest document: PRE-TARBALL (el SHA autoritatiu és el del .sha256 extern)
+VERIFY — meshtrainer RC5.4 Stage A R3.1 (entrega 77595f4)
+=========================================================
 
-1. sha256sum -c MANIFEST.sha256   -> 0 errors (257 línies)
-2. sha256sum -c <tarball>.sha256  -> OK (SHA extern = autoritatiu)
-3. Extracció en directori buit + manifest err=0 + final gate PASS (x2, A/B)
-4. Mutation gate RC5.4: 34/34 DETECTED
-5. HTTP lease adversarial: 17/17 PASS
-6. Restart real: PID_A != PID_B, delta del journal, adapter = no-crash
-7. Mid-backward real: A REJECTED x4 per HTTP, B completa amb lease nova
-8. Kernel congelat: 6 fitxers amb hashes idèntics a 9c46f65
+TARBALL: meshtrainer_rc54_stagea_r3_1_final_77595f4.tar.gz
+SHA-256 (extern .sha256, AUTORITATIU): <PENDENT>
+MIDA: <PENDENT>
+FITXERS (regulars): 264 (263 línies manifest + MANIFEST.sha256)
+sha256sum -c MANIFEST.sha256: 0 errors
 
-Resultat: PASS
+GATES (extrets del CE gate A/B, logs a evidence/):
+- SHA extern: PASS
+- Extracció A: 261 fitxers; manifest: err=0
+- Gate A complet (18 passos): Overall PASS
+- Espera ports (TIME_WAIT): OK
+- Extracció B: 261 fitxers; manifest: err=0
+- Gate B complet (18 passos): Overall PASS
+- Ports residuals: cap
+- Fitxers externs: cap
+- CLEAN EXTRACTION GATE — Overall: PASS
+
+RESULTATS DEL GATE COMBINAT (gate B, RC5_4_FINAL_GATE):
+- RC5.4 normal x2: PASS (27/27 + 27/27)
+- Adversarial: 51/51
+- Mutation: 37/37
+- HTTP lease adversarial: 26/26
+- RC5.3 combined: PASS
+- RC5.2 Phase 2 + Phase 1 + RC5.1: PASS
+- Restart real + mid-backward real: PASS
+- Controlled-failure x3: PASS
+- Dependency probe + manifest probe: PASS
+- Manifest: 260/260 coberts, err=0
+- Overall: PASS
+
+Probes negatives (gate intern del manifest probe):
+- Manifest alterat detectat: manifest FAIL + resum FAIL + exit 1 (esperat)
+- Manifest probe: PASS
+
+Tags: no s'han mogut (pendent d'auditoria del Supervisor).

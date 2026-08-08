@@ -1,0 +1,58 @@
+============================================
+  RC5.4 Stage A — COMBINED FINAL GATE
+  Python: Python 3.13.5
+  LOG_DIR: /root/tmp_r53/ce_r54r31b
+============================================
+  [1/17] dependency check: PASS
+  [2/17] py_compile: PASS
+
+=== [3/17] RC5.4 normal x2 ===
+  [3/17] RC5.4 normal x2: PASS (exit 0)
+
+=== [4/17] RC5.4 adversarial ===
+  [4/17] RC5.4 adversarial: PASS (exit 0)
+
+=== [5/18] RC5.4 mutation ===
+  [5/18] RC5.4 mutation: PASS (exit 0)
+
+=== [5b/18] HTTP lease adversarial (dispatcher real) ===
+  [5b/18] HTTP lease adversarial (dispatcher real): PASS (exit 0)
+
+=== [6/17] RC5.3 combined ===
+  [6/17] RC5.3 combined: PASS (exit 0)
+
+=== [7/17] RC5.2 Phase 2 ===
+  [7/17] RC5.2 Phase 2: PASS (exit 0)
+
+=== [8/17] Phase 1 ===
+  [8/17] Phase 1: PASS (exit 0)
+
+=== [9/17] RC5.1 ===
+  [9/17] RC5.1: PASS (exit 0)
+
+=== [10/18] restart subprocess REAL ===
+  [10/18] restart subprocess REAL: PASS (exit 0)
+
+=== [10b/18] mid-backward real ===
+  [10b/18] mid-backward real: PASS (exit 0)
+
+=== [11/18] controlled-failure RC5.3 ===
+  [11/18] controlled-failure RC5.3: PASS (exit 0)
+
+=== [12/18] controlled-failure RC5.2 ===
+  [12/18] controlled-failure RC5.2: PASS (exit 0)
+
+=== [13/18] controlled-failure RC5.4 ===
+  [13/18] controlled-failure RC5.4: PASS (exit 0)
+
+=== [14/18] dependency probe ===
+  [14/18] dependency probe: PASS (exit 0)
+
+=== [15/18] manifest probe ===
+  [15/18] manifest probe: PASS (exit 0)
+  [16/18] manifest: PASS (coberts=260 manifest=260 err=0)
+  [17/18] clean extraction: SKIPPED (mode delegat)
+
+============================================
+  RC5.4 COMBINED GATE — Overall: PASS
+============================================

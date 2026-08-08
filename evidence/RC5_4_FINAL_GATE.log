@@ -1,7 +1,7 @@
 ============================================
   RC5.4 Stage A — COMBINED FINAL GATE
   Python: Python 3.13.5
-  LOG_DIR: /root/tmp_r53/ev_r54r31
+  LOG_DIR: /root/tmp_r53/ce_r54r31b
 ============================================
 dependency check: PASS (torch 2.13.0+cpu, numpy 2.4.4)
   [1/17] dependency check: PASS
@@ -367,7 +367,7 @@ HTTP lease adversarial: PASS (exit 0)
 === [6/17] RC5.3 combined ===
 ============================================
   RC5.3 Stage B R6 — COMBINED FINAL GATE
-  LOG_DIR: /root/tmp_r53/ev_r54r31
+  LOG_DIR: /root/tmp_r53/ce_r54r31b
 ============================================
 
 === [1/20] dependency check ===
@@ -418,7 +418,7 @@ HTTP lease adversarial: PASS (exit 0)
 === [7/17] RC5.2 Phase 2 ===
 ============================================
   RC5.2 Phase 2 R12 — FINAL GATE
-  LOG_DIR: /root/tmp_r53/ev_r54r31
+  LOG_DIR: /root/tmp_r53/ce_r54r31b
 ============================================
 
   Phase 2 Run 1: PASS
@@ -657,7 +657,7 @@ All deps present.
   RC5.1-R10 — Test Runner
 ============================================
 Python: Python 3.13.5
-Dir:    /root/meshtrainer
+Dir:    /root/tmp_r53/ce_B_9Wp1tZ
 
 All deps present.
 
@@ -740,7 +740,7 @@ All deps present.
   ✅ R4-expired: reason is 'receipt expired'
 
 --- R4-hash-evidence ---
-  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "f246610984e63dd5", "revision": 1, "status": "RECEIVED"}, "id": "1"}
+  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "b74967e6855e3cce", "revision": 1, "status": "RECEIVED"}, "id": "1"}
   ✅ R4-hash-evidence: upload accepted
   ✅ R4-hash-evidence: file SHA matches our_hash
 
@@ -780,7 +780,7 @@ All deps present.
 [SPLIT SERVER] 127.0.0.1:18802  d_model=32
   ✅ R6-01: step.open
   ✅ R6-01: step.embedding
-/root/meshtrainer/rc5_split_server.py:230: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
+/root/tmp_r53/ce_B_9Wp1tZ/rc5_split_server.py:230: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
   act = torch.frombuffer(base64.b64decode(act_b64), dtype=torch.float32).reshape(1, -1)
   ✅ R6-01: step.cut_activation
   ✅ R6-01: step.cut_gradient
@@ -903,7 +903,7 @@ All deps present.
   ✅ R4-expired: reason is 'receipt expired'
 
 --- R4-hash-evidence ---
-  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "7b5d2d8f02826e08", "revision": 1, "status": "RECEIVED"}, "id": "1"}
+  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "f5028aa827be1c47", "revision": 1, "status": "RECEIVED"}, "id": "1"}
   ✅ R4-hash-evidence: upload accepted
   ✅ R4-hash-evidence: file SHA matches our_hash
 
@@ -943,7 +943,7 @@ All deps present.
 [SPLIT SERVER] 127.0.0.1:18802  d_model=32
   ✅ R6-01: step.open
   ✅ R6-01: step.embedding
-/root/meshtrainer/rc5_split_server.py:230: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
+/root/tmp_r53/ce_B_9Wp1tZ/rc5_split_server.py:230: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
   act = torch.frombuffer(base64.b64decode(act_b64), dtype=torch.float32).reshape(1, -1)
   ✅ R6-01: step.cut_activation
   ✅ R6-01: step.cut_gradient
@@ -1000,23 +1000,23 @@ All deps present.
   no-crash: exit 0
   adapter no-crash: 13cb86871456bbb9...
 === [2/6] FASE A: procés real fins APPLIED (crash) ===
-  fase A: exit 0 | pid_A=990620
+  fase A: exit 0 | pid_A=1586420
 === [3/6] FASE B: procés nou (PID diferent) recupera ===
   fase B: exit 0
 === [4/6] PID A != PID B ===
-  PASS (A=990620 B=990670)
+  PASS (A=1586420 B=1586486)
 === [5/6] delta crash == delta no-crash ===
   delta crash: 2c8a7dcc7334f53b...
   adapter igualat a la fase B (assert intern)
 === [6/6] resum ===
-  PID_A=990620 PID_B=990670 delta=2c8a7dcc7334f53b adapter=13cb86871456bbb9
+  PID_A=1586420 PID_B=1586486 delta=2c8a7dcc7334f53b adapter=13cb86871456bbb9
 RESTART REAL GATE: PASS
   [10/18] restart subprocess REAL: PASS (exit 0)
 === [10b/18] mid-backward real ===
 === [1/3] execució mid-backward real ===
   exit: 0
 === [2/3] resultats ===
-{"pid": 990803, "lease_A_status": "EXPIRED", "a_can_continue": false, "a_could_contribute": false, "a_rejected_http": {"backward": true, "update": true, "commit": true, "upload": true}, "B_acquired": "ACTIVE", "B_delta_sha": "906d6b9939b51028", "no_partial_A_in_journal": true}  PASS lease A EXPIRED
+{"pid": 1586562, "lease_A_status": "EXPIRED", "a_can_continue": false, "a_could_contribute": false, "a_rejected_http": {"backward": true, "update": true, "commit": true, "upload": true}, "B_acquired": "ACTIVE", "B_delta_sha": "906d6b9939b51028", "no_partial_A_in_journal": true}  PASS lease A EXPIRED
   PASS A no pot continuar
   PASS A no pot aportar cap delta parcial
   PASS B adquireix nova revisió
@@ -1026,7 +1026,7 @@ MID-BACKWARD GATE: PASS
   [10b/18] mid-backward real: PASS (exit 0)
 === [11/18] controlled-failure RC5.3 ===
 === CONTROLLED-FAILURE RC5.3 ===
-LOG_DIR: /root/tmp_r53/ev_r54r31
+LOG_DIR: /root/tmp_r53/ce_r54r31b
 Substitucions aplicades: 1
 applied_count: 1 (ha de ser 1)
 línies que difereixen: 2 (ha de ser 2)
@@ -1039,7 +1039,7 @@ controlled-failure RC5.3: PASS
   [11/18] controlled-failure RC5.3: PASS (exit 0)
 === [12/18] controlled-failure RC5.2 ===
 === CONTROLLED-FAILURE RC5.2 ===
-LOG_DIR: /root/tmp_r53/ev_r54r31
+LOG_DIR: /root/tmp_r53/ce_r54r31b
 Substitucions aplicades: 1
 applied_count: 1 (ha de ser 1)
 línies que difereixen: 2 (ha de ser 2)
@@ -1056,23 +1056,23 @@ CF-R54: py_compile: PASS
 CF-R54: suite exit: 1 | FAILs: 1 | tracebacks: 0
 FAIL REC-01 no lease before open 
 CF-R54: PASS (una sola prova FAIL, 0 tracebacks, exit no-zero, gate Overall FAIL)
-CF-R54: original rc5_4_tests.py intacte (match HEAD)
+CF-R54: WARNING original rc5_4_tests.py differeix de HEAD (revisar)
   [13/18] controlled-failure RC5.4: PASS (exit 0)
 === [14/18] dependency probe ===
 === DEPENDENCY FAILURE PROBE ===
-LOG_DIR: /root/tmp_r53/ev_r54r31
+LOG_DIR: /root/tmp_r53/ce_r54r31b
 dependència retirada: rc5_3_multiworker.py
 gate exit: 1 (ha de ser no-zero) | dependency FAIL: 1 | resum FAIL: 1
 dependency failure probe: PASS
-  log: /root/tmp_r53/ev_r54r31/DEPENDENCY_FAILURE_PROBE.log
+  log: /root/tmp_r53/ce_r54r31b/DEPENDENCY_FAILURE_PROBE.log
   [14/18] dependency probe: PASS (exit 0)
 === [15/18] manifest probe ===
 === MANIFEST FAILURE PROBE ===
-LOG_DIR: /root/tmp_r53/ev_r54r31
+LOG_DIR: /root/tmp_r53/ce_r54r31b
 fitxer alterat: rc5_3_adversarial_tests.py (hash canviat)
 gate exit: 1 (ha de ser no-zero) | manifest FAIL: 1 | resum FAIL: 1
 manifest failure probe: PASS
-  log: /root/tmp_r53/ev_r54r31/MANIFEST_FAILURE_PROBE.log
+  log: /root/tmp_r53/ce_r54r31b/MANIFEST_FAILURE_PROBE.log
   [15/18] manifest probe: PASS (exit 0)
   [16/18] manifest: PASS (coberts=260 manifest=260 err=0)
   [17/18] clean extraction: SKIPPED (mode delegat)

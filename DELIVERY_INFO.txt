@@ -1,79 +1,111 @@
-DELIVERY_INFO — meshtrainer RC5.4 Stage A R3.1 (IDEMPOTÈNCIA HTTP + JOURNAL ÚNIC) FINAL
-======================================================================================
+DELIVERY_INFO — meshtrainer QWEN PILOT (PRIMER ENTRENAMENT REAL) FINAL
+=====================================================================
 
 DATA: 2026-08-08
 BRANCH: rc5.4-stagea
-BASE: cf627c2 (R3)
-COMMIT DEL CODI: 77595f4 (RC5.4 R3.1: CE gate Overall PASS A+B, evidència completa)
+BASE CERTIFICADA: RC5.4 Stage A R3.1 (77595f4; tarball 1a0da69a)
+COMMIT DEL CODI: <PENDENT>
 
 PRE-TARBALL
 -----------
 AQUEST DOCUMENT ÉS UNA CÒPIA INTERNA DEL TARBALL.
 El SHA autoritatiu del paquet és el del fitxer .sha256 DETACHED extern
-(meshtrainer_rc54_stagea_r3_1_final_77595f4.tar.gz.sha256).
-Aquesta còpia NO conté el SHA del tarball que la conté (marcada PRE-TARBALL
-per evitar circularitat). La mida i el SHA finals consten al .sha256 extern
-i a les còpies acompanyants entregades.
+(meshtrainer_qwen_pilot_final_<commit>.tar.gz.sha256). Aquesta còpia NO
+conté el SHA del tarball que la conté (marcada PRE-TARBALL per evitar
+circularitat).
 
 RESUM
 -----
-R3.1 tanca la idempotència HTTP de les leases: el dispatcher real
-(rc5_4_http_server.py) governa cada operació com a LEASE->CHECK->EXEC->SAVE,
-el journal passa a ser únic (recovery_journal_r54; journal_r54 deprecat),
-_tx() corregeix l'aniament (outer-before-BEGIN, rollback real, REC-13
-persistència/rollback) i la suite H-18..H-25 verifica la idempotència exacta
-dels retries HTTP (mateix backward_id, REJECTED amb lease expirada, etc.).
-El mutation gate passa a 37/37 (mutants 35-37: no-idem-check, cache-before-
-lease, accept-conflict) amb el runner dual (crash+adversarial+http).
+Primer entrenament real de MeshTrainer: Qwen3-0.6B + LoRA (r=8, alpha=16,
+dropout=0.1, targets q/k/v/o_proj) + dataset pilot català (60+10+10 exemples
+JSONL educatius, sense dades personals), amb forward/loss/backward/
+optimizer reals, ETT derivat dels labels, deltes LoRA post-pre, FedAvg
+ponderat (RC5.3, sense modificar), oracle monolític independent, Round 2 i
+Safe Recovery (leases RC5.4, exactly-once persistent, mid-backward EXPIRED
+sense autograd). Tota la infraestructura certificada RC5.1-RC5.4 queda
+CONGELADA: zero modificacions (regressió verificada per hashes = tarball R3.1).
 
-FIX DE RUNNER (motiu del re-gate): el manifest probe del gate combinat
-excedia el timeout de 3600s en aquest host (el gate RC5.3 intern amb suites
-reals triga >60 min amb el sistema carregat; la mutation es penjava per
-tmpfs/memòria plens). Correcció: neteja de *.db a /tmp abans del pas 15,
-timeout 3600->7200s al pas 15 i al probe intern, i neteja del tmpfs abans
-de cada gate A/B al CE gate. Verificat: CE gate A+B Overall PASS.
+CANVIS (additius; fitxers congelats intactes)
+---------------------------------------------
+- qwen3_training_backend.py: Qwen3TrainingBackend (carrega tokenizer/model/
+  LoRA, labels exactes -100, ETT, train_step exactly-once amb journal SQLite
+  persistent, deltes post-pre, adapter bundles, generació, mètriques) +
+  fedavg_qwen (oracle). Serialitzador propi qwen_bundle_v1 (el bundle
+  congelat té límit de header 32KB que els 224 tensors LoRA superen).
+- qwen3_pilot_dataset.py: loader JSONL (instruction/response + messages),
+  splits train/validation/test.
+- qwen3_pilot_data_build.py + qwen3_pilot_data/: dataset pilot català
+  (60 train + 10 val + 10 test; 2 exemples en format messages).
+- qwen3_pilot_tests.py: P1..P8 (càrrega/LoRA, ETT, train_step, exactly-once,
+  dataset, aprenentatge, generació, FedAvg vs oracle).
+- qwen3_pilot_adversarial_tests.py: A1..A8 (zero delta, wrong base, wrong
+  adapter, stale adapter, wrong shard, ETT constant, second optimizer,
+  malformed dataset).
+- qwen3_pilot_train.py: entrenament real + adapter_0/1 + mètriques +
+  respostes dels 10 prompts holdout ABANS i DESPRÉS.
+- qwen3_pilot_round.py: 2 workers reals (shards A/B, 1 model en memòria a la
+  vegada per memòria de 8GB), FedAvgLoRA certificat, oracle, round 2.
+- qwen3_pilot_recovery.py: R1..R5 (crash APPLIED -> mateix delta, sense segon
+  optimizer, checkpoint idempotent, lease expiry REJECTED, reassignació,
+  mid-backward -> EXPIRED sense autograd).
+- RUN_QWEN_PILOT_TESTS.sh / RUN_QWEN_PILOT_ADVERSARIAL.sh /
+  RUN_QWEN_PILOT_FINAL_GATE.sh (9 passos: deps, py_compile, tests, adversarial,
+  train, round, recovery, regressió RC5.4 per hashes, manifest+artefactes).
+- qwen3_pilot_output/: adapters (adapter_0/1, round_adapter_0/1/2), mètriques
+  (metrics.json, round_metrics.json), respostes holdout before/after.
+- qwen3_pilot_logs/: logs dels 7 passos del gate.
 
-CANVIS (additius; 6 fitxers congelats intactes, hashes = 9c46f65)
-------------------------------------------------------------------
-- rc5_4_leases.py: journal únic recovery_journal_r54 (journal_r54 deprecat);
-  _tx() outer-before-BEGIN (aniable sense transacció dins transacció);
-  REC-13 persistència/rollback
-- rc5_4_http_server.py: pipeline idempotent LEASE->CHECK->EXEC->SAVE
-- rc5_4_http_lease_tests.py: H-18..H-25 (26/26 checks HTTP)
-- rc5_4_tests.py: REC-13; crash matrix 27/27
-- mutants_r54/ MUT-R4-35..37; RUN_RC5_4_MUTATION_GATE.sh (RS_CRASH/ADV/HTTP,
-  124->TIMEOUT, assertion a http)
-- RUN_RC5_4_FINAL_GATE.sh: neteja /tmp pre-pas-15 + probes 7200s
-- RUN_RC5_3_MANIFEST_PROBE.sh: timeout intern 7200s
-- RUN_RC5_4_CLEAN_EXTRACTION_GATE.sh: neteja tmpfs abans de A/B
+RESULTATS CERTIFICATS (execució real, QWEN PILOT FINAL GATE — Overall PASS)
+---------------------------------------------------------------------------
+- [1/9] dependency check: PASS
+- [2/9] py_compile: PASS
+- [3/9] single worker tests: PASS (22/22)
+- [4/9] adversarial: PASS (9/9)
+- [5/9] train real (20 exemples, 1 epoch, seq 256): PASS
+- [6/9] round (2 workers + FedAvg + oracle + round 2): PASS (7/7)
+- [7/9] recovery: PASS
+- [8/9] regressió RC5.4: PASS (hashes fitxers congelats = tarball R3.1)
+- [9/9] manifest: PASS (278=278, err=0) + 6 artefactes OK
 
-RESULTATS CERTIFICATS (execucions reals)
-----------------------------------------
-- RC5.4 normal x2: PASS (27/27 + 27/27, Flaky 0)
-- Adversarial unitari: 51/51 PASS
-- HTTP lease adversarial: 26/26 PASS
-- Mutation: 37/37 DETECTED (Invalid 0, Runtime 0, Not_applied 0, Timeouts 0)
-- Restart real: PASS (journal visible des del procés B)
-- Mid-backward real HTTP: PASS
-- RC5.3 combined (20 passos): PASS
-- RC5.2 R12 + Phase 1 + RC5.1: PASS
-- Controlled-failure x3 (RC5.3/RC5.2/RC5.4): PASS
-- Dependency + manifest probes: PASS (exit 1 esperat, resum imprès)
-- CLEAN EXTRACTION A/B: PASS x2 (dirs buits, manifest err=0, ports cap,
-  fitxers externs cap)
+MÈTRIQUES DEL PRIMER ENTRENAMENT (metrics.json)
+------------------------------------------------
+- loss inicial 2.7516 -> loss final 1.4764 (20 steps)
+- loss mitjana train 1.984 | loss validation 2.094
+- perplexity validation 8.12
+- ETT total 875 (43.75/step) | delta_norm 0.100
+- adapter_0 sha e0877337 | adapter_1 sha 1a57690f | mida 9.21 MB
+- temps entrenament 81.6 s (CPU) | temps càrrega 435.6 s
+
+ROUND (round_metrics.json)
+--------------------------
+- ETT_A=441, ETT_B=434 (ETT diferents, shards reals)
+- adapter_0 e0877337 / adapter_1 c037e834 / adapter_2 92a6f535
+- oracle == FedAvg: maxdiff 3.73e-09 (round 1 i 2)
+
+DEMOSTRACIÓ (holdout, prompt complet de prova)
+-----------------------------------------------
+PROMPT: "Què és la hipertensió arterial?"
+ABANS:  "<think>Okay, the user is asking about hypertension. Let me start
+         by explaining what it is. I should mention that it's a condition
+         where..." (el model base entra en mode raonament)
+DESPRÉS: "La hipertensió arterial és la presió arterial elevada, que pot
+         causar d'altres efectes i perfeïtament la prevenir..." (resposta
+         directa en català — aprenentatge real del patró del dataset)
+Conjunt complet: 10 prompts holdout a responses_before.json /
+responses_after.json (sense cherry-picking).
 
 MANIFEST
 --------
-265 fitxers regulars (incloent MANIFEST.sha256) = 264 línies del manifest
+<coberts> fitxers regulars = <manifest> línies (incloent output + logs)
 sha256sum -c: 0 errors.
 
 ENTREGA
 -------
-- meshtrainer_rc54_stagea_r3_1_final_77595f4.tar.gz
-- meshtrainer_rc54_stagea_r3_1_final_77595f4.tar.gz.sha256
-  (SHA 1a0da69afc141683903c7ea69e1f94a77e2c9dd8e7030740d8711caee88bfa0f,
-   mida 524046 bytes)  (AUTORITATIU)
+- meshtrainer_qwen_pilot_final_<commit>.tar.gz
+- meshtrainer_qwen_pilot_final_<commit>.tar.gz.sha256 (AUTORITATIU)
 - DELIVERY_INFO.txt (aquesta versió, amb SHA real)
 - verify.txt
 
-NO INICIAT (pendent d'autorització): Qwen3TrainingBackend, dataset real, UI.
+NO INICIAT (fora de l'abast del pilot): UI, comptes, cloud orchestration,
+models grans, quantització complexa, producció, marketplace, entrenament
+massiu, Qwen3TrainingBackend >0.6B.

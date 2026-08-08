@@ -1,0 +1,60 @@
+{"instruction": "Què és la diabetis?", "response": "La diabetis és una malaltia crònica en què el cos no produeix prou insulina o no la fa servir correctament, cosa que provoca un excés de glucosa a la sang."}
+{"instruction": "Què és el colesterol?", "response": "El colesterol és un lípid present a les cèl·lules del cos, necessari per formar membranes i hormones, però el seu excés a la sang pot afavorir malalties cardiovasculars."}
+{"instruction": "Què és una vacuna?", "response": "Una vacuna és una preparació que estimula el sistema immunitari perquè generi defenses contra un patogen, sense que la persona desenvolupi la malaltia."}
+{"instruction": "Què és la febre?", "response": "La febre és l'augment de la temperatura corporal per sobre dels valors normals, generalment com a resposta del sistema immunitari a una infecció."}
+{"instruction": "Què és la penicil·lina?", "response": "La penicil·lina és un antibiòtic descobert per Alexander Fleming el 1928, que va revolucionar el tractament de les infeccions bacterianes."}
+{"instruction": "Què és el sistema immunitari?", "response": "El sistema immunitari és el conjunt de cèl·lules, teixits i òrgans que protegeixen el cos contra microorganismes i altres agents invasors."}
+{"instruction": "Què és una cèl·lula?", "response": "La cèl·lula és la unitat fonamental de la vida: tots els éssers vius estan formats per una o més cèl·lules, que realitzen les funcions vitals."}
+{"instruction": "Què és l'ADN?", "response": "L'ADN és la molècula que conté la informació genètica heretable, organitzada en gens, i que dirigeix la síntesi de proteïnes de l'organisme."}
+{"instruction": "Què és la gravetat?", "response": "La gravetat és la força d'atracció entre masses; és la que manté els objectes a la superfície de la Terra i regeix l'òrbita dels planetes."}
+{"instruction": "Què és un àtom?", "response": "L'àtom és la unitat més petita d'un element químic que conserva les seves propietats, format per protons, neutrons i electrons."}
+{"instruction": "Què és la fotosíntesi?", "response": "La fotosíntesi és el procés pel qual les plantes converteixen llum, aigua i diòxid de carboni en glucosa i oxigen."}
+{"instruction": "Què és l'aigua?", "response": "L'aigua és un compost químic format per dos àtoms d'hidrogen i un d'oxigen (H2O), essencial per a la vida i el dissolvent universal."}
+{"instruction": "Què és la velocitat de la llum?", "response": "La velocitat de la llum al buit és d'aproximadament 299.792 quilòmetres per segon, i és la velocitat màxima de l'univers."}
+{"instruction": "Què és la pressió atmosfèrica?", "response": "La pressió atmosfèrica és la força que exerceix l'aire sobre la superfície terrestre, causada pel pes de la columna d'aire."}
+{"instruction": "Què és un imant?", "response": "Un imant és un objecte que genera un camp magnètic i atrau materials ferromagnètics com el ferro, el níquel o el cobalt."}
+{"instruction": "Què és l'energia cinètica?", "response": "L'energia cinètica és l'energia que té un cos pel fet de moure's; depèn de la seva massa i del quadrat de la seva velocitat."}
+{"instruction": "Qui va ser Maria Montessori?", "response": "Maria Montessori va ser una pedagoga italiana (1870-1952), creadora del mètode educatiu que porta el seu nom, basat en l'autonomia de l'infant."}
+{"instruction": "Què va ser el Renaixement?", "response": "El Renaixement va ser un moviment cultural i artístic dels segles XV i XVI, originat a Itàlia, que va recuperar els valors clàssics grecollatins."}
+{"instruction": "Què va ser la Revolució Industrial?", "response": "La Revolució Industrial va ser el procés de canvi econòmic i social iniciat a Gran Bretanya al segle XVIII, basat en la mecanització de la producció."}
+{"instruction": "Qui va ser Hipàtia d'Alexandria?", "response": "Hipàtia d'Alexandria va ser una filòsofa, matemàtica i astrònoma del segle IV, considerada una de les primeres dones científiques de la història."}
+{"instruction": "Què va ser l'Imperi Romà?", "response": "L'Imperi Romà va ser una civilització que va dominar la conca mediterrània durant segles, amb un dret, una llengua i unes infraestructures que van marcar Europa."}
+{"instruction": "Què va ser la Il·lustració?", "response": "La Il·lustració va ser un moviment intel·lectual del segle XVIII que va defensar la raó, la ciència i els drets individuals davant l'absolutisme."}
+{"instruction": "Qui va ser Ramon Llull?", "response": "Ramon Llull va ser un filòsof, escriptor i místic mallorquí del segle XIII, pioner de la llengua catalana literària i de la lògica computacional."}
+{"instruction": "Què va ser la Guerra de Successió?", "response": "La Guerra de Successió (1701-1714) va ser un conflicte europeu sobre el tron espanyol; la seva derrota va comportar la pèrdua de les institucions pròpies de Catalunya."}
+{"instruction": "Quin és el riu més llarg del món?", "response": "El riu més llarg del món és el Nil, amb uns 6.650 quilòmetres, tot i que alguns estudiosos consideren l'Amazones més llarg si es compten els seus afluents."}
+{"instruction": "Què és el desert del Sàhara?", "response": "El Sàhara és el desert càlid més gran del món, amb més de nou milions de quilòmetres quadrats, situat al nord d'Àfrica."}
+{"instruction": "Quina és la capital de Noruega?", "response": "La capital de Noruega és Oslo, situada al sud-est del país, a la riba del fiord d'Oslo."}
+{"instruction": "Què és l'illa de Menorca?", "response": "Menorca és una illa de les Balears, declarada Reserva de la Biosfera el 1993, coneguda per les seves cales i la seva biodiversitat."}
+{"instruction": "Quin oceà envolta l'Antàrtida?", "response": "L'Antàrtida és envoltada per l'oceà Antàrtic, també anomenat oceà Glacial Antàrtic, el quart oceà més gran del món."}
+{"instruction": "Quina és la muntanya més alta de la Terra?", "response": "La muntanya més alta de la Terra és l'Everest, amb 8.848 metres sobre el nivell del mar, situada a la serralada de l'Himàlaia."}
+{"instruction": "Què és la mar Mediterrània?", "response": "La Mediterrània és una mar interior entre Europa, Àfrica i Àsia, bressol de civilitzacions com la grega i la romana."}
+{"instruction": "Quin és el país més gran del món?", "response": "El país més gran del món és Rússia, amb més de disset milions de quilòmetres quadrats, que s'estén per Europa i Àsia."}
+{"instruction": "Què és un substantiu?", "response": "Un substantiu és una categoria gramatical que designa persones, animals, coses, llocs o idees; en català té gènere i nombre."}
+{"instruction": "Què és una metàfora?", "response": "Una metàfora és una figura retòrica que identifica un terme real amb un d'imaginarí per la seva semblança, com en la frase els seus ulls són estrelles."}
+{"instruction": "Qui va escriure Tirant lo Blanc?", "response": "Tirant lo Blanc va ser escrit per Joanot Martorell i publicat el 1490; és considerada una de les obres més importants de la novel·la cavalleresca europea."}
+{"instruction": "Què és el verb ser?", "response": "El verb ser és un verb copulatiu que atribueix una qualitat o identitat al subjecte, com en la frase la Terra és un planeta."}
+{"instruction": "Què és una sinònim?", "response": "Un sinònim és una paraula que té un significat igual o molt semblant al d'una altra, com ara alegre i content."}
+{"instruction": "Què és la sintaxi?", "response": "La sintaxi és la part de la gramàtica que estudia com s'ordenen i es combinen les paraules per formar oracions amb sentit."}
+{"instruction": "Qui va ser Mercè Rodoreda?", "response": "Mercè Rodoreda va ser una escriptora catalana (1908-1983), autora de La plaça del Diamant, una de les novel·les cabdals de la literatura catalana."}
+{"instruction": "Què és un refrany?", "response": "Un refrany és una dita popular breu i sentenciosa que transmet saviesa tradicional, com ara qui dia passa, any empeny."}
+{"instruction": "Què és un nombre primer?", "response": "Un nombre primer és un nombre natural més gran que 1 que només té dos divisors: ell mateix i la unitat, com el 2, el 3 o el 5."}
+{"instruction": "Què és el teorema de Pitàgores?", "response": "El teorema de Pitàgores afirma que en un triangle rectangle, el quadrat de la hipotenusa és igual a la suma dels quadrats dels catets."}
+{"instruction": "Què és el nombre pi?", "response": "El nombre pi és la constant que relaciona la longitud d'una circumferència amb el seu diàmetre, aproximadament 3,14159."}
+{"instruction": "Què és una equació?", "response": "Una equació és una igualtat matemàtica amb una o més incògnites que es compleix per a determinats valors, com ara 2x més 3 igual a 7."}
+{"instruction": "Què és la mitjana aritmètica?", "response": "La mitjana aritmètica és el resultat de sumar un conjunt de valors i dividir-lo pel nombre de valors; és una mesura de tendència central."}
+{"instruction": "Què és un quadrilàter?", "response": "Un quadrilàter és un polígon de quatre costats; exemples en són el quadrat, el rectangle, el rombe i el trapezi."}
+{"instruction": "Què és la probabilitat?", "response": "La probabilitat és la mesura numèrica de la possibilitat que esdevingui un esdeveniment, expressada entre 0 i 1."}
+{"instruction": "Què és una fracció?", "response": "Una fracció és una expressió que representa una part d'un tot, formada per un numerador i un denominador, com ara tres quarts."}
+{"instruction": "Què és un planeta?", "response": "Un planeta és un cos celeste que orbita al voltant d'una estrella, té prou massa per ser esfèric i ha netejat la seva òrbita."}
+{"instruction": "Què és la Lluna?", "response": "La Lluna és el satèl·lit natural de la Terra; influeix en les marees i triga uns 27,3 dies a completar una òrbita."}
+{"instruction": "Què és una estrella?", "response": "Una estrella és una esfera de plasma que genera energia per fusió nuclear; el Sol n'és l'exemple més proper."}
+{"instruction": "Què és un forat negre?", "response": "Un forat negre és una regió de l'espai amb una gravetat tan intensa que res, ni tan sols la llum, pot escapar-ne."}
+{"instruction": "Què és la Via Làctia?", "response": "La Via Làctia és la galàxia espiral on es troba el sistema solar, amb centenars de milers de milions d'estrelles."}
+{"instruction": "Què és un eclipsi?", "response": "Un eclipsi és l'ocultació d'un astre per un altre; els més coneguts són els de Sol i els de Lluna."}
+{"instruction": "Què és el sistema solar?", "response": "El sistema solar és el conjunt format pel Sol i els cossos que hi orbiten: vuit planetes, planetes nans, asteroides i cometes."}
+{"instruction": "Què és un cometa?", "response": "Un cometa és un cos celeste format per gel, roca i pols que, en acostar-se al Sol, desenvolupa una cabellera i una cua visibles."}
+{"instruction": "Què és un algorisme?", "response": "Un algorisme és una seqüència finita i ordenada d'instruccions que resol un problema o executa una tasca de manera determinista."}
+{"instruction": "Què és la intel·ligència artificial?", "response": "La intel·ligència artificial és la disciplina que construeix sistemes capaços de realitzar tasques que normalment requereixen intel·ligència humana, com comprendre llenguatge o reconèixer imatges."}
+{"messages": [{"role": "user", "content": "Què és el clima?"}, {"role": "assistant", "content": "El clima és el conjunt de condicions atmosfèriques mitjanes d'una regió al llarg de molts anys, com la temperatura i les precipitacions."}]}
+{"messages": [{"role": "user", "content": "Què és un poema?"}, {"role": "assistant", "content": "Un poema és una composició literària en vers que expressa sentiments, idees o experiències amb un llenguatge sovint figurat i rítmic."}]}

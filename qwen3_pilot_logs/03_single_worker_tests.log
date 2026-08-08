@@ -1,0 +1,28 @@
+=== QWEN PILOT TESTS ===
+model: /root/qwen3_0_6b_snapshot | data: /root/meshtrainer/qwen3_pilot_data | seq: 128
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:04<20:52,  4.04s/it]Loading weights:  37%|███▋      | 116/311 [00:04<00:04, 39.40it/s]Loading weights:  58%|█████▊    | 179/311 [00:04<00:02, 52.20it/s]Loading weights:  70%|██████▉   | 217/311 [00:05<00:01, 57.51it/s]Loading weights:  78%|███████▊  | 243/311 [00:05<00:01, 62.06it/s]Loading weights:  85%|████████▍ | 263/311 [00:05<00:00, 65.28it/s]Loading weights:  90%|████████▉ | 279/311 [00:06<00:00, 67.53it/s]Loading weights:  94%|█████████▍| 293/311 [00:06<00:00, 67.57it/s]Loading weights:  98%|█████████▊| 305/311 [00:06<00:00, 71.26it/s]Loading weights: 100%|██████████| 311/311 [00:06<00:00, 48.51it/s]
+  PASS P1 carrega backend — 7s
+  PASS P1 LoRA r=8 alpha=16 dropout=0.1
+  PASS P1 target q/k/v/o_proj
+  PASS P1 params LoRA > 0 — 224 tensors LoRA
+  PASS P2 ETT > 0 — ETT=49
+  PASS P2 labels tenen -100 (instrucció exclosa) — 16 posicions -100
+  PASS P2 ETT = tokens de resposta (>=2) — ETT=49
+  PASS P3 loss finita — loss=2.7516
+  PASS P3 delta != 0 (REQUISIT ORDRE) — norma=0.214161
+  PASS P3 pre_hash != post_hash — 4413d1598430 vs 9563d7a8fbfe
+  PASS P3 delta sha 64 hex — 59f7f67ce5e29295
+  PASS P4 replay mateix delta — 59f7f67ce5e29295
+  PASS P4 status APPLIED
+  PASS P5 splits 60/10/10 — {'train': 60, 'validation': 10, 'test': 10}
+  PASS P5 format i camps no buits
+  PASS P5 format messages opcional suportat — loader accepta ambdós formats
+  PASS P6 losses finites — 3.384 2.510 1.946
+  PASS P6 loss decreix o estable — 3.384 -> 1.946
+  PASS P6 val loss computable — val loss=2.2006
+  PASS P7 resposta no buida — <think>
+Okay, the user is asking about hypertension. Let me 
+  PASS P8 FedAvg == oracle (tensor per tensor) — maxdiff=5.82e-12
+  PASS P8 deltes float32
+=== RESUM: 22/22 PASS ===

@@ -1,0 +1,23 @@
+shard A: 10 exemples | shard B: 10
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<01:32,  3.34it/s]Loading weights:  62%|██████▏   | 193/311 [00:00<00:00, 620.19it/s]Loading weights:  98%|█████████▊| 305/311 [00:00<00:00, 727.91it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 593.43it/s]
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<01:37,  3.18it/s]Loading weights:  58%|█████▊    | 181/311 [00:00<00:00, 563.98it/s]Loading weights:  92%|█████████▏| 287/311 [00:00<00:00, 384.39it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 380.23it/s]
+  PASS mateix Qwen base (adapter_0 hash A == B) — 4413d1598430 vs 4413d1598430
+  PASS ETT_A > 0 i ETT_B > 0 — ETT_A=441 ETT_B=434
+  PASS ETT_A != ETT_B (preferible) — 441 vs 434
+  PASS delta_A != 0 — ||delta_A||=1.339630
+  PASS FedAvg retorna tensors ponderats — 875 samples
+  PASS oracle == FedAvg (tensor per tensor, tolerància estricta) — maxdiff=3.73e-09
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<01:35,  3.23it/s]Loading weights:  63%|██████▎   | 197/311 [00:00<00:00, 621.06it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 594.38it/s]
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<01:40,  3.09it/s]Loading weights:  65%|██████▍   | 201/311 [00:00<00:00, 612.44it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 568.33it/s]
+  PASS round 2: adapter_2 = adapter_1 + weighted_delta_round2 — maxdiff=3.73e-09
+{
+  "ett_a": 441,
+  "ett_b": 434,
+  "adapter_0_sha": "e0877337c987bb873653b22f0016bc8b1360152956f0a28b09fcdbb26ef1ff5e",
+  "adapter_1_sha": "c037e834f2e8839b5a6839df9e183ec3fae865d265abe324df535b047783483c",
+  "adapter_2_sha": "92a6f535c413f2a2e49789ffd6fbe594f2917c6ff9b636cc40fd8b1e53392483",
+  "maxdiff_oracle_r1": 3.725290298461914e-09,
+  "maxdiff_oracle_r2": 3.725290298461914e-09
+}
+=== RESUM ROUND: 7/7 PASS ===

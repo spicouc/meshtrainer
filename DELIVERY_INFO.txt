@@ -64,13 +64,15 @@ RESULTATS CERTIFICATS (execucions reals)
 
 MANIFEST
 --------
-264 fitxers regulars (incloent MANIFEST.sha256) = 263 línies del manifest
+265 fitxers regulars (incloent MANIFEST.sha256) = 264 línies del manifest
 sha256sum -c: 0 errors.
 
 ENTREGA
 -------
 - meshtrainer_rc54_stagea_r3_1_final_77595f4.tar.gz
-- meshtrainer_rc54_stagea_r3_1_final_77595f4.tar.gz.sha256 (AUTORITATIU)
+- meshtrainer_rc54_stagea_r3_1_final_77595f4.tar.gz.sha256
+  (SHA 1a0da69afc141683903c7ea69e1f94a77e2c9dd8e7030740d8711caee88bfa0f,
+   mida 524046 bytes)  (AUTORITATIU)
 - DELIVERY_INFO.txt (aquesta versió, amb SHA real)
 - verify.txt
 

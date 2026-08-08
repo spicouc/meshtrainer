@@ -2,9 +2,9 @@ VERIFY — meshtrainer RC5.4 Stage A R3.1 (entrega 77595f4)
 =========================================================
 
 TARBALL: meshtrainer_rc54_stagea_r3_1_final_77595f4.tar.gz
-SHA-256 (extern .sha256, AUTORITATIU): <PENDENT>
-MIDA: <PENDENT>
-FITXERS (regulars): 264 (263 línies manifest + MANIFEST.sha256)
+SHA-256 (extern .sha256, AUTORITATIU): 1a0da69afc141683903c7ea69e1f94a77e2c9dd8e7030740d8711caee88bfa0f
+MIDA: 524046 bytes
+FITXERS (regulars): 265 (264 línies manifest + MANIFEST.sha256)
 sha256sum -c MANIFEST.sha256: 0 errors
 
 GATES (extrets del CE gate A/B, logs a evidence/):

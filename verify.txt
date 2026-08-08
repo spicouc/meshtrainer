@@ -1,38 +1,34 @@
-VERIFY — meshtrainer RC5.4 Stage A R3.1 (entrega 77595f4)
-=========================================================
+VERIFY — meshtrainer QWEN PILOT (primer entrenament real, entrega f0a71e1)
+==========================================================================
 
-TARBALL: meshtrainer_rc54_stagea_r3_1_final_77595f4.tar.gz
-SHA-256 (extern .sha256, AUTORITATIU): 1a0da69afc141683903c7ea69e1f94a77e2c9dd8e7030740d8711caee88bfa0f
-MIDA: 524046 bytes
-FITXERS (regulars): 265 (264 línies manifest + MANIFEST.sha256)
+TARBALL: meshtrainer_qwen_pilot_final_f0a71e1.tar.gz
+SHA-256 (extern .sha256, AUTORITATIU): 4db6a2776832d8c23a47a78510a24a0ce33392a81bfd2b57dd6e0280736021c8
+MIDA: 34541919 bytes
+FITXERS (regulars): 295 (294 línies manifest + MANIFEST.sha256)
 sha256sum -c MANIFEST.sha256: 0 errors
 
-GATES (extrets del CE gate A/B, logs a evidence/):
-- SHA extern: PASS
-- Extracció A: 261 fitxers; manifest: err=0
-- Gate A complet (18 passos): Overall PASS
-- Espera ports (TIME_WAIT): OK
-- Extracció B: 261 fitxers; manifest: err=0
-- Gate B complet (18 passos): Overall PASS
-- Ports residuals: cap
-- Fitxers externs: cap
-- CLEAN EXTRACTION GATE — Overall: PASS
+QWEN PILOT FINAL GATE — Overall: PASS (execució real a CT112)
+-------------------------------------------------------------
+- [1/9] dependency check: PASS
+- [2/9] py_compile: PASS
+- [3/9] single worker tests: PASS (22/22)
+- [4/9] adversarial: PASS (9/9)
+- [5/9] train real: PASS (20 exemples, seq 256; loss 2.7516 -> 1.4764;
+        val loss 2.094; perplexity 8.12; ETT total 875)
+- [6/9] round: PASS (7/7; ETT_A=441 ETT_B=434; oracle==FedAvg 3.73e-09;
+        adapter_0 e0877337 -> adapter_1 c037e834 -> adapter_2 92a6f535)
+- [7/9] recovery: PASS (crash APPLIED sense segon optimizer, checkpoint
+        idempotent, lease expiry REJECTED, reassignació, mid-backward EXPIRED)
+- [8/9] regressió RC5.4: PASS (hashes fitxers congelats = tarball R3.1
+        1a0da69a)
+- [9/9] manifest: PASS (278=278, err=0) + 6 artefactes OK
 
-RESULTATS DEL GATE COMBINAT (gate B, RC5_4_FINAL_GATE):
-- RC5.4 normal x2: PASS (27/27 + 27/27)
-- Adversarial: 51/51
-- Mutation: 37/37
-- HTTP lease adversarial: 26/26
-- RC5.3 combined: PASS
-- RC5.2 Phase 2 + Phase 1 + RC5.1: PASS
-- Restart real + mid-backward real: PASS
-- Controlled-failure x3: PASS
-- Dependency probe + manifest probe: PASS
-- Manifest: 260/260 coberts, err=0
-- Overall: PASS
+DEMOSTRACIÓ (prompt de prova, holdout):
+PROMPT: "Què és la hipertensió arterial?"
+ABANS:  "<think>Okay, the user is asking about hypertension... (mode raonament)"
+DESPRÉS: "La hipertensió arterial és la presió arterial elevada, que pot
+         causar d'altres efectes..." (resposta directa en català)
+10 prompts holdout complets a qwen3_pilot_output/responses_{before,after}.json
 
-Probes negatives (gate intern del manifest probe):
-- Manifest alterat detectat: manifest FAIL + resum FAIL + exit 1 (esperat)
-- Manifest probe: PASS
-
+BASE CERTIFICADA: RC5.4 Stage A R3.1 (77595f4) — no modificat (regressió OK).
 Tags: no s'han mogut (pendent d'auditoria del Supervisor).

@@ -103,7 +103,9 @@ sha256sum -c: 0 errors.
 ENTREGA
 -------
 - meshtrainer_qwen_pilot_final_f0a71e1.tar.gz
-- meshtrainer_qwen_pilot_final_f0a71e1.tar.gz.sha256 (AUTORITATIU)
+- meshtrainer_qwen_pilot_final_f0a71e1.tar.gz.sha256
+  (SHA 4db6a2776832d8c23a47a78510a24a0ce33392a81bfd2b57dd6e0280736021c8,
+   mida 34541919 bytes)  (AUTORITATIU)
 - DELIVERY_INFO.txt (aquesta versió, amb SHA real)
 - verify.txt
 

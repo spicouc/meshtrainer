@@ -21,8 +21,10 @@ echo "# probe alteration" >> rc5_3_adversarial_tests.py
 echo "fitxer alterat: rc5_3_adversarial_tests.py (hash canviat)"
 
 # 3. executar el final gate (ha de fallar al pas manifest i continuar fins al resum)
+# R3.1: timeout 7200s — el gate RC5.3 complet amb suites reals (l'alteració és
+# un comentari inofensiu) triga ~40-60 min amb el sistema carregat
 export PYTHON_BIN="${PYTHON_BIN:-python3}" TMPDIR="${TMPDIR:-/tmp}"
-RC53_SKIP_CLEAN_EXTRACTION=1 timeout 3600 bash RUN_RC5_3_FINAL_GATE.sh > "$LOG_DIR/MANIFEST_FAILURE_PROBE.log" 2>&1
+RC53_SKIP_CLEAN_EXTRACTION=1 timeout 7200 bash RUN_RC5_3_FINAL_GATE.sh > "$LOG_DIR/MANIFEST_FAILURE_PROBE.log" 2>&1
 GATE_EC=$?
 
 # 4. comprovar el comportament esperat

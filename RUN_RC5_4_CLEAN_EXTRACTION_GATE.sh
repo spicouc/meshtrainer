@@ -58,6 +58,10 @@ for D in A B; do
     MFERR=$(grep -cv ': OK' "$LOG_DIR/ce_mf_$D.log" 2>/dev/null || true); MFERR=${MFERR:-0}
     echo "  manifest: $([ "$MFERR" -eq 0 ] && echo PASS || echo FAIL) (err=$MFERR)"
     [ "$MFERR" -eq 0 ] || OVERALL=1
+    # R3.1: neteja de DBs residuals a /tmp ABANS del gate (el tmpfs ple fa
+    # que SQLite torni 'attempt to write a readonly database'; els runners
+    # congelats no netegen entre passos, així que es neteja aquí)
+    find /tmp -maxdepth 1 -name "*.db" -delete 2>/dev/null || true
     echo "=== [4/6] final gate complet a $D (RC54_SKIP_CLEAN_EXTRACTION=1) ==="
     (cd "$DIR" && RC54_SKIP_CLEAN_EXTRACTION=1 bash RUN_RC5_4_FINAL_GATE.sh > "$LOG_DIR/ce_gate_$D.out" 2>&1)
     GEC=$?

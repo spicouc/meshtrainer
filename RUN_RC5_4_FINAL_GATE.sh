@@ -94,10 +94,14 @@ run_sub "[12/18] controlled-failure RC5.2" "bash RUN_RC5_2_CONTROLLED_FAILURE.sh
 run_sub "[13/18] controlled-failure RC5.4" "bash RUN_RC5_4_CONTROLLED_FAILURE.sh" 600
 
 # 14) dependency probe (negativa)
-run_sub "[14/18] dependency probe" "bash RUN_RC5_3_DEPENDENCY_PROBE.sh" 3600
+run_sub "[14/18] dependency probe" "bash RUN_RC5_3_DEPENDENCY_PROBE.sh" 7200
 
-# 15) manifest probe (negativa)
-run_sub "[15/18] manifest probe" "bash RUN_RC5_3_MANIFEST_PROBE.sh" 3600
+# 15) manifest probe (negativa) — R3.1: neteja de DBs residuals a /tmp ABANS
+# del probe (els passos 1-14 deixen el tmpfs ple i la mutation del gate intern
+# es penja -> timeout 124); timeout 7200s perquè el gate RC5.3 complet amb
+# suites reals triga ~40-60 min amb el sistema carregat
+find /tmp -maxdepth 1 -name "*.db" -delete 2>/dev/null || true
+run_sub "[15/18] manifest probe" "bash RUN_RC5_3_MANIFEST_PROBE.sh" 7200
 
 # 16) manifest complet (els fitxers coberts == línies del manifest)
 FILES=$(find . -type f ! -path './.venv/*' ! -path './.git/*' ! -path '*/__pycache__/*' ! -name '*.pyc' ! -name 'MANIFEST.sha256' | wc -l)

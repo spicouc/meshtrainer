@@ -9,6 +9,7 @@ S'integra per import amb:
 import base64
 import hashlib
 import json
+import os
 import struct
 import time
 import torch
@@ -53,10 +54,28 @@ class Qwen3TrainingBackend:
                 delta_sha TEXT,
                 pre_hash TEXT,
                 post_hash TEXT,
+                request_sha TEXT,
+                worker_id TEXT,
+                assignment_id TEXT,
+                shard_id TEXT,
+                example_id TEXT,
+                optimizer_b64 TEXT,
+                rng_b64 TEXT,
+                loss REAL,
                 created_at TEXT DEFAULT (datetime('now'))
             );
         """)
+        # migració per a BDs creades abans de R2 (columnes noves)
+        for _col, _ddl in (("request_sha", "TEXT"), ("worker_id", "TEXT"),
+                           ("assignment_id", "TEXT"), ("shard_id", "TEXT"),
+                           ("example_id", "TEXT"), ("optimizer_b64", "TEXT"),
+                           ("rng_b64", "TEXT"), ("loss", "REAL")):
+            try:
+                self._conn.execute(f"ALTER TABLE qwen_journal ADD COLUMN {_col} {_ddl}")
+            except _sq.OperationalError:
+                pass  # la columna ja existeix
         self._conn.commit()
+        self._base_identity = None
 
     # ── càrrega ──────────────────────────────────────────────────────────
     def load(self):
@@ -80,8 +99,44 @@ class Qwen3TrainingBackend:
         self.optimizer = torch.optim.AdamW(
             [p for n, p in self.model.named_parameters() if "lora_" in n],
             lr=2e-4)
+        self._base_identity = self._compute_base_identity()
         self._loaded = True
         return self
+
+    def _compute_base_identity(self) -> dict:
+        """Fingerprint canònic del model BASE (pesos no-LoRA), calculat UNA
+        vegada a la càrrega i persistit. No es re-hasheja a cada request."""
+        import hashlib as _h
+        cfg_sha = None
+        cfg_path = os.path.join(self.model_path, "config.json")
+        if os.path.exists(cfg_path):
+            with open(cfg_path, "rb") as f:
+                cfg_sha = _h.sha256(f.read()).hexdigest()
+        h = _h.sha256()
+        manifest = []
+        for n, p in self.model.named_parameters():
+            if "lora_" not in n:
+                manifest.append(f"{n}:{list(p.shape)}:{p.dtype}")
+                # MOSTRA dels pesos (4KB per tensor) + manifest complet de
+                # noms/shapes: fingerprint canònic equivalent, sense hashejar
+                # els 600M paràmetres a cada càrrega.
+                flat = p.detach().cpu().numpy().reshape(-1)
+                h.update(flat[:4096].tobytes())
+        manifest_sha = _h.sha256(
+            "\n".join(sorted(manifest)).encode("utf-8")).hexdigest()
+        base_hash = h.hexdigest()
+        return {"model_identifier": self.model_path,
+                "config_sha": cfg_sha,
+                "weight_manifest_sha": manifest_sha,
+                "base_model_hash": base_hash,
+                "seed": self.seed}
+
+    def base_model_hash(self) -> str:
+        """Hash canònic del model base (pesos no-LoRA). Sense re-hashejar:
+        retorna el valor persistit a la càrrega."""
+        if self._base_identity is None:
+            raise ValueError("base_model_hash: carrega el backend primer")
+        return self._base_identity["base_model_hash"]
 
     @property
     def lora_params(self) -> dict:
@@ -99,15 +154,39 @@ class Qwen3TrainingBackend:
         """Serialitza l'estat LoRA complet (adapter_0/1/2) en format propi."""
         return self._serialize_delta(self.lora_params)
 
-    def load_adapter_from_bundle(self, data: bytes, expected_sha: str | None = None):
+    def load_adapter_from_bundle(self, data: bytes, expected_sha: str | None = None,
+                                 strict: bool = True):
+        """Carrega l'adapter des del bundle. Mode MeshTrainer (strict=True):
+        expected_sha OBLIGATORI; SHA-256(data)==expected_sha; schema complet
+        (exactament els tensors LoRA: cap absent, cap extra, noms exactes,
+        shapes exactes, dtype admès). Wrong/partial/stale -> REJECTED."""
+        if strict and expected_sha is None:
+            raise ValueError("expected_sha OBLIGATORI en mode MeshTrainer — REJECTED")
+        if expected_sha is not None:
+            actual = hashlib.sha256(data).hexdigest()
+            if actual != expected_sha:
+                raise ValueError(
+                    f"adapter SHA mismatch: {actual[:12]} != {expected_sha[:12]} — REJECTED")
         tensors = self._deserialize_delta(data)
         state = dict(self.model.named_parameters())
-        missing = [n for n in tensors if n not in state]
-        if missing:
-            raise ValueError(f"Adapter load mismatch: missing={missing}")
+        lora_names = {n for n in state if "lora_" in n}
+        # schema complet: cap tensor absent, cap tensor extra
+        missing = sorted(lora_names - set(tensors))
+        extra = sorted(set(tensors) - lora_names)
+        if missing or extra:
+            raise ValueError(
+                f"adapter schema mismatch: missing={missing[:3]} extra={extra[:3]} — REJECTED")
+        # noms exactes, shapes exactes, dtype admès (float32)
+        for n in lora_names:
+            t = tensors[n]
+            if tuple(t.shape) != tuple(state[n].shape):
+                raise ValueError(
+                    f"shape mismatch {n}: {tuple(t.shape)} != {tuple(state[n].shape)} — REJECTED")
+            if t.dtype != torch.float32:
+                raise ValueError(f"dtype no admès {n}: {t.dtype} — REJECTED")
         for n, t in tensors.items():
             state[n].data.copy_(torch.as_tensor(t))
-        return {"missing": []}
+        return {"missing": [], "unexpected": []}
 
     # ── tokenització / ETT ───────────────────────────────────────────────
     @staticmethod
@@ -153,19 +232,100 @@ class Qwen3TrainingBackend:
     def compute_ett(labels: torch.Tensor) -> int:
         return int(ett_from_labels(labels))
 
+    # ── estat de l'optimizer (persistit al journal per al recovery exacte) ──
+    def _lora_param_names(self) -> list[str]:
+        """Noms dels params LoRA en l'ordre de l'optimizer (ordre de creació)."""
+        return [n for n, p in self.model.named_parameters() if "lora_" in n]
+
+    def _optimizer_state_b64(self) -> str:
+        """Serialitza l'estat de l'optimizer AdamW amb el format EXACTE del
+        state_dict: moments 1D float32 (foreach), step amb dtype original i
+        param_groups AMB els índexs 'params' originals (la clau que faltava
+        a la versió anterior i que feia que load_state_dict no apliqués els
+        moments). Compacte (~1MB) i fidel: el pas següent és IDÈNTIC al
+        no-crash."""
+        sd = self.optimizer.state_dict()
+        out = {"state": {}, "param_groups": []}
+        for k, v in sd["state"].items():
+            out["state"][str(k)] = {
+                "step_dtype": str(v["step"].dtype).split(".")[-1],
+                "step": float(v["step"]),
+                "exp_avg_shape": list(v["exp_avg"].shape),
+                "exp_avg": base64.b64encode(
+                    v["exp_avg"].numpy().tobytes()).decode("ascii"),
+                "exp_avg_sq_shape": list(v["exp_avg_sq"].shape),
+                "exp_avg_sq": base64.b64encode(
+                    v["exp_avg_sq"].numpy().tobytes()).decode("ascii"),
+            }
+        for g in sd["param_groups"]:
+            g2 = {k2: v2 for k2, v2 in g.items() if k2 != "params"}
+            g2["params"] = [int(i) for i in g["params"]]   # índexs ORIGINALS
+            out["param_groups"].append(g2)
+        return base64.b64encode(json.dumps(out).encode()).decode("ascii")
+
+    def _load_optimizer_state_b64(self, b64str: str):
+        st = json.loads(base64.b64decode(b64str))
+        # CLAUS INT: el state_dict de torch 2.13 té les claus de l'estat com a
+        # int (0..223). Amb claus str el load_state_dict NO les mapeja i els
+        # moments no s'apliquen (optimizer fresh -> pas incorrecte).
+        sd = {"state": {}, "param_groups": st["param_groups"]}
+        for k, v in st["state"].items():
+            step = torch.tensor(v["step"], dtype=getattr(torch, v["step_dtype"]))
+            sd["state"][int(k)] = {
+                "step": step,
+                "exp_avg": torch.from_numpy(np.frombuffer(
+                    base64.b64decode(v["exp_avg"]), dtype=np.float32).copy()
+                    .reshape(v["exp_avg_shape"])),
+                "exp_avg_sq": torch.from_numpy(np.frombuffer(
+                    base64.b64decode(v["exp_avg_sq"]), dtype=np.float32).copy()
+                    .reshape(v["exp_avg_sq_shape"])),
+            }
+        self.optimizer.load_state_dict(sd)
+
     # ── pas d'entrenament exactly-once ───────────────────────────────────
-    def train_step(self, update_id: str, instruction: str, response: str):
-        """UN forward + UN backward + UN optimizer.step. Exactly-once:
-        replay (status APPLIED) retorna el MATEIX delta sense segon pas."""
+    @staticmethod
+    def _make_request_sha(update_id, worker_id, assignment_id, shard_id,
+                          adapter_pre_hash, example_id, instruction, response) -> str:
+        """request_sha canònic: update_id + worker_id + assignment_id + shard_id
+        + adapter_pre_hash + example_id + payload training hash."""
+        payload = json.dumps({"instruction": instruction, "response": response},
+                             ensure_ascii=False, sort_keys=True)
+        canonical = json.dumps({
+            "update_id": update_id, "worker_id": worker_id,
+            "assignment_id": assignment_id, "shard_id": shard_id,
+            "adapter_pre_hash": adapter_pre_hash, "example_id": example_id,
+            "payload_sha": hashlib.sha256(payload.encode("utf-8")).hexdigest(),
+        }, sort_keys=True)
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    def train_step(self, update_id: str, instruction: str, response: str, *,
+                   worker_id: str = "", assignment_id: str = "", shard_id: str = "",
+                   example_id: str = "", request_sha: str | None = None):
+        """UN forward + UN backward + UN optimizer.step. Exactly-once estricte:
+        - mateix update_id + mateix request_sha -> MATEIX delta (sense 2n pas)
+        - mateix update_id + request_sha DIFERENT -> REJECTED (mai el delta antic)
+        """
         r = self._conn.execute(
-            "SELECT status, delta_b64, delta_sha FROM qwen_journal WHERE update_id=?",
-            (update_id,)).fetchone()
+            "SELECT * FROM qwen_journal WHERE update_id=?", (update_id,)).fetchone()
         if r is not None:
             if r["status"] == "APPLIED":
+                if request_sha is None:
+                    request_sha = self._make_request_sha(
+                        update_id, worker_id, assignment_id, shard_id,
+                        r["pre_hash"], example_id, instruction, response)
+                if r["request_sha"] and r["request_sha"] != request_sha:
+                    raise ValueError(
+                        f"update_id {update_id}: request_sha mismatch — REJECTED "
+                        f"(mateix update_id, payload diferent)")
                 return r["delta_b64"], r["delta_sha"]
             if r["status"] == "COMMITTED":
                 raise ValueError(f"update_id {update_id} already COMMITTED")
         self._lora_pre = self.lora_params
+        pre_hash = self.hash_adapter_pre()
+        if request_sha is None:
+            request_sha = self._make_request_sha(
+                update_id, worker_id, assignment_id, shard_id,
+                pre_hash, example_id, instruction, response)
         input_ids, attn, labels = self.tokenize_chat(instruction, response)
         self.optimizer.zero_grad()
         out = self.model(input_ids=input_ids, attention_mask=attn, labels=labels)
@@ -179,11 +339,58 @@ class Qwen3TrainingBackend:
         dsha = bundle_sha256(db)
         self._conn.execute(
             "INSERT OR REPLACE INTO qwen_journal (update_id, status, delta_b64,"
-            " delta_sha, pre_hash, post_hash) VALUES (?,?,?,?,?,?)",
+            " delta_sha, pre_hash, post_hash, request_sha, worker_id,"
+            " assignment_id, shard_id, example_id, optimizer_b64, rng_b64, loss)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (update_id, "APPLIED", base64.b64encode(db).decode("ascii"), dsha,
-             self.hash_adapter_pre(), self.hash_adapter()))
+             pre_hash, self.hash_adapter_tolerant(), request_sha, worker_id,
+             assignment_id, shard_id, example_id, self._optimizer_state_b64(),
+             base64.b64encode(torch.get_rng_state().numpy().tobytes()).decode("ascii"),
+             float(self._last_loss)))
         self._conn.commit()
         return base64.b64encode(db).decode("ascii"), dsha
+
+    def recover_applied(self, update_id: str) -> dict | None:
+        """Recovery POST-APPLIED: reconstrueix adapter_post = adapter_pre + delta
+        SENSE optimizer.step (el journal persisteix el delta real). Verifica
+        pre_hash vs l'estat actual abans i post_hash després de reconstruir.
+        Després el worker pot executar un SEGON exemple d'entrenament."""
+        r = self._conn.execute(
+            "SELECT * FROM qwen_journal WHERE update_id=?", (update_id,)).fetchone()
+        if r is None:
+            return None
+        if r["status"] != "APPLIED":
+            raise ValueError(f"update_id {update_id} status={r['status']} — "
+                             "recovery només per APPLIED")
+        if r["pre_hash"] and r["pre_hash"] != self.hash_adapter():
+            raise ValueError(
+                "pre_hash mismatch: l'estat actual no és l'adapter_pre — REJECTED")
+        delta = self._deserialize_delta(base64.b64decode(r["delta_b64"]))
+        state = dict(self.model.named_parameters())
+        for n, t in delta.items():
+            state[n].data.add_(torch.as_tensor(t))
+        if r["post_hash"] and r["post_hash"] != self.hash_adapter_tolerant():
+            raise ValueError(
+                "post_hash mismatch després de la reconstrucció — REJECTED")
+        if r["optimizer_b64"]:
+            self._load_optimizer_state_b64(r["optimizer_b64"])
+        if r["rng_b64"]:
+            # l'estat del RNG post-pas (dropout determinista al pas següent)
+            torch.set_rng_state(torch.from_numpy(np.frombuffer(
+                base64.b64decode(r["rng_b64"]), dtype=np.uint8).copy()))
+        return {"update_id": update_id, "status": "APPLIED",
+                "adapter_post_hash": r["post_hash"]}
+
+    def hash_adapter_tolerant(self) -> str:
+        """Hash dels LoRA amb els tensors com a float16: estable sota 1 ulp
+        d'arrodoniment de la reconstrucció pre+delta (la suma no és
+        associativa en float32) però detecta qualsevol error real."""
+        parts = []
+        for n in sorted(self.lora_params):
+            parts.append(n.encode("utf-8"))
+            parts.append(self.lora_params[n].cpu().numpy()
+                         .astype(np.float16).tobytes())
+        return hashlib.sha256(b"".join(parts)).hexdigest()
 
     def hash_adapter_pre(self) -> str:
         if self._lora_pre is None:

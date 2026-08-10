@@ -82,7 +82,9 @@ def main():
     check("P3 delta sha 64 hex", len(dsha) == 64, dsha[:16])
 
     # ── P4: exactly-once ──
-    d64b, dshab = bk.train_step("p3-1", "irrelevant", "irrelevant")  # replay
+    # replay amb el MATEIX payload (el request_sha estricte del R2 REJECTA
+    # qualsevol payload diferent per al mateix update_id — secció 3 de l'ordre)
+    d64b, dshab = bk.train_step("p3-1", ex["instruction"], ex["response"])  # replay
     check("P4 replay mateix delta", dshab == dsha, dshab[:16])
     check("P4 status APPLIED", bk.journal_status("p3-1") == "APPLIED")
 

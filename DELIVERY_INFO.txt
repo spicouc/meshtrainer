@@ -1,114 +1,104 @@
-DELIVERY_INFO — meshtrainer QWEN PILOT (PRIMER ENTRENAMENT REAL) FINAL
-=====================================================================
+DELIVERY_INFO — meshtrainer QWEN DISTRIBUTED PILOT (R2 END-TO-END) FINAL
+=======================================================================
 
-DATA: 2026-08-08
+DATA: 2026-08-09
 BRANCH: rc5.4-stagea
-BASE CERTIFICADA: RC5.4 Stage A R3.1 (77595f4; tarball 1a0da69a)
-COMMIT DEL CODI: f0a71e1
+BASE CERTIFICADA:
+  RC5.4 Stage A R3.1 — 77595f4 (tarball 1a0da69a)
+  Backend pilot R1 — f0a71e1 (QWEN SINGLE-WORKER / FEDAVG PROTOTYPE: PASS)
+COMMIT DEL CODI: <PENDENT>
 
-PRE-TARBALL
------------
-AQUEST DOCUMENT ÉS UNA CÒPIA INTERNA DEL TARBALL.
-El SHA autoritatiu del paquet és el del fitxer .sha256 DETACHED extern
-(meshtrainer_qwen_pilot_final_<commit>.tar.gz.sha256). Aquesta còpia NO
-conté el SHA del tarball que la conté (marcada PRE-TARBALL per evitar
-circularitat).
+OBJECTIU (ordre del Supervisor)
+-------------------------------
+Connectar Qwen3TrainingBackend a la infraestructura MeshTrainer real i
+executar dos workers Qwen reals amb control HTTP, leases RC5.4, contribucions
+RC5.3 i FedAvg global. Workers seqüencials (RAM): A subprocess -> allibera ->
+B subprocess, amb worker_id/session/lease/journal/shard diferents i
+comunicació HTTP real.
 
-RESUM
------
-Primer entrenament real de MeshTrainer: Qwen3-0.6B + LoRA (r=8, alpha=16,
-dropout=0.1, targets q/k/v/o_proj) + dataset pilot català (60+10+10 exemples
-JSONL educatius, sense dades personals), amb forward/loss/backward/
-optimizer reals, ETT derivat dels labels, deltes LoRA post-pre, FedAvg
-ponderat (RC5.3, sense modificar), oracle monolític independent, Round 2 i
-Safe Recovery (leases RC5.4, exactly-once persistent, mid-backward EXPIRED
-sense autograd). Tota la infraestructura certificada RC5.1-RC5.4 queda
-CONGELADA: zero modificacions (regressió verificada per hashes = tarball R3.1).
+DECISIÓ DEL SUPERVISOR
+----------------------
+f0a71e1 acceptat com a QWEN SINGLE-WORKER / FEDAVG PROTOTYPE: PASS.
+Aquest paquet eleva el pilot a MESHRETRAINER QWEN DISTRIBUTED PILOT FINAL.
 
-CANVIS (additius; fitxers congelats intactes)
----------------------------------------------
-- qwen3_training_backend.py: Qwen3TrainingBackend (carrega tokenizer/model/
-  LoRA, labels exactes -100, ETT, train_step exactly-once amb journal SQLite
-  persistent, deltes post-pre, adapter bundles, generació, mètriques) +
-  fedavg_qwen (oracle). Serialitzador propi qwen_bundle_v1 (el bundle
-  congelat té límit de header 32KB que els 224 tensors LoRA superen).
-- qwen3_pilot_dataset.py: loader JSONL (instruction/response + messages),
-  splits train/validation/test.
-- qwen3_pilot_data_build.py + qwen3_pilot_data/: dataset pilot català
-  (60 train + 10 val + 10 test; 2 exemples en format messages).
-- qwen3_pilot_tests.py: P1..P8 (càrrega/LoRA, ETT, train_step, exactly-once,
-  dataset, aprenentatge, generació, FedAvg vs oracle).
-- qwen3_pilot_adversarial_tests.py: A1..A8 (zero delta, wrong base, wrong
-  adapter, stale adapter, wrong shard, ETT constant, second optimizer,
-  malformed dataset).
-- qwen3_pilot_train.py: entrenament real + adapter_0/1 + mètriques +
-  respostes dels 10 prompts holdout ABANS i DESPRÉS.
-- qwen3_pilot_round.py: 2 workers reals (shards A/B, 1 model en memòria a la
-  vegada per memòria de 8GB), FedAvgLoRA certificat, oracle, round 2.
-- qwen3_pilot_recovery.py: R1..R5 (crash APPLIED -> mateix delta, sense segon
-  optimizer, checkpoint idempotent, lease expiry REJECTED, reassignació,
-  mid-backward -> EXPIRED sense autograd).
-- RUN_QWEN_PILOT_TESTS.sh / RUN_QWEN_PILOT_ADVERSARIAL.sh /
-  RUN_QWEN_PILOT_FINAL_GATE.sh (9 passos: deps, py_compile, tests, adversarial,
-  train, round, recovery, regressió RC5.4 per hashes, manifest+artefactes).
-- qwen3_pilot_output/: adapters (adapter_0/1, round_adapter_0/1/2), mètriques
-  (metrics.json, round_metrics.json), respostes holdout before/after.
-- qwen3_pilot_logs/: logs dels 7 passos del gate.
+CANVIS (additius, res de la infraestructura congelada modificada)
+----------------------------------------------------------------
+1. ENDURIMENT DEL BACKEND (qwen3_training_backend.py)
+   - load_adapter_from_bundle amb expected_sha OBLIGATORI (mode MeshTrainer)
+     + schema complet (tots els tensors LoRA: noms exactes, shapes exactes,
+     dtype admès; cap absent/extra). Wrong/partial/stale adapter -> REJECTED.
+   - base_model_identity: fingerprint canònic persistit a la càrrega
+     (model identifier, config_sha, weight manifest SHA, base_model_hash
+     sobre mostra dels pesos). Els 2 workers informen el mateix hash; el
+     Coordinator rebutja un worker amb base diferent.
+   - request_sha al journal (update_id, worker_id, assignment_id, shard_id,
+     adapter_pre_hash, example_id, payload hash): mateix update_id + mateix
+     request_sha -> mateix delta; request_sha diferent -> REJECTED.
+   - recovery post-APPLIED: adapter_post = adapter_pre + persisted_delta
+     SENSE optimizer.step, amb estat de l'optimizer AdamW (moments + step)
+     i estat del RNG persistits al journal i restaurats exactament
+     (serialització claus int + shapes dels moments); prova no-crash vs
+     crash amb adapters finals IDÈNTICS (hash tolerant float16 per 1 ulp).
+2. qwen_http_server.py — serve54 Qwen (JSON-RPC HTTP): worker.register,
+   worker.calibrate, assignment.get, lease.acquire/renew, step.open,
+   step.worker_update.submit, step.commit, checkpoint.upload,
+   contribution.register, step.release. Reutilitza rc5_4_leases.LeaseManager
+   REAL. Patró lease-primer -> idempotència -> execució -> save. Shard
+   binding (shard_manifest_sha) i ETT verificats. Lease absent/expirada/
+   wrong session/base/shard/ETT/request_sha -> REJECTED.
+3. qwen_round_coordinator.py — Coordinator Qwen (patró RC5.3): assignacions
+   amb shard_manifest_sha, contribucions RECEIVED->VALIDATED->ACTIVE,
+   fedavg = adapter_0 + Σ(delta_i·ETT_i)/ΣETT (fórmula idèntica al FedAvg
+   certificat); oracle monolític independent per a la comparació.
+4. qwen_worker.py — subprocess real: flux de 12 passos per HTTP, renew de
+   lease propi (recovery), auto-recovery dels passos APPLIED del journal,
+   --deterministic i --train-only (crash simulat).
+5. qwen_quality.py — validation loss/perplexity BEFORE/AFTER (mai només
+   train loss) + 10 holdouts (prompt, resposta generada, resposta esperada,
+   puntuació determinista 0/1/2 per paraules clau).
+6. Tests: qwen_backend_r2_check.py (S1..S4), qwen_distributed_adversarial_
+   tests.py (A1..A11 enforcement), qwen_distributed_recovery_tests.py
+   (R-Q1..R-Q5 amb subprocessos/PIDs), qwen_distributed_run.py (driver
+   end-to-end), RUN_QWEN_DISTRIBUTED_PILOT_GATE.sh.
 
-RESULTATS CERTIFICATS (execució real, QWEN PILOT FINAL GATE — Overall PASS)
----------------------------------------------------------------------------
-- [1/9] dependency check: PASS
-- [2/9] py_compile: PASS
-- [3/9] single worker tests: PASS (22/22)
-- [4/9] adversarial: PASS (9/9)
-- [5/9] train real (20 exemples, 1 epoch, seq 256): PASS
-- [6/9] round (2 workers + FedAvg + oracle + round 2): PASS (7/7)
-- [7/9] recovery: PASS
-- [8/9] regressió RC5.4: PASS (hashes fitxers congelats = tarball R3.1)
-- [9/9] manifest: PASS (278=278, err=0) + 6 artefactes OK
-
-MÈTRIQUES DEL PRIMER ENTRENAMENT (metrics.json)
-------------------------------------------------
-- loss inicial 2.7516 -> loss final 1.4764 (20 steps)
-- loss mitjana train 1.984 | loss validation 2.094
-- perplexity validation 8.12
-- ETT total 875 (43.75/step) | delta_norm 0.100
-- adapter_0 sha e0877337 | adapter_1 sha 1a57690f | mida 9.21 MB
-- temps entrenament 81.6 s (CPU) | temps càrrega 435.6 s
-
-ROUND (round_metrics.json)
---------------------------
-- ETT_A=441, ETT_B=434 (ETT diferents, shards reals)
-- adapter_0 e0877337 / adapter_1 c037e834 / adapter_2 92a6f535
-- oracle == FedAvg: maxdiff 3.73e-09 (round 1 i 2)
-
-DEMOSTRACIÓ (holdout, prompt complet de prova)
------------------------------------------------
-PROMPT: "Què és la hipertensió arterial?"
-ABANS:  "<think>Okay, the user is asking about hypertension. Let me start
-         by explaining what it is. I should mention that it's a condition
-         where..." (el model base entra en mode raonament)
-DESPRÉS: "La hipertensió arterial és la presió arterial elevada, que pot
-         causar d'altres efectes i perfeïtament la prevenir..." (resposta
-         directa en català — aprenentatge real del patró del dataset)
-Conjunt complet: 10 prompts holdout a responses_before.json /
-responses_after.json (sense cherry-picking).
+RESULTATS CERTIFICATS (gate complet a CT112, CPU)
+-------------------------------------------------
+- backend tests single-worker: 22/22 PASS
+- backend R2 hardened (S1-S4): 15/15 PASS
+  (wrong/partial adapter REJECTED; request_sha REJECTED; recovery exacte)
+- HTTP/lease adversarial (A1-A11): 11/11 PASS (REJECTED/idempotent)
+- run distribuït end-to-end: 16/16 PASS
+  - worker A (subprocess, shard A) i worker B (subprocess, shard B): exit 0
+  - mateix base_model_hash (A==B); shard manifests diferents
+  - ETT_A=441 != ETT_B=434
+  - FedAvg Coordinator -> adapter_1 (ett=875); oracle maxdiff=0.00e+00
+  - round 2: adapter_pre_hash_A==B (adapter_1); adapter_2; oracle exacte
+  - qualitat: val loss 2.8255 -> 2.1930; ppl 16.869 -> 8.962;
+    score factual 2 -> 5 (no empitjora)
+- recovery distribuït (R-Q1..R-Q5): 15/15 PASS
+  - R-Q1: crash Worker A després d'APPLIED (subprocess PID 3521 mort) ->
+    nou PID -> journal persistent -> recover sense optimizer -> completa;
+    adapters finals IDÈNTICS (hash tolerant)
+  - R-Q2 lease expiry REJECTED; R-Q3 reassignació; R-Q4 mid-training ->
+    EXPIRED sense autograd; R-Q5 checkpoint retry idempotent
+- regressió RC5.4: PASS (hashes dels fitxers congelats = tarball R3.1)
+- manifest: PASS (304 fitxers, sha256sum -c 0 errors) + 6 artefactes
+  (adapter_0/1/2.bundle, distributed_metrics.json, quality_before/after.json)
 
 MANIFEST
 --------
-294 fitxers regulars (incloent MANIFEST.sha256, qwen3_pilot_output/ i
-qwen3_pilot_logs/) = 293 línies del manifest
+<coberts> fitxers regulars (incloent qwen3_pilot_output/, qwen3_pilot_logs/,
+qwen_distributed_output/ i qwen_distributed_logs/) = <manifest> línies
 sha256sum -c: 0 errors.
 
 ENTREGA
 -------
-- meshtrainer_qwen_pilot_final_f0a71e1.tar.gz
-- meshtrainer_qwen_pilot_final_f0a71e1.tar.gz.sha256
-  (SHA 4db6a2776832d8c23a47a78510a24a0ce33392a81bfd2b57dd6e0280736021c8,
-   mida 34541919 bytes)  (AUTORITATIU)
+- meshtrainer_qwen_distributed_pilot_final_<commit>.tar.gz
+- meshtrainer_qwen_distributed_pilot_final_<commit>.tar.gz.sha256
+  (AUTORITATIU)
 - DELIVERY_INFO.txt (aquesta versió, amb SHA real)
 - verify.txt
 
-NO INICIAT (fora de l'abast del pilot): UI, comptes, cloud orchestration,
-models grans, quantització complexa, producció, marketplace, entrenament
-massiu, Qwen3TrainingBackend >0.6B.
+NO IMPLEMENTAT (NOT AUTHORIZED): UI final, comptes d'usuari, cloud
+orchestration, models grans, quantització complexa, producció, marketplace,
+entrenament massiu.

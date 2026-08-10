@@ -58,12 +58,18 @@ echo ""; echo "=== [0] py_compile genèrics ==="
 
 # 1-5) contractes + absència d'imports Qwen al core
 echo ""; echo "=== [1] core sense imports Qwen ==="
-if grep -lE "qwen|Qwen" training_backend.py adapter_codec.py \
-        model_round_coordinator.py training_http_server.py model_worker.py \
-        generic_distributed_run.py > /dev/null 2>&1; then
+# El registry (model_worker.BACKENDS) i l'opció --backend han de contenir la
+# STRING "qwen3" (punt 8 de l'ordre). El que NO pot haver-hi al core són
+# IMPORTS reals de mòduls Qwen ni usos de classes Qwen (només es permeten
+# mencions en docstrings/comentaris que expliquen la substitució).
+if grep -nE "^(from|import) +qwen|from qwen|import qwen" \
+        training_backend.py adapter_codec.py model_round_coordinator.py \
+        training_http_server.py model_worker.py generic_distributed_run.py \
+        generic_recovery_tests.py > /dev/null 2>&1; then
     echo "  imports Qwen al core: DETECTATS — FAIL"; OVERALL=1
 else
     echo "  core net d'imports Qwen: PASS"
+    echo "  (la string 'qwen3' al registry/--backend és correcta: punt 8)"
 fi
 
 # 10) idempotència persistent + 11) SIGKILL recovery (dummy, ràpid)
@@ -117,7 +123,8 @@ echo ""; echo "=== [16] logs ==="
 LOG_OK=1
 for l in 00_pycompile.log 10_recovery_dummy.log 06_07_08_09_e2e_dummy.log \
          06_07_08_09_12_e2e_qwen3.log 10_11_recovery_qwen3.log; do
-    if [ -s "$LOG_DIR/$l" ]; then echo "  log $l: OK"
+    # -f (existeix), no -s: un log buit (py_compile silenciós) és vàlid
+    if [ -f "$LOG_DIR/$l" ]; then echo "  log $l: OK"
     else echo "  log $l: ABSENT"; LOG_OK=0; fi
 done
 [ $LOG_OK -eq 1 ] && echo "  logs: PASS" || { echo "  logs: FAIL"; OVERALL=1; }

@@ -1,34 +1,44 @@
-VERIFY — meshtrainer QWEN PILOT (primer entrenament real, entrega f0a71e1)
-==========================================================================
+======================================================================
+ DELIVERY_INFO — MeshTrainer Generic Distributed (R2.1)
+ Generat: 2026-08-11 01:24:24 CEST
+======================================================================
 
-TARBALL: meshtrainer_qwen_pilot_final_f0a71e1.tar.gz
-SHA-256 (extern .sha256, AUTORITATIU): 4db6a2776832d8c23a47a78510a24a0ce33392a81bfd2b57dd6e0280736021c8
-MIDA: 34541919 bytes
-FITXERS (regulars): 295 (294 línies manifest + MANIFEST.sha256)
-sha256sum -c MANIFEST.sha256: 0 errors
+COMMIT (complet): 6496fe11dac05f882142b2a9c71dd7dc3f510e11
+BRANCH:           rc5.4-stagea
+BASE (merge-base):6496fe11dac05f882142b2a9c71dd7dc3f510e11
 
-QWEN PILOT FINAL GATE — Overall: PASS (execució real a CT112)
--------------------------------------------------------------
-- [1/9] dependency check: PASS
-- [2/9] py_compile: PASS
-- [3/9] single worker tests: PASS (22/22)
-- [4/9] adversarial: PASS (9/9)
-- [5/9] train real: PASS (20 exemples, seq 256; loss 2.7516 -> 1.4764;
-        val loss 2.094; perplexity 8.12; ETT total 875)
-- [6/9] round: PASS (7/7; ETT_A=441 ETT_B=434; oracle==FedAvg 3.73e-09;
-        adapter_0 e0877337 -> adapter_1 c037e834 -> adapter_2 92a6f535)
-- [7/9] recovery: PASS (crash APPLIED sense segon optimizer, checkpoint
-        idempotent, lease expiry REJECTED, reassignació, mid-backward EXPIRED)
-- [8/9] regressió RC5.4: PASS (hashes fitxers congelats = tarball R3.1
-        1a0da69a)
-- [9/9] manifest: PASS (278=278, err=0) + 6 artefactes OK
+TARBALL: meshtrainer_generic_distributed_qwen_final_6496fe1.tar.gz
+SIZE:    21895552 bytes
+SHA-256 (detached, autoritatiu): 7aee22004c6eb0b91aac129710da78b89c0418befb295f804b8cf4b4a2a94160
 
-DEMOSTRACIÓ (prompt de prova, holdout):
-PROMPT: "Què és la hipertensió arterial?"
-ABANS:  "<think>Okay, the user is asking about hypertension... (mode raonament)"
-DESPRÉS: "La hipertensió arterial és la presió arterial elevada, que pot
-         causar d'altres efectes..." (resposta directa en català)
-10 prompts holdout complets a qwen3_pilot_output/responses_{before,after}.json
+FITXERS (repo, sense outputs): 306
 
-BASE CERTIFICADA: RC5.4 Stage A R3.1 (77595f4) — no modificat (regressió OK).
-Tags: no s'han mogut (pendent d'auditoria del Supervisor).
+MANIFEST: 327 entrades
+sha256sum -c: 0 errors/missing/FAILED
+
+GATES:
+  - (sense logs)
+
+ARTEFACTES:
+  - adapter_0.bundle: sha256=e0877337c987bb873653b22f0016bc8b... (9209691 B)
+  - adapter_1.bundle: sha256=e5f6bc7ce9a3c7553fd64d61faf0277f... (9209694 B)
+  - adapter_2.bundle: sha256=e4a36bbd017a7b064201de715c34a641... (9209694 B)
+  - distributed_metrics.json: sha256=ceb31cdc624b2bd8f15e512bff7e6618... (373 B)
+  - quality_after.json: sha256=310c3b19ba8fd21cde0f3d3dadda6856... (5399 B)
+  - quality_before.json: sha256=346d99167dfc15c655d363b5f50cea34... (5901 B)
+
+METRICS (distributed_metrics.json):
+  backend: qwen3
+  adapter_0_sha: e0877337c987bb873653b22f0016bc8b1360152956f0a28b09fcdbb26ef1ff5e
+  adapter_1_sha: e5f6bc7ce9a3c7553fd64d61faf0277fa7b33f3e61de29cef8fd8e6d4fa8224d
+  adapter_2_sha: e4a36bbd017a7b064201de715c34a641ea52d6376eb374d16c239d246278afa4
+  ett_a: 441
+  ett_b: 395
+  maxdiff_oracle_r1: 0.0
+  maxdiff_oracle_r2: 0.0
+
+EVIDÈNCIES (PIDs):
+
+======================================================================
+ FI DELIVERY_INFO — cap camp pendent
+======================================================================

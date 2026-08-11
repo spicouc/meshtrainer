@@ -53,8 +53,8 @@ def server_boot(db_path, port=19862):
 
 
 def make_adapter_0(backend_name, out_dir, seq_len=128):
-    from model_worker import BACKENDS
-    cls = BACKENDS[backend_name]
+    from model_worker import load_backend
+    cls = load_backend(backend_name)
     mp = "dummy" if backend_name == "dummy" else "/root/qwen3_0_6b_snapshot"
     dbp = f"/tmp/generic_recovery_ad0_{backend_name}.db"
     if os.path.exists(dbp):
@@ -329,8 +329,8 @@ def main():
     # 3) worker NOU (PID diferent) amb la MATEIXA SQLite i la MATEIXA
     #    sessió (recovery: reprèn la sessió, no en crea una de nova) ->
     #    recupera + completa el flux
-    from model_worker import BACKENDS as _BACKENDS
-    bk_cls = _BACKENDS[args.backend]
+    from model_worker import load_backend as _load_backend
+    bk_cls = _load_backend(args.backend)
     rc_r, out_r, _ = run_worker(args.backend, "w-cr", "CR1", "A", "asg-cr",
                                 "r1", ad0_path, ad0_sha, out_cr,
                                 args.num_examples, args.seq_len)

@@ -79,9 +79,14 @@ def _as_float32_array(t):
 
 
 def _to_torch(arr: np.ndarray):
-    """np.ndarray float32 -> torch.Tensor float32."""
-    import torch
-    return torch.as_tensor(arr, dtype=torch.float32)
+    """np.ndarray float32 -> torch.Tensor float32 si torch és disponible;
+    en cas contrari retorna el np.ndarray (per a entorns sense torch, com
+    el backend dummy — el core només necessita numpy)."""
+    try:
+        import torch
+        return torch.as_tensor(arr, dtype=torch.float32)
+    except ImportError:
+        return arr
 
 
 # ── helpers per al Coordinator/FedAvg (sense torch al core) ─────────────

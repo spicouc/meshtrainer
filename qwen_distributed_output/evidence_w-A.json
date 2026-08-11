@@ -1,0 +1,21 @@
+{
+  "worker_id": "w-A",
+  "session_id": "A1",
+  "shard": "A",
+  "pid": 1201417,
+  "db_path": "/root/meshtrainer/qwen_distributed_output/journal_w-A.db",
+  "base_model_hash": "13cb2fcce8f388cf477b98f902a388accb3167420b288385f4091fcf40b9f4c2",
+  "adapter_pre_hash": "135320b406a1b32292fd4f40e2eef928e09a58f9ab368c34e0e4d2577e284141",
+  "shard_manifest_sha": "fe46d22cebe7581c905367fd38a51328a4cd6e9c7949067114ab5b01ca18ccf1",
+  "ett_registered": 19,
+  "ett_actual": 19,
+  "delta_sha": "db4f3f65a3d74948037a0b3aaa891f90f162e09f8f19d7b0503e64861f353d7d",
+  "delta_b64_len": 732,
+  "receipt_id": "tr_de9e9f714d2546ef",
+  "contribution_id": "tr_de9e9f714d2546ef",
+  "loss": 2.524034261703491,
+  "train_time_s": 0.009640693664550781,
+  "lease_id": "ls_72d95bd3f5624deb",
+  "lease_nonce": "5d611ea952e5651404e00a8c28f8ad07",
+  "adapter_post_hash": "931747c563e4daf51c53f1448e3acc5493e0fd35e2644df28e24cbc96c37beac"
+}

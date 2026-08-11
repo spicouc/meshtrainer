@@ -31,14 +31,33 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# ── registry de backends (punt 8) ────────────────────────────────────────
-def _load_backends():
-    from backends.qwen3_backend import Qwen3Backend
-    from backends.dummy_backend import DummyBackend
-    return {"qwen3": Qwen3Backend, "dummy": DummyBackend}
+# ── registry LAZY de backends (R2.2, punt 1) ────────────────────────────
+# Cap import eager: el mòdul del backend només s'importa quan es selecciona.
+# BACKENDS: nom -> (mòdul, classe)
+BACKENDS = {
+    "dummy": ("backends.dummy_backend", "DummyBackend"),
+    "qwen3": ("backends.qwen3_backend", "Qwen3Backend"),
+}
 
 
-BACKENDS = _load_backends()
+def load_backend(name: str):
+    """Carrega la classe del backend seleccionat (només ell). Error controlat
+    per a noms desconeguts; error explícit de dependència si el plugin no es
+    pot importar (p.ex. qwen3 sense transformers/peft/torch)."""
+    import importlib
+    if name not in BACKENDS:
+        raise ValueError(
+            f"backend desconegut: {name!r} (disponibles: {sorted(BACKENDS)})")
+    mod_name, cls_name = BACKENDS[name]
+    try:
+        mod = importlib.import_module(mod_name)
+    except ImportError as e:
+        raise RuntimeError(
+            f"backend {name!r} no carregable: el plugin requereix "
+            f"dependències no disponibles ({e}). El core genèric NO depèn "
+            f"d'aquest plugin; instala les deps del plugin o usa un altre "
+            f"backend (p.ex. dummy).") from e
+    return getattr(mod, cls_name)
 
 
 def rpc(server_url, method, params, timeout=120):
@@ -140,7 +159,7 @@ def main():
         _t.set_num_threads(1)
 
     bcfg = json.loads(args.backend_config or "{}")
-    backend_cls = BACKENDS[args.backend]
+    backend_cls = load_backend(args.backend)
     if args.backend == "dummy":
         model_path = args.model or "dummy"
     else:

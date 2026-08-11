@@ -45,8 +45,8 @@ def check(name, ok, detail=""):
 
 def make_adapter_0(backend_name, model, seq_len, out_dir, bcfg):
     """Genera adapter_0 amb el mateix backend (plugin) i el retorna."""
-    from model_worker import BACKENDS
-    cls = BACKENDS[backend_name]
+    from model_worker import load_backend
+    cls = load_backend(backend_name)
     mp = model or ("dummy" if backend_name == "dummy"
                    else "/root/qwen3_0_6b_snapshot")
     dbp = f"/tmp/generic_ad0_{backend_name}.db"

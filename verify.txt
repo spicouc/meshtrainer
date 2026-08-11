@@ -2,16 +2,16 @@ verify.txt — PRE-TARBALL (còpia interna de DELIVERY_INFO; la verificació def
 
 ======================================================================
  DELIVERY_INFO — MeshTrainer Generic Distributed (R2.2 CLOSEOUT)
- Generat: 2026-08-11 16:58:22 CEST
+ Generat: 2026-08-11 17:01:22 CEST
 ======================================================================
 
-COMMIT (complet): 6b8ef5aaf878e40857fbe02831cf7b3b825b1887
-PARENT (base):    8912525c6ff1cc47451e3fa756f5143cf3183ef3
+COMMIT (complet): 611e4e9edf1203825a4d2019743acd2db2baae81
+PARENT (base):    6b8ef5aaf878e40857fbe02831cf7b3b825b1887
 BRANCH:           rc5.4-stagea
 
-TARBALL: meshtrainer_generic_distributed_qwen_r2_2_final_6b8ef5a.tar.gz
-SIZE:    55893276 bytes
-SHA-256 (detached, autoritatiu): 51b2b64084175e49c59f59cbee91e926990ffe8fa9a8a4462b6defb402aaed35
+TARBALL: meshtrainer_generic_distributed_qwen_r2_2_final_611e4e9.tar.gz
+SIZE:    55894315 bytes
+SHA-256 (detached, autoritatiu): 3bb8e38d97311a989c679d6bcc86f6afd5b7ca9ae1c88e1d635728cf3b2eaa93
 
 FITXERS REGULARS (repo, sense .git/.venv/pycache/manifest): 336
 MANIFEST LINES: 336

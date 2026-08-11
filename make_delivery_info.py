@@ -162,8 +162,13 @@ def main():
     L.append("=" * 70)
 
     txt = "\n".join(L) + "\n"
+    # ── còpia INTERNA (repo/tarball): marcada PRE-TARBALL — punt 10 ──
+    # La còpia externa (que es lliura a part) es deriva del tarball final
+    # amb el SHA real; aquesta és la versió de treball dins del paquet.
     with open(os.path.join(REPO, "DELIVERY_INFO.txt"), "w") as f:
-        f.write(txt)
+        f.write("DELIVERY_INFO.txt — CÒPIA INTERNA PRE-TARBALL\n"
+                "(la còpia definitiva es deriva del tarball final "
+                "a l'entrega; SHA detached = autoritatiu)\n\n" + txt)
     # verify.txt: còpia interna marcada PRE-TARBALL (la definitiva es
     # derivarà de l'extracció exacta del tarball final)
     with open(os.path.join(REPO, "verify.txt"), "w") as f:

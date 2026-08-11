@@ -60,7 +60,8 @@ run_ab() {
     if [ -x "$ISO_PY" ] && [ -f "$dir/backend_isolation.py" ]; then
         (cd "$dir" && timeout 600 "$ISO_PY" backend_isolation.py) >> "$log" 2>&1
         ec=$?
-        echo "  backend_isolation: $([ $ec -eq 0 ] && echo PASS || echo FAIL (exit $ec))" >> "$log"
+        if [ $ec -eq 0 ]; then echo "  backend_isolation: PASS" >> "$log"
+        else echo "  backend_isolation: FAIL (exit $ec)" >> "$log"; fi
         [ $ec -eq 0 ] || ok=0
     else
         echo "  backend_isolation: NO EXECUTADA (falta venv ISO o script)"; ok=0
@@ -72,12 +73,14 @@ run_ab() {
         (cd "$dir" && timeout 600 "$PYTHON" generic_distributed_run.py \
             --backend dummy --num-examples 4 --seq-len 16) >> "$log" 2>&1
         ec=$?
-        echo "  dummy e2e: $([ $ec -eq 0 ] && echo PASS || echo FAIL (exit $ec))" >> "$log"
+        if [ $ec -eq 0 ]; then echo "  dummy e2e: PASS" >> "$log"
+        else echo "  dummy e2e: FAIL (exit $ec)" >> "$log"; fi
         [ $ec -eq 0 ] || ok=0
         (cd "$dir" && timeout 600 "$PYTHON" generic_recovery_tests.py \
             --backend dummy --num-examples 4 --seq-len 16) >> "$log" 2>&1
         ec=$?
-        echo "  dummy recovery: $([ $ec -eq 0 ] && echo PASS || echo FAIL (exit $ec))" >> "$log"
+        if [ $ec -eq 0 ]; then echo "  dummy recovery: PASS" >> "$log"
+        else echo "  dummy recovery: FAIL (exit $ec)" >> "$log"; fi
         [ $ec -eq 0 ] || ok=0
     else
         echo "  dummy gate: NO EXECUTADA (falten scripts o dataset)"; ok=0

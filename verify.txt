@@ -2,57 +2,83 @@ verify.txt — PRE-TARBALL (còpia interna de DELIVERY_INFO; la verificació def
 
 ======================================================================
  DELIVERY_INFO — MeshTrainer Generic Distributed (R2.2 CLOSEOUT)
- Generat: 2026-08-11 11:31:44 CEST
+ Generat: 2026-08-11 16:58:22 CEST
 ======================================================================
 
-COMMIT (complet): 8912525c6ff1cc47451e3fa756f5143cf3183ef3
-PARENT (base):    a926d5dab0b74ab02d0b204a1701330fcdb09132
+COMMIT (complet): 6b8ef5aaf878e40857fbe02831cf7b3b825b1887
+PARENT (base):    8912525c6ff1cc47451e3fa756f5143cf3183ef3
 BRANCH:           rc5.4-stagea
 
-TARBALL: <no especificat>
+TARBALL: meshtrainer_generic_distributed_qwen_r2_2_final_6b8ef5a.tar.gz
+SIZE:    55893276 bytes
+SHA-256 (detached, autoritatiu): 51b2b64084175e49c59f59cbee91e926990ffe8fa9a8a4462b6defb402aaed35
 
-FITXERS REGULARS (repo, sense .git/.venv/pycache/manifest): 335
-MANIFEST LINES: 337
-sha256sum -c: 72 errors/missing/FAILED (FAIL)
+FITXERS REGULARS (repo, sense .git/.venv/pycache/manifest): 336
+MANIFEST LINES: 336
+sha256sum -c (sobre l'extracció del tarball, A/B): 0 errors — PASS
 
 GATE FINAL (evidence/GENERIC_DISTRIBUTED_FINAL_GATE.log):
-  (log absent)
+  Python venv Qwen: Python 3.13.5
+  Python ISO (sense torch): Python 3.13.5
+  Model: /root/qwen3_0_6b_snapshot
+  dependency: PASS
+  pycompile: PASS
+  core_sense_imports_qwen: PASS
+  backend_isolation: PASS
+  dummy_e2e: PASS
+  dummy_recovery: PASS
+  qwen_e2e: PASS
+  qwen_recovery: PASS
+  quality_before: QUALITY OK
+  quality_after:  QUALITY OK
+  (CLASSIFICACIÓ: PIPELINE TRAINING PASS · QUALITY PILOT)
+  quality: PASS
+  regression: PASS (12/12 byte-for-byte = R3.1)
+  artefacte adapter_0.bundle: OK
+  artefacte adapter_1.bundle: OK
+  artefacte adapter_2.bundle: OK
+  artefacte distributed_metrics.json: OK
+  artefacte quality_before.json: OK
+  artefacte quality_after.json: OK
+  artefactes: PASS
+  GENERIC DISTRIBUTED FINAL GATE (R2.2) — Overall: PASS
+  GENERIC DISTRIBUTED FINAL GATE (R2.2) — Overall: PASS
 
 ARTEFACTES (qwen_distributed_output/):
-  - adapter_0.bundle: sha256=86e548fba3bd6392f05030bf07a3ec7e... (548 B)
-  - adapter_1.bundle: sha256=e2022d8bea72de1f8e2fb1d81dab6e83... (548 B)
-  - adapter_2.bundle: sha256=7c62186f49a430cac82e5b6c9e9c331b... (548 B)
-  - distributed_metrics.json: sha256=e35854c585f3159683a72085b769c8a4... (371 B)
-  - evidence_w-A.json: sha256=7cfd1bda746122a96733c6eb88992f65... (908 B)
-  - evidence_w-A2.json: sha256=242d91e1d765feb526a52ef17d657e1c... (907 B)
-  - evidence_w-B.json: sha256=045bd8982431d3bce31f379518cc85f4... (909 B)
-  - evidence_w-B2.json: sha256=1502f529d06d90d3982323b0f8630fc0... (910 B)
-  - journal_w-A.db: sha256=9167c5f798797e252acfb78348d4cafa... (12288 B)
-  - journal_w-A2.db: sha256=43c11a92cc69419140ea32a6766fdbfa... (12288 B)
-  - journal_w-B.db: sha256=30954d361f14fae426068d3d483516eb... (12288 B)
-  - journal_w-B2.db: sha256=bc7f8808b22a89a2496186bec4cb5126... (12288 B)
+  - adapter_0.bundle: sha256=e0877337c987bb873653b22f0016bc8b... (9209691 B)
+  - adapter_1.bundle: sha256=e5f6bc7ce9a3c7553fd64d61faf0277f... (9209694 B)
+  - adapter_2.bundle: sha256=e4a36bbd017a7b064201de715c34a641... (9209694 B)
+  - distributed_metrics.json: sha256=ceb31cdc624b2bd8f15e512bff7e6618... (373 B)
+  - evidence_w-A.json: sha256=f5dfc414ef89e2cf9f5322c4dccc2624... (908 B)
+  - evidence_w-A2.json: sha256=72388e12520e0503f42af178c992bbf9... (911 B)
+  - evidence_w-B.json: sha256=b91cbc5f0ed018e15634a9313d497798... (911 B)
+  - evidence_w-B2.json: sha256=f8ec7ed0fd1758df6376dd0570335f4f... (911 B)
+  - quality_after.json: sha256=c40e9b7c4779fb097bb66f915c77269b... (5399 B)
+  - quality_before.json: sha256=0439d5d07aff2740f735fa5bd8ff25bc... (5901 B)
 
 METRICS (distributed_metrics.json):
-  backend: dummy
-  adapter_0_sha: 86e548fba3bd6392f05030bf07a3ec7e7824cafcee8b8bb66736127144d81484
-  adapter_1_sha: e2022d8bea72de1f8e2fb1d81dab6e83e7ccf1b398c62eed1a4c228d94fa6a97
-  adapter_2_sha: 7c62186f49a430cac82e5b6c9e9c331b57f23bbf843914f18356b54784370711
-  ett_a: 19
-  ett_b: 24
+  backend: qwen3
+  adapter_0_sha: e0877337c987bb873653b22f0016bc8b1360152956f0a28b09fcdbb26ef1ff5e
+  adapter_1_sha: e5f6bc7ce9a3c7553fd64d61faf0277fa7b33f3e61de29cef8fd8e6d4fa8224d
+  adapter_2_sha: e4a36bbd017a7b064201de715c34a641ea52d6376eb374d16c239d246278afa4
+  ett_a: 441
+  ett_b: 395
   maxdiff_oracle_r1: 0.0
   maxdiff_oracle_r2: 0.0
 
-ETT A/B: 19 / 24
+ETT A/B: 441 / 395
 ORACLE Round1 maxdiff: 0.0
 ORACLE Round2 maxdiff: 0.0
 
+QUALITY_BEFORE.JSON: validation_loss=2.8254504919052126 ppl=16.868542416481457 holdout=2
+QUALITY_AFTER.JSON: validation_loss=2.1686332881450654 ppl=8.74632216619331 holdout=6
 CLASSIFICACIÓ: PIPELINE TRAINING PASS · QUALITY PILOT
 
 EVIDÈNCIES (PIDs):
-  - evidence_w-A.json: pid=1201417 worker=w-A shard=A delta=db4f3f65a3d74948 adapter_post=931747c563e4daf5
-  - evidence_w-A2.json: pid=1201462 worker=w-A2 shard=A delta=5d99b53739a51b5a adapter_post=2cbd395791a44373
-  - evidence_w-B.json: pid=1201446 worker=w-B shard=B delta=daf5dbfcdb71179e adapter_post=60cd635b363a9942
-  - evidence_w-B2.json: pid=1201478 worker=w-B2 shard=B delta=295ea28e944f9d3c adapter_post=a7fc47217a547a4b
+  - evidence_w-A.json: pid=6960 worker=w-A shard=A delta=8c72888369c419c2 adapter_post=79083d5ceb117f18
+  - evidence_w-A2.json: pid=7045 worker=w-A2 shard=A delta=6d6077e1ac5a7873 adapter_post=633fc4814099e06a
+  - evidence_w-B.json: pid=7003 worker=w-B shard=B delta=691b5ecd018ebee6 adapter_post=83629440d7717812
+  - evidence_w-B2.json: pid=7087 worker=w-B2 shard=B delta=b7f979b567639819 adapter_post=38dd938835451580
 
 ======================================================================
  FI DELIVERY_INFO — cap camp pendent

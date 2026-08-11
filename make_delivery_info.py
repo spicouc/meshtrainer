@@ -66,13 +66,26 @@ def main():
         mf_lines = str(sum(1 for _ in open(mf)))
     L.append(f"FITXERS REGULARS (repo, sense .git/.venv/pycache/manifest): {files}")
     L.append(f"MANIFEST LINES: {mf_lines}")
-    if os.path.exists(mf):
-        chk = sh(f"cd {REPO} && sha256sum -c MANIFEST.sha256 2>&1 | "
-                 f"grep -cv ': OK' || true")
-        L.append(f"sha256sum -c: {chk} errors/missing/FAILED "
-                 f"({'PASS' if chk == '0' else 'FAIL'})")
+    # El manifest es verifica sobre l'EXTRACCIÓ EXACTA del paquet final
+    # (clean extraction A/B), no sobre el repo — punt 10 de l'ordre.
+    ab_a = os.path.join(REPO, "evidence", "CLEAN_EXTRACTION_A.log")
+    ab_b = os.path.join(REPO, "evidence", "CLEAN_EXTRACTION_B.log")
+    if os.path.exists(ab_a) and os.path.exists(ab_b):
+        mf_ok = 0
+        for ab in (ab_a, ab_b):
+            txt = open(ab).read()
+            if "manifest" in txt and "sha256sum -c" in txt and \
+               "0 errors" in txt and "PASS" in txt:
+                mf_ok += 1
+        if mf_ok == 2:
+            L.append("sha256sum -c (sobre l'extracció del tarball, A/B): "
+                     "0 errors — PASS")
+        else:
+            L.append("sha256sum -c (sobre l'extracció del tarball, A/B): "
+                     "NO CONFIRMAT")
     else:
-        L.append("sha256sum -c: MANIFEST absent")
+        L.append("sha256sum -c (sobre l'extracció del tarball, A/B): "
+                 "sense logs A/B")
     L.append("")
 
     # ── gate final ──

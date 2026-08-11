@@ -2,7 +2,7 @@
   "worker_id": "w-B2",
   "session_id": "B2",
   "shard": "B",
-  "pid": 7087,
+  "pid": 11920,
   "db_path": "/root/meshtrainer/qwen_distributed_output/journal_w-B2.db",
   "base_model_hash": "0e7b2917757b5bb103707f83667da60980394df2c42254d2ca79495500d09d75",
   "adapter_pre_hash": "543022bca1bd8206db7ae33bd397b63cc07329847380d4d5c1d5c3b919c1986b",
@@ -11,11 +11,11 @@
   "ett_actual": 204,
   "delta_sha": "b7f979b56763981954fd1adc8b7ccb3e721ea87d46bc89af2651d57738918be2",
   "delta_b64_len": 12279588,
-  "receipt_id": "tr_447dd34d6fc9492a",
-  "contribution_id": "tr_447dd34d6fc9492a",
+  "receipt_id": "tr_7b6dd88d416c41c5",
+  "contribution_id": "tr_7b6dd88d416c41c5",
   "loss": 2.425865411758423,
-  "train_time_s": 32.27389407157898,
-  "lease_id": "ls_5a29cbae40824c07",
-  "lease_nonce": "25976af87a1a4ede126b4ee262b90164",
-  "adapter_post_hash": "38dd93883545158070d482a9d1658e62b44728a1434c202e1468472ec1893b97"
+  "train_time_s": 156.56640434265137,
+  "lease_id": "ls_17af3284b97345ea",
+  "lease_nonce": "f94d018bc61af9726856e5b5814e99ff",
+  "adapter_post_hash": "47eff08fde703972a99cbef0112589cc36e739ef61be11299fc76c10cb542844"
 }

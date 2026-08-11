@@ -1,7 +1,7 @@
 ============================================
-  GENERIC DISTRIBUTED FINAL GATE (R2.2)
+  GENERIC DISTRIBUTED FINAL GATE (R2.3)
   Python venv Qwen: Python 3.13.5
-  Python ISO (sense torch): Python 3.13.5
+  Python ISO: Python 3.13.5
   Model: /root/qwen3_0_6b_snapshot
 ============================================
 
@@ -11,11 +11,11 @@
 === pycompile ===
   pycompile: PASS
 
-=== core_sense_imports_qwen ===
-  core_sense_imports_qwen: PASS
-
 === backend_isolation ===
   backend_isolation: PASS
+
+=== authority_adversarial ===
+  authority_adversarial: PASS
 
 === dummy_e2e ===
   dummy_e2e: PASS
@@ -36,7 +36,7 @@
   quality: PASS
 
 === regression ===
-  regression: PASS (12/12 byte-for-byte = R3.1)
+  regression: PASS (12/12 = R3.1)
 
 === artefactes ===
   artefacte adapter_0.bundle: OK
@@ -48,5 +48,5 @@
   artefactes: PASS
 
 ============================================
-  GENERIC DISTRIBUTED FINAL GATE (R2.2) — Overall: PASS
+  GENERIC DISTRIBUTED FINAL GATE (R2.3) — Overall: PASS
 ============================================

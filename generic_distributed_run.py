@@ -99,6 +99,30 @@ def fedavg_via_coordinator(proto, run_id, round_id, adapter_0_bytes):
                          "adapter_0_bundle_b64": ad0_b64})
 
 
+def create_round_and_assignments(proto, run_id, round_id, backend_name,
+                                 base_model_hash, adapter_0_sha,
+                                 adapter_pre_hash, assignments, shard_mf_fn,
+                                 expected_ett_fn, dataset_manifest_sha=""):
+    """R2.3: el Coordinator crea la ronda i les assignacions (autoritat).
+    assignments: llista de dicts {assignment_id, worker_id, shard, num_ex}"""
+    proto.handle("round.create", {
+        "run_id": run_id, "round_id": round_id, "backend_id": backend_name,
+        "base_model_hash": base_model_hash, "adapter_0_sha": adapter_0_sha,
+        "adapter_pre_hash": adapter_pre_hash,
+        "dataset_manifest_sha": dataset_manifest_sha})
+    for a in assignments:
+        shard_mf = shard_mf_fn(a["shard"])
+        exp_ett = expected_ett_fn(a["shard"], a["num_ex"])
+        proto.handle("assignment.create", {
+            "run_id": run_id, "round_id": round_id,
+            "assignment_id": a["assignment_id"], "worker_id": a["worker_id"],
+            "shard_id": f"shard-{a['shard']}", "shard_manifest_sha": shard_mf,
+            "base_model_hash": base_model_hash, "adapter_0_sha": adapter_0_sha,
+            "expected_ett": exp_ett, "revision": 1})
+        print(f"  [coord] assignment {a['assignment_id']} -> shard-{a['shard']} "
+              f"expected_ett={exp_ett}", flush=True)
+
+
 def oracle_fedavg(coordinator, run_id, round_id, adapter_0_bytes):
     rows = coordinator.active_deltas(run_id, round_id)
     deltas, etts = [], []
@@ -114,6 +138,52 @@ def compare_oracle(fed_a1_bytes, oracle, tol=1e-6):
     fed_a1 = unpack_tensors(fed_a1_bytes)
     return max(float(np.abs(np.asarray(fed_a1[n], dtype="float64") -
                             oracle[n].astype("float64")).max()) for n in oracle)
+
+
+def expected_ett_for_shard(backend_name, model, seq_len, shard, num_ex,
+                           bcfg=None):
+    """R2.3, punt 7: expected_ett calculat PRÈVIAMENT amb el backend
+    (etapa trusted/backend-aware). El Coordinator només guarda el valor."""
+    from model_worker import load_backend, load_examples
+    cls = load_backend(backend_name)
+    mp = model or ("dummy" if backend_name == "dummy"
+                   else "/root/qwen3_0_6b_snapshot")
+    dbp = f"/tmp/generic_plan_{backend_name}_{shard}.db"
+    if os.path.exists(dbp):
+        os.remove(dbp)
+    bk = cls(mp, db_path=dbp, seq_len=seq_len, **(bcfg or {}))
+    bk.load_model()
+    exs = load_examples(data_dir_for(backend_name), shard, num_ex)
+    ett = 0
+    for e in exs:
+        tok = bk.tokenize_example(e["instruction"], e["response"])
+        ett += bk.compute_ett(tok[2] if isinstance(tok, tuple) else tok)
+    bk.close()
+    return ett
+
+
+def data_dir_for(backend_name):
+    if backend_name == "qwen3":
+        return os.environ.get("QWEN3_DATA", "/root/meshtrainer/qwen3_pilot_data")
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "qwen3_pilot_data")
+
+
+def compute_pre_hash(backend_name, model, seq_len, adapter_bytes):
+    """R2.3: adapter_pre_hash = hash de l'estat del model AMB l'adapter
+    carregat (baseline de la ronda). Etapa trusted del Coordinator."""
+    from model_worker import load_backend
+    cls = load_backend(backend_name)
+    mp = model or ("dummy" if backend_name == "dummy"
+                   else "/root/qwen3_0_6b_snapshot")
+    dbp = f"/tmp/generic_prehash_{backend_name}_{hashlib.sha256(adapter_bytes).hexdigest()[:8]}.db"
+    bk = cls(mp, db_path=dbp, seq_len=seq_len)
+    bk.load_model()
+    sha = hashlib.sha256(adapter_bytes).hexdigest()
+    bk.load_adapter(adapter_bytes, sha, strict=True)
+    pre = bk.adapter_hash()
+    bk.close()
+    return pre
 
 
 def main():
@@ -148,6 +218,36 @@ def main():
     httpd, proto = serve(port=19862, db_path=args.server_db)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     time.sleep(0.5)
+
+    # ── R2.3: el Coordinator crea la ronda i les assignacions (autoritat).
+    #    expected_ett i shard_manifest es calculen PRÈVIAMENT amb el backend
+    #    (etapa trusted) — mateixa lògica que el worker (load_examples).
+    from model_worker import load_examples as _lex, shard_manifest_sha as _sms
+
+    def _shard_mf(shard, n):
+        exs = _lex(data_dir_for(args.backend), shard, n)
+        return _sms([e["source"] for e in exs])
+
+    def _expected_ett(shard, n):
+        return expected_ett_for_shard(args.backend, args.model, args.seq_len,
+                                      shard, n)
+    base_hash = identity["base_model_hash"]
+    adapter_pre_hash = compute_pre_hash(args.backend, args.model,
+                                        args.seq_len, ad0)
+    create_round_and_assignments(
+        proto, "run1", "r1", args.backend, base_hash, ad0_sha,
+        adapter_pre_hash,
+        [{"assignment_id": "asg-A", "worker_id": "w-A", "shard": "A",
+          "num_ex": args.num_examples},
+         {"assignment_id": "asg-B", "worker_id": "w-B", "shard": "B",
+          "num_ex": args.num_examples}],
+        shard_mf_fn=lambda sh, n=args.num_examples: _shard_mf(sh, n),
+        expected_ett_fn=_expected_ett)
+    check("coordinator: round r1 creada (model_rounds)",
+          proto.coord.get_round("run1", "r1") is not None)
+    check("coordinator: assignments A/B creades",
+          proto.coord.get_assignment("run1", "r1", "asg-A", "w-A") is not None
+          and proto.coord.get_assignment("run1", "r1", "asg-B", "w-B") is not None)
 
     # ── 3/4. Worker A i B (subprocessos reals) ──
     wA_rc, wA_out = run_worker(args.backend, "w-A", "A1", "A", "asg-A", "r1",
@@ -187,9 +287,22 @@ def main():
         f.write(base64.b64decode(fed1["adapter_1_b64"]))
 
     # ── 7. ROUND 2 (adapter_1 distribuït) ──
+    # R2.3: nova ronda r2 amb adapter_1 com a adapter global + assignments
+    n2 = max(1, args.num_examples // 2)
+    a1_bytes = base64.b64decode(fed1["adapter_1_b64"])
+    a1_pre = compute_pre_hash(args.backend, args.model, args.seq_len, a1_bytes)
+    create_round_and_assignments(
+        proto, "run1", "r2", args.backend, base_hash,
+        fed1["adapter_1_sha"], a1_pre,
+        [{"assignment_id": "asg-A2", "worker_id": "w-A2", "shard": "A",
+          "num_ex": n2},
+         {"assignment_id": "asg-B2", "worker_id": "w-B2", "shard": "B",
+          "num_ex": n2}],
+        shard_mf_fn=lambda sh, n=n2: _shard_mf(sh, n),
+        expected_ett_fn=_expected_ett)
     wA2_rc, wA2_out = run_worker(args.backend, "w-A2", "A2", "A", "asg-A2",
                                  "r2", a1_path, fed1["adapter_1_sha"], OUT,
-                                 max(1, args.num_examples // 2), args.seq_len)
+                                 n2, args.seq_len)
     check("worker A2 (round 2)", wA2_rc == 0 and "WORKER_DONE" in wA2_out)
     wB2_rc, wB2_out = run_worker(args.backend, "w-B2", "B2", "B", "asg-B2",
                                  "r2", a1_path, fed1["adapter_1_sha"], OUT,

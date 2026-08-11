@@ -134,6 +134,11 @@ class DummyBackend(TrainingBackend):
     def adapter_hash(self) -> str:
         return self._hash_model(self.model)
 
+    def post_hash(self) -> str:
+        """R2.3 (punt 10): hash post-entrenament — pel dummy, el hash estricte
+        és exacte (sumes float32 exactes), idèntic al de la reconstrucció."""
+        return self._hash_model(self.model)
+
     def _hash_model(self, m: dict) -> str:
         h = hashlib.sha256()
         for n in sorted(m):

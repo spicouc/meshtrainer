@@ -203,16 +203,20 @@ def main():
          "config_sha": bk.base_model_identity().get("config_sha")})
     print(f"[{args.worker_id}] {pid} REGISTERED base={base_hash[:16]}", flush=True)
 
-    # ── 2. calibrar-se ──
-    rpc(args.server_url, "worker.calibrate",
+    # ── 2. calibrar-se (R2.3: VERIFICACIÓ — l'assignació la crea el
+    #    Coordinator via assignment.create; el worker només envia el que té
+    #    i el servidor compara TOT) ──
+    cal = rpc(args.server_url, "worker.calibrate",
         {"worker_id": args.worker_id, "session_id": args.session_id,
          "run_id": args.run_id, "round_id": args.round_id,
          "assignment_id": args.assignment_id, "shard_id": f"shard-{args.shard}",
          "shard_manifest_sha": shard_mf,
+         "base_model_hash": base_hash,
          "adapter_0_sha": hashlib.sha256(open(args.adapter_0, "rb").read()).hexdigest()
          if args.adapter_0 else "",
          "ett_registered": ett_registered})
-    print(f"[{args.worker_id}] CALIBRATED ett={ett_registered}", flush=True)
+    print(f"[{args.worker_id}] CALIBRATED ett={ett_registered} "
+          f"expected={cal.get('expected_ett')}", flush=True)
 
     # ── 3. obtenir assignment ──
     a = rpc(args.server_url, "assignment.get",
@@ -307,7 +311,8 @@ def main():
               "ett_actual": ett_actual, "delta_sha": delta_sha,
               "lease_id": ls["lease_id"], "lease_nonce": ls["lease_nonce"],
               "train_only": True, "loss": loss,
-              "adapter_post_hash": bk.adapter_hash()}
+              "adapter_post_hash": bk.post_hash() if hasattr(bk, "post_hash")
+              else bk.adapter_hash()}
         with open(ev_path, "w", encoding="utf-8") as f:
             json.dump(ev, f, ensure_ascii=False, indent=2)
         print(f"[{args.worker_id}] CRASH SIMULAT (train-only, sense HTTP)", flush=True)
@@ -365,7 +370,8 @@ def main():
           "delta_b64_len": len(delta_b64), "receipt_id": receipt["receipt_id"],
           "contribution_id": cid, "loss": loss, "train_time_s": train_time,
           "lease_id": ls["lease_id"], "lease_nonce": ls["lease_nonce"],
-          "adapter_post_hash": bk.adapter_hash()}
+          "adapter_post_hash": bk.post_hash() if hasattr(bk, "post_hash")
+          else bk.adapter_hash()}
     with open(ev_path, "w", encoding="utf-8") as f:
         json.dump(ev, f, ensure_ascii=False, indent=2)
     bk.close()

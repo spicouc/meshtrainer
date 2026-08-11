@@ -119,6 +119,13 @@ def run_worker(backend_name, worker_id, session, shard, assignment, round_id,
     return rc, out, killed
 
 
+def data_dir(backend_name):
+    if backend_name == "qwen3":
+        return os.environ.get("QWEN3_DATA", "/root/meshtrainer/qwen3_pilot_data")
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "qwen3_pilot_data")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--backend", required=True, choices=["qwen3", "dummy"])
@@ -154,8 +161,42 @@ def main():
 
     # servidor S1
     httpd1, proto1 = server_boot(DB)
+
+    # R2.3: el Coordinator crea la ronda i les assignacions (autoritat)
+    def coord_setup(proto, base_hash, adapter_sha, pre_hash, assignments,
+                    num_ex):
+        """assignments: [(assignment_id, worker_id, shard)]"""
+        proto.handle("round.create", {
+            "run_id": "run1", "round_id": "r1", "backend_id": args.backend,
+            "base_model_hash": base_hash, "adapter_0_sha": adapter_sha,
+            "adapter_pre_hash": pre_hash, "dataset_manifest_sha": ""})
+        from model_worker import load_examples as _lex, shard_manifest_sha as _sms
+        for aid, wid, shard in assignments:
+            exs = _lex(data_dir(args.backend), shard, num_ex)
+            mf = _sms([e["source"] for e in exs])
+            proto.handle("assignment.create", {
+                "run_id": "run1", "round_id": "r1", "assignment_id": aid,
+                "worker_id": wid, "shard_id": f"shard-{shard}",
+                "shard_manifest_sha": mf, "base_model_hash": base_hash,
+                "adapter_0_sha": adapter_sha, "expected_ett": 0,
+                "revision": 1})
+
+    from model_worker import load_backend as _lb, load_examples as _lex
+    _bk0 = _lb(args.backend)
+    _mp0 = ("dummy" if args.backend == "dummy" else "/root/qwen3_0_6b_snapshot")
+    _bk0 = _bk0(_mp0, db_path=f"/tmp/genrec_pre_{args.backend}.db",
+                seq_len=args.seq_len)
+    _bk0.load_model()
+    _bk0.load_adapter(ad0, ad0_sha, strict=True)
+    pre_hash0 = _bk0.adapter_hash()
+    _bk0.close()
+    base_hash0 = ident["base_model_hash"]
+
     # worker que fa el pas sencer contra S1 (deixa la unitat COMMITTED i
     # una contribució ACTIVE a la BD)
+    coord_setup(proto1, base_hash0, ad0_sha, pre_hash0,
+                [("asg-ida", "w-ida", "A"), ("asg-ida2", "w-ida2", "A")],
+                args.num_examples)
     rc1, out1, _ = run_worker(args.backend, "w-ida", "IDA1", "A", "asg-ida",
                               "r1", ad0_path, ad0_sha, OUT,
                               args.num_examples, args.seq_len)
@@ -181,6 +222,7 @@ def main():
                                  "assignment_id": "asg-ida2",
                                  "shard_id": "shard-A",
                                  "shard_manifest_sha": ev_ida["shard_manifest_sha"],
+                                 "base_model_hash": ev_ida["base_model_hash"],
                                  "adapter_0_sha": ad0_sha,
                                  "ett_registered": ev_ida["ett_registered"]})
     ls2 = rpc_raw("lease.acquire",
@@ -299,6 +341,11 @@ def main():
         os.remove(DB2)
     httpd3, proto3 = server_boot(DB2)
 
+    # R2.3: ronda + assignacions per a w-nc / w-cr (recovery)
+    coord_setup(proto3, base_hash0, ad0_sha, pre_hash0,
+                [("asg-nc", "w-nc", "A"), ("asg-cr", "w-cr", "A")],
+                args.num_examples)
+
     # 1) execució NO-CRASH: worker complet -> adapter_post de referència
     out_nc = f"{OUT}/nocrash"
     shutil.rmtree(out_nc, ignore_errors=True)
@@ -331,16 +378,23 @@ def main():
     #    recupera + completa el flux
     from model_worker import load_backend as _load_backend
     bk_cls = _load_backend(args.backend)
+    # guardem el PID del CRASH explícitament (R2.3, punt 10)
+    crash_pid = json.load(open(os.path.join(out_cr, "evidence_w-cr.json")))["pid"]
     rc_r, out_r, _ = run_worker(args.backend, "w-cr", "CR1", "A", "asg-cr",
                                 "r1", ad0_path, ad0_sha, out_cr,
                                 args.num_examples, args.seq_len)
     check("recovery: worker nou (PID diferent) completa el flux",
           rc_r == 0 and "WORKER_DONE" in out_r)
     ev_r = json.load(open(os.path.join(out_cr, "evidence_w-cr.json")))
-    check("recovery: PID diferent del crash",
-          ev_r["pid"] != json.load(open(os.path.join(out_cr,
-                                                     "evidence_w-cr.json"))).get("pid")
-          or True)  # el pid del worker recuperat és el del 2n procés
+    recovery_pid = ev_r["pid"]
+    check("recovery: crash_pid != recovery_pid",
+          crash_pid != recovery_pid, f"{crash_pid} -> {recovery_pid}")
+    # R2.3, punt 10: adapter_post del recovery ha de ser EXACTE
+    # (byte-for-byte) com el del cas no-crash
+    check("adapter_post_no_crash == adapter_post_recovered (hash exacte)",
+          ev_nc["adapter_post_hash"] == ev_r["adapter_post_hash"],
+          f"nc={ev_nc['adapter_post_hash'][:16]} "
+          f"rec={ev_r['adapter_post_hash'][:16]}")
     # recupera adapter_post i continua: SENSE segon optimizer en els APPLIED
     import sqlite3
     conn = sqlite3.connect(jdb)

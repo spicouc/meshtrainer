@@ -70,6 +70,14 @@ class Qwen3Backend(Qwen3TrainingBackend, TrainingBackend):
     def adapter_hash(self) -> str:
         return self.hash_adapter()
 
+    def post_hash(self) -> str:
+        """R2.3 (punt 10): hash de l'estat post-entrenament amb el MATEIX
+        mètode que el backend certificat usa per verificar la reconstrucció
+        (hash_adapter_tolerant). El recovery reconstrueix pre+delta amb 1 ulp
+        d'arrodoniment; l'evidència ha de comparar amb el mateix criteri,
+        altrament un hash estricte canviaria tot el digest per un bit."""
+        return self.hash_adapter_tolerant()
+
     def tokenize_example(self, instruction: str, response: str | None = None):
         if response is None:
             return self.tokenize_chat(instruction)

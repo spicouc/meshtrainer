@@ -41,6 +41,18 @@ class ModelRoundCoordinator:
 
     def _init_db(self):
         self._conn.executescript("""
+            CREATE TABLE IF NOT EXISTS model_rounds (
+                run_id TEXT NOT NULL,
+                round_id TEXT NOT NULL,
+                backend_id TEXT NOT NULL,
+                base_model_hash TEXT NOT NULL,
+                adapter_0_sha TEXT NOT NULL,
+                adapter_pre_hash TEXT NOT NULL,
+                dataset_manifest_sha TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'OPEN',
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (run_id, round_id)
+            );
             CREATE TABLE IF NOT EXISTS model_assignments (
                 assignment_id TEXT NOT NULL,
                 run_id TEXT NOT NULL,
@@ -51,6 +63,7 @@ class ModelRoundCoordinator:
                 base_model_hash TEXT NOT NULL,
                 adapter_0_sha TEXT NOT NULL,
                 ett_registered INTEGER NOT NULL DEFAULT 0,
+                expected_ett INTEGER NOT NULL DEFAULT 0,
                 status TEXT NOT NULL DEFAULT 'ASSIGNED',
                 revision INTEGER DEFAULT 1,
                 PRIMARY KEY (run_id, round_id, assignment_id)
@@ -73,10 +86,124 @@ class ModelRoundCoordinator:
         """)
         self._conn.commit()
 
+    # -- rondes (R2.3: el Coordinator és l'autoritat) ----------------------
+    def create_round(self, run_id, round_id, backend_id, base_model_hash,
+                     adapter_0_sha, adapter_pre_hash, dataset_manifest_sha=""):
+        """Operació Coordinator/admin. Un cop creada, base_model_hash,
+        adapter_0_sha i backend_id són IMMUTABLES (AUTH-03/05)."""
+        ex = self._conn.execute(
+            "SELECT * FROM model_rounds WHERE run_id=? AND round_id=?",
+            (run_id, round_id)).fetchone()
+        if ex is not None:
+            # idempotent només si els camps immutables coincideixen
+            if (ex["backend_id"] != backend_id
+                    or ex["base_model_hash"] != base_model_hash
+                    or ex["adapter_0_sha"] != adapter_0_sha):
+                raise ModelRecoveryError(
+                    "round_immutable_mismatch", run_id=run_id,
+                    round_id=round_id,
+                    msg="la ronda ja existeix amb camps immutables DIFERENTS — REJECTED")
+            return {"run_id": run_id, "round_id": round_id, "status": ex["status"]}
+        with self._tx():
+            self._conn.execute(
+                "INSERT INTO model_rounds (run_id, round_id, backend_id,"
+                " base_model_hash, adapter_0_sha, adapter_pre_hash,"
+                " dataset_manifest_sha, status) VALUES (?,?,?,?,?,?,?, 'OPEN')",
+                (run_id, round_id, backend_id, base_model_hash, adapter_0_sha,
+                 adapter_pre_hash, dataset_manifest_sha))
+        return {"run_id": run_id, "round_id": round_id, "status": "OPEN"}
+
+    def get_round(self, run_id, round_id):
+        row = self._conn.execute(
+            "SELECT * FROM model_rounds WHERE run_id=? AND round_id=?",
+            (run_id, round_id)).fetchone()
+        return dict(row) if row else None
+
+    def verify_round_base(self, run_id, round_id, base_model_hash):
+        """Tots els workers de la ronda han de coincidir amb
+        model_rounds.base_model_hash (AUTH-04)."""
+        r = self.get_round(run_id, round_id)
+        if r is None:
+            raise ModelRecoveryError("round_not_found", run_id=run_id,
+                                     round_id=round_id)
+        if r["base_model_hash"] != base_model_hash:
+            raise ModelRecoveryError(
+                "round_base_model_mismatch",
+                expected=r["base_model_hash"][:16],
+                got=base_model_hash[:16],
+                msg="base model NO és el de la ronda — REJECTED")
+        return r
+
+    def verify_round_adapter(self, run_id, round_id, adapter_0_sha):
+        """Tots els workers han de partir dels mateixos bytes d'adapter
+        (adapter_0_sha de la ronda) — AUTH-05."""
+        r = self.get_round(run_id, round_id)
+        if r is None:
+            raise ModelRecoveryError("round_not_found", run_id=run_id,
+                                     round_id=round_id)
+        if r["adapter_0_sha"] != adapter_0_sha:
+            raise ModelRecoveryError(
+                "round_adapter_mismatch",
+                expected=r["adapter_0_sha"][:16],
+                got=adapter_0_sha[:16],
+                msg="adapter_0 NO és el de la ronda — REJECTED")
+        return r
+
+    def round_active_contributions(self, run_id, round_id):
+        return self._conn.execute(
+            "SELECT * FROM model_contributions WHERE run_id=? AND round_id=?"
+            " AND status='ACTIVE'", (run_id, round_id)).fetchall()
+
+    def verify_contributions_homogeneous_prehash(self, run_id, round_id):
+        """FedAvg NO pot executar si les contribucions ACTIVE no comparteixen
+        adapter_pre_hash (AUTH-13)."""
+        rows = self.round_active_contributions(run_id, round_id)
+        if not rows:
+            raise ModelRecoveryError("no_active_contributions")
+        first = rows[0]["adapter_pre_hash"]
+        for r in rows[1:]:
+            if r["adapter_pre_hash"] != first:
+                raise ModelRecoveryError(
+                    "heterogeneous_adapter_pre_hash",
+                    msg="contribucions ACTIVE amb adapter_pre_hash DIFERENTS — "
+                        "FedAvg REJECTED")
+        return first
+
     # -- assignacions ------------------------------------------------------
+    def create_assignment(self, run_id, round_id, assignment_id, worker_id,
+                          shard_id, shard_manifest_sha, base_model_hash,
+                          adapter_0_sha, expected_ett, revision=1):
+        """Operació Coordinator/admin. L'assignació ha d'existir ABANS que el
+        worker es calibra (AUTH-01/02). Un worker NO pot sobreescriure una
+        assignació existent (AUTH-14)."""
+        ex = self._conn.execute(
+            "SELECT * FROM model_assignments WHERE run_id=? AND round_id=?"
+            " AND assignment_id=?",
+            (run_id, round_id, assignment_id)).fetchone()
+        if ex is not None:
+            raise ModelRecoveryError(
+                "assignment_exists", assignment_id=assignment_id,
+                msg="l'assignació ja existeix — un worker NO la pot "
+                    "sobreescriure (AUTH-14)")
+        with self._tx():
+            self._conn.execute(
+                "INSERT INTO model_assignments (assignment_id, run_id,"
+                " round_id, worker_id, shard_id, shard_manifest_sha,"
+                " base_model_hash, adapter_0_sha, ett_registered,"
+                " expected_ett, status, revision) VALUES"
+                " (?,?,?,?,?,?,?,?,0,?, 'ASSIGNED', ?)",
+                (assignment_id, run_id, round_id, worker_id, shard_id,
+                 shard_manifest_sha, base_model_hash, adapter_0_sha,
+                 expected_ett, revision))
+        return {"assignment_id": assignment_id, "status": "ASSIGNED",
+                "revision": revision}
+
     def assign(self, run_id, round_id, assignment_id, worker_id, shard_id,
                shard_manifest_sha, base_model_hash, adapter_0_sha,
                ett_registered=0, revision=None):
+        """DEPRECATED (R2.3): només existeix per compatibilitat amb tests
+        antics. La via correcta és create_assignment + verify_calibration.
+        NO es crida des de worker.calibrate."""
         rev = revision or 1
         with self._tx():
             self._conn.execute(
@@ -89,6 +216,65 @@ class ModelRoundCoordinator:
                  ett_registered, rev))
         return {"assignment_id": assignment_id, "status": "ASSIGNED",
                 "revision": rev}
+
+    def verify_calibration(self, run_id, round_id, assignment_id, worker_id,
+                           shard_id, shard_manifest_sha, base_model_hash,
+                           adapter_0_sha, ett):
+        """worker.calibrate = VERIFICACIÓ (R2.3, punt 3).
+
+        El Coordinator carrega l'assignació PREEXISTENT (creada per
+        assignment.create) i compara TOT: worker_id, base model, adapter,
+        shard, manifest i ETT. Qualsevol diferència -> REJECTED.
+        NO crea ni modifica cap assignació."""
+        a = self.get_assignment(run_id, round_id, assignment_id, worker_id)
+        if a is None:
+            raise ModelRecoveryError(
+                "unknown_assignment", assignment_id=assignment_id,
+                msg="l'assignació no existeix (ha de crear-la el Coordinator "
+                    "ABANS del calibrate) — REJECTED (AUTH-01/02)")
+        if a["worker_id"] != worker_id:
+            raise ModelRecoveryError(
+                "worker_mismatch", assignment_id=assignment_id,
+                expected=a["worker_id"], got=worker_id)
+        if a["base_model_hash"] != base_model_hash:
+            raise ModelRecoveryError(
+                "base_model_mismatch", assignment_id=assignment_id,
+                expected=a["base_model_hash"][:16],
+                got=base_model_hash[:16],
+                msg="base model NO coincideix amb l'assignació — REJECTED")
+        if a["adapter_0_sha"] != adapter_0_sha:
+            raise ModelRecoveryError(
+                "adapter_0_sha_mismatch", assignment_id=assignment_id,
+                expected=a["adapter_0_sha"][:16],
+                got=adapter_0_sha[:16],
+                msg="adapter_0 NO coincideix amb l'assignació — REJECTED (AUTH-05)")
+        if a["shard_id"] != shard_id:
+            raise ModelRecoveryError(
+                "shard_mismatch", assignment_id=assignment_id,
+                expected=a["shard_id"], got=shard_id,
+                msg="shard NO coincideix amb l'assignació — REJECTED (AUTH-07)")
+        if a["shard_manifest_sha"] != shard_manifest_sha:
+            raise ModelRecoveryError(
+                "shard_manifest_mismatch", assignment_id=assignment_id,
+                expected=a["shard_manifest_sha"][:16],
+                got=shard_manifest_sha[:16],
+                msg="shard manifest NO coincideix — REJECTED (AUTH-08)")
+        if a["expected_ett"] and a["expected_ett"] != ett:
+            raise ModelRecoveryError(
+                "ett_mismatch", assignment_id=assignment_id,
+                expected=a["expected_ett"], got=ett,
+                msg="ETT NO coincideix amb el plan (expected_ett) — "
+                    "REJECTED (AUTH-09/10)")
+        # marquem l'ETT verificat (idempotent)
+        if a["ett_registered"] != ett:
+            with self._tx():
+                self._conn.execute(
+                    "UPDATE model_assignments SET ett_registered=?,"
+                    " status='CALIBRATED' WHERE run_id=? AND round_id=?"
+                    " AND assignment_id=?",
+                    (ett, run_id, round_id, assignment_id))
+            a = self.get_assignment(run_id, round_id, assignment_id, worker_id)
+        return a
 
     def get_assignment(self, run_id, round_id, assignment_id, worker_id):
         row = self._conn.execute(
@@ -128,10 +314,33 @@ class ModelRoundCoordinator:
         if a is None:
             raise ModelRecoveryError("unknown_assignment",
                                      assignment_id=assignment_id)
-        if a["ett_registered"] != ett:
+        if a["expected_ett"] and a["expected_ett"] != ett:
+            raise ModelRecoveryError(
+                "ett_mismatch", expected=a["expected_ett"], got=ett)
+        if a["ett_registered"] and a["ett_registered"] != ett:
             raise ModelRecoveryError(
                 "ett_mismatch", registered=a["ett_registered"], got=ett)
         return a
+
+    def verify_contribution_pre_hash(self, run_id, round_id, assignment_id,
+                                     worker_id, adapter_pre_hash):
+        """R2.3 (AUTH-06/12): la contribució ha de partir del mateix estat
+        (adapter_pre_hash) que l'assignació/ronda."""
+        r = self.get_round(run_id, round_id)
+        if r is not None and r["adapter_pre_hash"]:
+            if r["adapter_pre_hash"] != adapter_pre_hash:
+                raise ModelRecoveryError(
+                    "adapter_pre_hash_mismatch",
+                    expected=r["adapter_pre_hash"][:16],
+                    got=adapter_pre_hash[:16],
+                    msg="adapter_pre_hash NO és el baseline de la ronda — "
+                        "REJECTED (AUTH-06)")
+            return r["adapter_pre_hash"]
+        a = self.get_assignment(run_id, round_id, assignment_id, worker_id)
+        if a is None:
+            raise ModelRecoveryError("unknown_assignment",
+                                     assignment_id=assignment_id)
+        return a["adapter_0_sha"]
 
     # -- contribucions ------------------------------------------------------
     def register_uploaded_contribution(self, cid, run_id, round_id,
@@ -149,6 +358,16 @@ class ModelRoundCoordinator:
         if delta_bundle_sha256 != adapter_codec.bundle_sha256(
                 base64.b64decode(delta_bundle_b64)):
             raise ModelRecoveryError("delta_sha_mismatch", cid=cid)
+        # R2.3 (AUTH-12): el baseline de la contribució ha de ser el de la
+        # ronda (adapter_pre_hash global)
+        try:
+            self.verify_contribution_pre_hash(
+                run_id, round_id, assignment_id, worker_id, adapter_pre_hash)
+        except ModelRecoveryError as e:
+            raise ModelRecoveryError(
+                "adapter_pre_hash_mismatch", cid=cid,
+                msg=f"baseline de la contribució NO és el de la ronda — "
+                    f"REJECTED (AUTH-12): {e.reason}")
         with self._tx():
             self._conn.execute(
                 "INSERT INTO model_contributions (cid, run_id, round_id,"
@@ -222,7 +441,10 @@ class ModelRoundCoordinator:
     def fedavg(self, run_id, round_id, adapter_0_bundle_b64: str):
         """adapter_1 = adapter_0 + Σ(delta_i * ETT_i) / ΣETT_i (float64).
         Fórmula idèntica a aggregation.FedAvgLoRA; càlcul via adapter_codec
-        (cap import de model)."""
+        (cap import de model). R2.3: REFUSA contribucions ACTIVE amb
+        adapter_pre_hash heterogeni (AUTH-13)."""
+        # AUTH-13: totes les contribucions ACTIVE han de compartir pre_hash
+        self.verify_contributions_homogeneous_prehash(run_id, round_id)
         rows = self.active_deltas(run_id, round_id)
         if not rows:
             raise ModelRecoveryError("no_active_contributions")
@@ -236,8 +458,12 @@ class ModelRoundCoordinator:
             deltas_ett.append((adapter_codec.to_numpy_dict(d), r["ett"]))
         out = adapter_codec.fedavg(adapter_0_np, deltas_ett)
         adapter_1_bytes = adapter_codec.numpy_dict_to_bundle(out)
+        # R2.3: retorna el pre_hash homogeni verificat (AUTH-13)
+        pre_hash = self.verify_contributions_homogeneous_prehash(
+            run_id, round_id)
         return {"adapter_1_b64": adapter_codec.b64(adapter_1_bytes),
                 "adapter_1_sha": hashlib.sha256(adapter_1_bytes).hexdigest(),
+                "adapter_pre_hash": pre_hash,
                 "total_ett": sum(r["ett"] for r in rows),
                 "num_contributions": len(rows)}
 

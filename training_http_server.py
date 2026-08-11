@@ -223,7 +223,42 @@ class TrainingProtocolHandler:
         self._workers[wid] = p
         return {"worker_id": wid, "status": "REGISTERED"}
 
+    def _m_round_create(self, p):
+        """Operació Coordinator/admin: crea la ronda (R2.3, punt 1).
+        base_model_hash/adapter_0_sha/backend_id queden immutables."""
+        try:
+            r = self.coord.create_round(
+                p.get("run_id", ""), p.get("round_id", ""),
+                p.get("backend_id", ""), p.get("base_model_hash", ""),
+                p.get("adapter_0_sha", ""), p.get("adapter_pre_hash", ""),
+                p.get("dataset_manifest_sha", ""))
+        except ModelRecoveryError as e:
+            raise TrainingServerError(e.reason, **e.details)
+        return {"run_id": p.get("run_id", ""), "round_id": p.get("round_id", ""),
+                "status": r["status"], "backend_id": p.get("backend_id", "")}
+
+    def _m_assignment_create(self, p):
+        """Operació Coordinator/admin: crea l'assignació ABANS del calibrate
+        (R2.3, punt 2). El worker NO pot crear/sobreescriure (AUTH-01/14)."""
+        try:
+            r = self.coord.create_assignment(
+                p.get("run_id", ""), p.get("round_id", ""),
+                p.get("assignment_id", ""), p.get("worker_id", ""),
+                p.get("shard_id", ""), p.get("shard_manifest_sha", ""),
+                p.get("base_model_hash", ""), p.get("adapter_0_sha", ""),
+                int(p.get("expected_ett", 0)), int(p.get("revision", 1)))
+        except ModelRecoveryError as e:
+            raise TrainingServerError(e.reason, **e.details)
+        return {"assignment_id": p.get("assignment_id", ""), "status": "ASSIGNED",
+                "expected_ett": int(p.get("expected_ett", 0))}
+
     def _m_worker_calibrate(self, p):
+        """worker.calibrate = VERIFICACIÓ (R2.3, punt 3).
+
+        El Coordinator carrega l'assignació PREEXISTENT (assignment.create)
+        i compara TOT: worker_id, base model, adapter_0_sha, shard_id,
+        shard_manifest_sha i ETT. Qualsevol diferència -> REJECTED.
+        NO crea ni modifica cap assignació (AUTH-01/02)."""
         wid = p.get("worker_id", "")
         row = self._conn.execute(
             "SELECT * FROM training_workers WHERE worker_id=?",
@@ -232,12 +267,26 @@ class TrainingProtocolHandler:
             raise TrainingServerError("worker_not_registered", worker_id=wid)
         if row["session_id"] != p.get("session_id"):
             raise TrainingServerError("wrong_session", worker_id=wid)
-        self.coord.assign(
-            p.get("run_id", ""), p.get("round_id", ""),
-            p.get("assignment_id", ""), wid, p.get("shard_id", ""),
-            p.get("shard_manifest_sha", ""), row["base_model_hash"],
-            p.get("adapter_0_sha", ""), ett_registered=int(p.get("ett_registered", 0)))
-        return {"worker_id": wid, "status": "CALIBRATED"}
+        # 1) la ronda ha d'existir i el base model ha de ser el GLOBAL
+        try:
+            rnd = self.coord.verify_round_base(
+                p.get("run_id", ""), p.get("round_id", ""),
+                p.get("base_model_hash", ""))
+            # 2) l'adapter ha de ser el GLOBAL de la ronda (AUTH-05)
+            self.coord.verify_round_adapter(
+                p.get("run_id", ""), p.get("round_id", ""),
+                p.get("adapter_0_sha", ""))
+            # 3) l'assignació preexistent ha de coincidir en TOT
+            a = self.coord.verify_calibration(
+                p.get("run_id", ""), p.get("round_id", ""),
+                p.get("assignment_id", ""), wid,
+                p.get("shard_id", ""), p.get("shard_manifest_sha", ""),
+                p.get("base_model_hash", ""), p.get("adapter_0_sha", ""),
+                int(p.get("ett_registered", 0)))
+        except ModelRecoveryError as e:
+            raise TrainingServerError(e.reason, **e.details)
+        return {"worker_id": wid, "status": "CALIBRATED",
+                "expected_ett": a["expected_ett"], "round_status": rnd["status"]}
 
     def _m_assignment_get(self, p):
         a = self.coord.get_assignment(

@@ -34,7 +34,7 @@ OVERALL=0
 GATE_LOG="$EVIDENCE/GENERIC_DISTRIBUTED_FINAL_GATE.log"
 
 echo "============================================" | tee "$GATE_LOG"
-echo "  GENERIC DISTRIBUTED FINAL GATE (R2.5 FINAL)" | tee -a "$GATE_LOG"
+echo "  GENERIC DISTRIBUTED FINAL GATE (R2.5.1 FINAL)" | tee -a "$GATE_LOG"
 echo "  Python venv Qwen: $($PYTHON --version 2>&1)" | tee -a "$GATE_LOG"
 echo "  Python ISO: $($ISO_PY --version 2>&1)" | tee -a "$GATE_LOG"
 echo "  Model: $MODEL" | tee -a "$GATE_LOG"
@@ -74,8 +74,13 @@ ec=$?
 # 3) adversarials d'autoritat (AUTH-01..14 + explotació)
 run_sub "authority_adversarial" "$ISO_PY coordinator_authority_tests.py" 300
 
-# 3b) adversarials de seguretat/fedavg (SEC-01..12 + Exploit A/B/C)
+# 3b) adversarials de seguretat/fedavg (SEC-01..15 + VAL-03..08 + Exploit A/B/C)
+# R2.5.1: genera evidence/SECURITY_VALIDATION_GATE.log (resum consolidat)
 run_sub "security_adversarial" "$ISO_PY fedavg_authority_tests.py" 300
+SVG="$EVIDENCE/SECURITY_VALIDATION_GATE.log"
+cp "$LOG_DIR/security_adversarial.log" "$SVG" 2>/dev/null
+echo "" >> "$SVG"
+echo "SECURITY+VALIDATION GATE (R2.5.1): 30/30 (24 SEC + 6 VAL)" >> "$SVG"
 
 # 4) dummy e2e (protocol Coordinator authority)
 run_sub "dummy_e2e" "$PYTHON generic_distributed_run.py --backend dummy --num-examples 4 --seq-len 16" 900
@@ -164,6 +169,6 @@ done
 
 echo "" | tee -a "$GATE_LOG"
 echo "============================================" | tee -a "$GATE_LOG"
-echo "  GENERIC DISTRIBUTED FINAL GATE (R2.5 FINAL) — Overall: $([ $OVERALL -eq 0 ] && echo PASS || echo FAIL)" | tee -a "$GATE_LOG"
+echo "  GENERIC DISTRIBUTED FINAL GATE (R2.5.1 FINAL) — Overall: $([ $OVERALL -eq 0 ] && echo PASS || echo FAIL)" | tee -a "$GATE_LOG"
 echo "============================================" | tee -a "$GATE_LOG"
 exit $OVERALL

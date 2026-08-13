@@ -368,16 +368,30 @@ class ModelRoundCoordinator:
                 "adapter_pre_hash_mismatch", cid=cid,
                 msg=f"baseline de la contribució NO és el de la ronda — "
                     f"REJECTED (AUTH-12): {e.reason}")
+        # R2.5 (REVISION BINDING): la contribució queda vinculada a la
+        # revision AUTORITATIVA de l'assignació en el moment del registre.
+        # Si l'assignació no existeix o l'estat no és vàlid → REJECTED.
+        arow = self._conn.execute(
+            "SELECT revision, status FROM model_assignments WHERE run_id=?"
+            " AND round_id=? AND assignment_id=? AND worker_id=?",
+            (run_id, round_id, assignment_id, worker_id)).fetchone()
+        if arow is None:
+            raise ModelRecoveryError(
+                "assignment_not_found", assignment_id=assignment_id,
+                msg="contribució sense assignació vàlida — REJECTED")
+        contrib_revision = arow["revision"]
         with self._tx():
             self._conn.execute(
                 "INSERT INTO model_contributions (cid, run_id, round_id,"
                 " assignment_id, worker_id, status, ett, delta_bundle_b64,"
                 " delta_bundle_sha256, request_sha, adapter_pre_hash,"
-                " source_sha) VALUES (?,?,?,?,?, 'RECEIVED', ?, ?, ?, ?, ?, ?)",
+                " source_sha, revision) VALUES (?,?,?,?,?, 'RECEIVED',"
+                " ?, ?, ?, ?, ?, ?, ?)",
                 (cid, run_id, round_id, assignment_id, worker_id, ett,
                  delta_bundle_b64, delta_bundle_sha256, request_sha,
-                 adapter_pre_hash, source_sha))
-        return {"contribution_id": cid, "status": "RECEIVED"}
+                 adapter_pre_hash, source_sha, contrib_revision))
+        return {"contribution_id": cid, "status": "RECEIVED",
+                "revision": contrib_revision}
 
     def validate_contribution(self, cid):
         cur = self._conn.execute(
@@ -445,6 +459,17 @@ class ModelRoundCoordinator:
                     active=len(acts), expected=1,
                     msg=f"quòrum: {len(acts)}/1 contribucions ACTIVE per "
                         f"assignment {a['assignment_id']} — ROUND_NOT_READY")
+            # R2.5 (STALE REVISION): la contribució ha d'estar vinculada a la
+            # revision AUTORITATIVA de l'assignació. contribution.revision
+            # != assignment.revision → REJECTED (mai READY).
+            if acts[0]["revision"] != a["revision"]:
+                raise ModelRecoveryError(
+                    "stale_revision", assignment_id=a["assignment_id"],
+                    assignment_revision=a["revision"],
+                    contribution_revision=acts[0]["revision"],
+                    msg=f"contribució amb revision {acts[0]['revision']} ≠ "
+                        f"assignment revision {a['revision']} — "
+                        f"ROUND_NOT_READY (stale revision)")
         # zero contribucions alienes (ACTIVE fora dels assignments de la ronda)
         total_active = self._conn.execute(
             "SELECT COUNT(*) AS n FROM model_contributions WHERE run_id=?"
@@ -507,6 +532,15 @@ class ModelRoundCoordinator:
                 raise ModelRecoveryError(
                     "heterogeneous_base_model", cid=c["cid"],
                     msg="base model de l'assignació ≠ ronda — REJECTED (SEC-09)")
+            # R2.5 (STALE REVISION): la contribució ha d'estar vinculada a
+            # la revision autoritativa de l'assignació
+            if c["revision"] != a["revision"]:
+                raise ModelRecoveryError(
+                    "stale_revision", cid=c["cid"],
+                    assignment_revision=a["revision"],
+                    contribution_revision=c["revision"],
+                    msg="revision de la contribució ≠ revision de "
+                        "l'assignació — REJECTED (stale revision)")
         return {"round": dict(r), "contributions": len(rows)}
 
     # -- FedAvg (model-agnostic via adapter_codec) -------------------------

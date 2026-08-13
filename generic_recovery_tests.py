@@ -276,10 +276,11 @@ def main():
     resp_s1_up = rpc_raw("checkpoint.upload", p_up)
     cid2 = resp_s1_up.get("result", {}).get("contribution_id", "")
     # ── pas 5: contribution.register (PRIMERA crida -> RECEIVED, es guarda
-    # a la cache d'idempotència) + validate + activate (ADMIN) ──
+    # a la cache d'idempotència) + validate + activate (ADMIN — R2.5) ──
     p_reg = {**lease2, "contribution_id": cid2}
     resp_s1_reg = rpc_raw("contribution.register", p_reg)
-    rpc_raw("contribution.validate", {"contribution_id": cid2})
+    rpc_raw("contribution.validate",
+            {"contribution_id": cid2, "admin_token": ADMIN_TOKEN})
     rpc_raw("contribution.activate",
             {"contribution_id": cid2, "admin_token": ADMIN_TOKEN})
     # l'estat REAL de la contribució (via coordinator, no cache)

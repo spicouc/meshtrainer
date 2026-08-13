@@ -103,12 +103,16 @@ def fedavg_via_coordinator(proto, run_id, round_id, adapter_0_bytes):
 
 
 def admin_activate(proto, cids):
-    """R2.4: contribution.activate és operació ADMIN — el driver (admin)
-    activa les contribucions VALIDATED després que els workers les enviïn."""
+    """R2.4/R2.5: contribution.validate + activate són operacions ADMIN —
+    el driver (admin) valida i activa les contribucions SUBMITTED després
+    que els workers les enviïn (el worker NO pot decidir l'estat)."""
     for cid in cids:
+        proto.handle("contribution.validate",
+                     {"contribution_id": cid, "admin_token": ADMIN_TOKEN})
         proto.handle("contribution.activate",
                      {"contribution_id": cid, "admin_token": ADMIN_TOKEN})
-        print(f"  [admin] contribution.activate {cid[:16]}", flush=True)
+        print(f"  [admin] contribution validate+activate {cid[:16]}",
+              flush=True)
 
 
 def create_round_and_assignments(proto, run_id, round_id, backend_name,

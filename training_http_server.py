@@ -57,10 +57,13 @@ class TrainingProtocolHandler:
     """
 
     # operacions ADMIN (R2.4, punt 1) — qualsevol operació futura que
-    # modifiqui el pla autoritatiu de la ronda s'afegeix aquí
+    # modifiqui el pla autoritatiu de la ronda s'afegeix aquí.
+    # R2.5: contribution.validate també és ADMIN (un worker NO pot validar
+    # la seva pròpia contribució — l'estat la decideix el Coordinator).
     ADMIN_METHODS = frozenset([
         "round.create",
         "assignment.create",
+        "contribution.validate",
         "contribution.activate",
         "round.fedavg",
     ])

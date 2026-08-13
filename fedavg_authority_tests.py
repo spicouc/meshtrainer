@@ -151,6 +151,19 @@ def main():
                         "admin_token": "TOKEN-INCORRECTE"}),
                     "admin_credential_invalid")
 
+    print("\n=== SEC-13: worker NO pot validar la seva contribució ===")
+    # R2.5: contribution.validate és ADMIN — un worker (fins i tot amb la
+    # seva pròpia contribution_id) no pot validar-la (només SUBMIT).
+    expect_rejected("SEC-13 worker → contribution.validate → REJECTED",
+                    lambda: proto.handle("contribution.validate",
+                        {"contribution_id": "cid-propia"}),
+                    "admin_required")
+    expect_rejected("SEC-13b worker validate amb token incorrecte → REJECTED",
+                    lambda: proto.handle("contribution.validate",
+                        {"contribution_id": "cid-propia",
+                         "admin_token": "MAL"}),
+                    "admin_credential_invalid")
+
     # ════════ SEC-06..12: FedAvg authority ════════
     print("\n=== SEC-06: FedAvg amb 1/2 contribucions ===")
     B0, A0, P0, cids, bundle = setup_round(coord, "run1", "r1", n_assign=2)
@@ -251,14 +264,38 @@ def main():
     check("SEC-11 duplicate effective → SUPERSEDED (cap doble ACTIVE)",
           st1 == "SUPERSEDED" and st2 == "ACTIVE", f"{st1}/{st2}")
 
-    print("\n=== SEC-12: quòrum correcte + baseline correcte → PASS ===")
+    print("\n=== SEC-14: stale revision → ROUND_NOT_READY ===")
+    # R2.5: contribution.revision ha d'igualar assignment.revision.
+    # Simulem: registrem una contribució (revision 1), després l'assignació
+    # avança a revision 2 (UPDATE directe a la BD = pla autoritatiu canviat)
+    # → la contribució queda STALE i ready_to_close ha de REJECTAR.
+    real_s14 = make_real_adapter(seed=21)
+    B6, A6, P6, cids6, bundle6 = setup_round(coord, "run7", "r7", n_assign=1,
+                                             base_hex="bb", pre_hex="v",
+                                             real_bundle=real_s14)
+    coord._conn.execute(
+        "UPDATE model_assignments SET revision=2 WHERE run_id='run7'"
+        " AND round_id='r7' AND assignment_id='asg-0'")
+    coord._conn.commit()
+    # la contribució registrada té revision=1 (del registre); l'assignació
+    # ara és revision=2 → ready_to_close REJECTED (stale_revision)
+    expect_rejected("SEC-14 stale revision (contrib=1, assignment=2) "
+                    "→ ROUND_NOT_READY",
+                    lambda: coord.ready_to_close("run7", "r7"),
+                    "stale_revision")
+    expect_rejected("SEC-14b FedAvg amb stale revision → REJECTED",
+                    lambda: coord.fedavg("run7", "r7",
+                        base64.b64encode(real_s14).decode()),
+                    "stale_revision")
+
+    print("\n=== SEC-15: quòrum correcte + baseline correcte → PASS ===")
     real_e = make_real_adapter(seed=5)
     B3, A3, P3, cids3, bundle3 = setup_round(coord, "run4", "r4", n_assign=2,
                                              base_hex="e", pre_hex="s",
                                              real_bundle=real_e)
     res = coord.fedavg("run4", "r4",
                        base64.b64encode(real_e).decode())
-    check("SEC-12 quòrum 2/2 + baseline correcte → FedAvg OK",
+    check("SEC-15 quòrum 2/2 + baseline correcte → FedAvg OK",
           res["num_contributions"] == 2 and res["round_status"] == "READY",
           f"n={res['num_contributions']}")
 
@@ -286,8 +323,8 @@ def main():
                         "adapter_0_bundle_b64": base64.b64encode(b"x" * 64).decode()}),
                     "admin_required")
     n_rounds = conn.execute("SELECT COUNT(*) AS n FROM model_rounds").fetchone()["n"]
-    check("EXPLOIT A: cap fila nova a model_rounds", n_rounds == 4,
-          f"rounds={n_rounds} (run1..run4)")
+    check("EXPLOIT A: cap fila nova a model_rounds", n_rounds == 5,
+          f"rounds={n_rounds} (run1..run4+run7; run5/6 es creen després)")
 
     # ════════ EXPLOIT B ════════
     print("\n=== EXPLOIT B: 1/2 contribucions → ROUND_NOT_READY ===")

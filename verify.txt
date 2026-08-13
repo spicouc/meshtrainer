@@ -1,17 +1,17 @@
 verify.txt — PRE-TARBALL (còpia interna de DELIVERY_INFO; la verificació definitiva es fa sobre l'extracció del tarball final a clean-extraction)
 
 ======================================================================
- DELIVERY_INFO — MeshTrainer Generic Distributed (R2.4 FINAL)
- Generat: 2026-08-13 11:28:46 CEST
+ DELIVERY_INFO — MeshTrainer Generic Distributed (R2.5 FINAL)
+ Generat: 2026-08-13 17:22:42 CEST
 ======================================================================
 
-COMMIT (complet): bdd31948d247d4d8b49671dbdabf1a3ea9c91d9e
-PARENT (base):    8bee72b5f235136282318805d1fc19f06575d665
+COMMIT (complet): 97312398e248b56e4d6dc5c5b4a986005306b857
+PARENT (base):    7fdfaa805193389050c44e2b3ccb15e25f179b8f
 BRANCH:           rc5.4-stagea
 
-TARBALL: meshtrainer_generic_distributed_r2_4_final_bdd3194.tar.gz
-SIZE:    55905834 bytes
-SHA-256 (detached, autoritatiu): fdfecfd4c1d089b0002f7597e691f758e7dce8a2e8fffc4ab76801558aec42f7
+TARBALL: meshtrainer_generic_distributed_r2_5_final_9731239.tar.gz
+SIZE:    55907692 bytes
+SHA-256 (detached, autoritatiu): 11b31e6c7df66cd5f2ab13f0076bf8ea24483be51de93b5ff5bb0b2a89c28ac4
 
 FITXERS REGULARS (repo, sense .git/.venv/pycache/manifest): 338
 MANIFEST LINES: 338
@@ -42,20 +42,20 @@ GATE FINAL (evidence/GENERIC_DISTRIBUTED_FINAL_GATE.log):
   artefacte quality_before.json: OK
   artefacte quality_after.json: OK
   artefactes: PASS
-  GENERIC DISTRIBUTED FINAL GATE (R2.4 FINAL) — Overall: PASS
-  GENERIC DISTRIBUTED FINAL GATE (R2.4 FINAL) — Overall: PASS
+  GENERIC DISTRIBUTED FINAL GATE (R2.5 FINAL) — Overall: PASS
+  GENERIC DISTRIBUTED FINAL GATE (R2.5 FINAL) — Overall: PASS
 
 ARTEFACTES (qwen_distributed_output/):
   - adapter_0.bundle: sha256=e0877337c987bb873653b22f0016bc8b... (9209691 B)
   - adapter_1.bundle: sha256=e5f6bc7ce9a3c7553fd64d61faf0277f... (9209694 B)
   - adapter_2.bundle: sha256=e4a36bbd017a7b064201de715c34a641... (9209694 B)
   - distributed_metrics.json: sha256=ceb31cdc624b2bd8f15e512bff7e6618... (373 B)
-  - evidence_w-A.json: sha256=887dbf6cf91d6f26fea1e55838efcb12... (908 B)
-  - evidence_w-A2.json: sha256=8253334bf647a657abb3db63ac8b7d4c... (912 B)
-  - evidence_w-B.json: sha256=668de441431ddd0b7ecd099663fa47d2... (911 B)
-  - evidence_w-B2.json: sha256=5b773f4d99f39ad0514931c9ff404284... (912 B)
-  - quality_after.json: sha256=b5d7318a05cfc2b4f42d93ce587cc576... (5399 B)
-  - quality_before.json: sha256=fd72630fc6a51d325f3deb5084492bb8... (5901 B)
+  - evidence_w-A.json: sha256=a8610ba783861f31bbde305631656f8e... (908 B)
+  - evidence_w-A2.json: sha256=cbee39a80422e68d50f7925f09f6bb60... (912 B)
+  - evidence_w-B.json: sha256=b9a3d32cb8696821d6eaf2cc086a2fd8... (911 B)
+  - evidence_w-B2.json: sha256=3d0425761adc5f7b37a1e8a399837af9... (912 B)
+  - quality_after.json: sha256=c534240d8b7d759a43c8551e19db7303... (5399 B)
+  - quality_before.json: sha256=d17cd306508d34889db6eafdfaff356d... (5901 B)
 
 METRICS (distributed_metrics.json):
   backend: qwen3
@@ -76,10 +76,10 @@ QUALITY_AFTER.JSON: validation_loss=2.1686332881450654 ppl=8.74632216619331 hold
 CLASSIFICACIÓ: PIPELINE TRAINING PASS · QUALITY PILOT
 
 EVIDÈNCIES (PIDs):
-  - evidence_w-A.json: pid=17819 worker=w-A shard=A delta=8c72888369c419c2 adapter_post=5e190876beb9f318
-  - evidence_w-A2.json: pid=17950 worker=w-A2 shard=A delta=6d6077e1ac5a7873 adapter_post=8bbb795f7480ea7e
-  - evidence_w-B.json: pid=17859 worker=w-B shard=B delta=691b5ecd018ebee6 adapter_post=c261c7e842a33ee0
-  - evidence_w-B2.json: pid=17991 worker=w-B2 shard=B delta=b7f979b567639819 adapter_post=47eff08fde703972
+  - evidence_w-A.json: pid=21074 worker=w-A shard=A delta=8c72888369c419c2 adapter_post=5e190876beb9f318
+  - evidence_w-A2.json: pid=21203 worker=w-A2 shard=A delta=6d6077e1ac5a7873 adapter_post=8bbb795f7480ea7e
+  - evidence_w-B.json: pid=21113 worker=w-B shard=B delta=691b5ecd018ebee6 adapter_post=c261c7e842a33ee0
+  - evidence_w-B2.json: pid=21243 worker=w-B2 shard=B delta=b7f979b567639819 adapter_post=47eff08fde703972
 
 ======================================================================
  FI DELIVERY_INFO — cap camp pendent

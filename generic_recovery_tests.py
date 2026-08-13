@@ -177,14 +177,18 @@ def main():
             "adapter_pre_hash": pre_hash, "dataset_manifest_sha": "",
             "admin_token": ADMIN_TOKEN})
         from model_worker import load_examples as _lex, shard_manifest_sha as _sms
+        # R2.5.1: expected_ett REAL (etapa trusted) — el validate_contribution
+        # exigeix ett == expected_ett; 0 ja no és un valor vàlid.
+        from generic_distributed_run import expected_ett_for_shard as _eett
         for aid, wid, shard in assignments:
             exs = _lex(data_dir(args.backend), shard, num_ex)
             mf = _sms([e["source"] for e in exs])
+            exp_ett = _eett(args.backend, None, args.seq_len, shard, num_ex)
             proto.handle("assignment.create", {
                 "run_id": "run1", "round_id": "r1", "assignment_id": aid,
                 "worker_id": wid, "shard_id": f"shard-{shard}",
                 "shard_manifest_sha": mf, "base_model_hash": base_hash,
-                "adapter_0_sha": adapter_sha, "expected_ett": 0,
+                "adapter_0_sha": adapter_sha, "expected_ett": exp_ett,
                 "revision": 1, "admin_token": ADMIN_TOKEN})
 
     from model_worker import load_backend as _lb, load_examples as _lex

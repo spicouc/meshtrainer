@@ -299,6 +299,119 @@ def main():
           res["num_contributions"] == 2 and res["round_status"] == "READY",
           f"n={res['num_contributions']}")
 
+    # ════════ VAL-01..08 (R2.5.1: VALIDATED = realment validat) ════════
+    print("\n=== VAL-01..08: contribution validation authority (R2.5.1) ===")
+    # ronda neta per als tests VAL
+    real_v = make_real_adapter(seed=33)
+    Bv, Av, Pv, cids_v, bundle_v = setup_round(coord, "run8", "r8", n_assign=1,
+                                               base_hex="cc", pre_hex="w",
+                                               real_bundle=real_v)
+    vcid = cids_v[0]
+    # la contribució de setup_round ja està ACTIVE; en registrem una de nova
+    # RECEIVED (idèntica a la legítima) per als tests de validate
+    vdelta = make_real_adapter(seed=77, n_tensors=2, shape=(2, 2))
+    coord.register_uploaded_contribution(
+        "val-ok", "run8", "r8", "asg-0", "w-0", 100,
+        base64.b64encode(vdelta).decode(),
+        hashlib.sha256(vdelta).hexdigest(), "rq" * 32, Pv, "src")
+    # VAL-03: contribució legítima → VALIDATED
+    r = coord.validate_contribution("val-ok")
+    check("VAL-03 contribution legítima → VALIDATED",
+          r["status"] == "VALIDATED", r["status"])
+    # VAL-04: revision stale (assignment revision=2, contribution revision=1)
+    coord.register_uploaded_contribution(
+        "val-04", "run8", "r8", "asg-0", "w-0", 100,
+        base64.b64encode(vdelta).decode(),
+        hashlib.sha256(vdelta).hexdigest(), "rq" * 32, Pv, "src")
+    coord._conn.execute(
+        "UPDATE model_assignments SET revision=2 WHERE run_id='run8'"
+        " AND round_id='r8' AND assignment_id='asg-0'")
+    coord._conn.commit()
+    try:
+        coord.validate_contribution("val-04")
+        check("VAL-04 revision stale → REJECTED", False)
+    except ModelRecoveryError as e:
+        ok = e.reason == "stale_revision"
+        st = coord.contribution("val-04")["status"]
+        check("VAL-04 revision stale → REJECTED", ok and st == "RECEIVED",
+              f"{e.reason} status={st}")
+    coord._conn.execute(
+        "UPDATE model_assignments SET revision=1 WHERE run_id='run8'"
+        " AND round_id='r8' AND assignment_id='asg-0'")
+    coord._conn.commit()
+
+    # VAL-05: ett ≠ expected_ett (999999 vs 100) → REJECTED, status RECEIVED
+    coord.register_uploaded_contribution(
+        "val-05", "run8", "r8", "asg-0", "w-0", 999999,
+        base64.b64encode(vdelta).decode(),
+        hashlib.sha256(vdelta).hexdigest(), "rq" * 32, Pv, "src")
+    try:
+        coord.validate_contribution("val-05")
+        check("VAL-05 ett=999999 ≠ expected_ett → REJECTED", False)
+    except ModelRecoveryError as e:
+        ok = e.reason in ("ett_mismatch", "ett_registered_mismatch")
+        st = coord.contribution("val-05")["status"]
+        check("VAL-05 ett=999999 ≠ expected_ett → REJECTED",
+              ok and st == "RECEIVED", f"{e.reason} status={st}")
+
+    # VAL-06: delta_bundle_sha256 no coincideix amb els bytes → REJECTED
+    # (el register ja valida el sha — simulem manipulació POST-registre)
+    coord.register_uploaded_contribution(
+        "val-06", "run8", "r8", "asg-0", "w-0", 100,
+        base64.b64encode(vdelta).decode(),
+        hashlib.sha256(vdelta).hexdigest(), "rq" * 32, Pv, "src")
+    coord._conn.execute(
+        "UPDATE model_contributions SET delta_bundle_sha256=? WHERE cid=?",
+        ("0" * 64, "val-06"))
+    coord._conn.commit()
+    try:
+        coord.validate_contribution("val-06")
+        check("VAL-06 sha256 mismatch → REJECTED", False)
+    except ModelRecoveryError as e:
+        ok = e.reason == "delta_sha_mismatch"
+        st = coord.contribution("val-06")["status"]
+        check("VAL-06 sha256 mismatch → REJECTED", ok and st == "RECEIVED",
+              f"{e.reason} status={st}")
+
+    # VAL-07: binding worker/assignment incorrecte → REJECTED
+    # (el register ja fa el binding — simulem manipulació POST-registre:
+    # el worker_id de la contribució es canvia a un que no té assignació)
+    coord.register_uploaded_contribution(
+        "val-07", "run8", "r8", "asg-0", "w-0", 100,
+        base64.b64encode(vdelta).decode(),
+        hashlib.sha256(vdelta).hexdigest(), "rq" * 32, Pv, "src")
+    coord._conn.execute(
+        "UPDATE model_contributions SET worker_id='w-fantasma' WHERE cid=?",
+        ("val-07",))
+    coord._conn.commit()
+    try:
+        coord.validate_contribution("val-07")
+        check("VAL-07 binding incorrecte → REJECTED", False)
+    except ModelRecoveryError as e:
+        ok = e.reason == "assignment_not_found"
+        st = coord.contribution("val-07")["status"]
+        check("VAL-07 binding incorrecte → REJECTED", ok and st == "RECEIVED",
+              f"{e.reason} status={st}")
+
+    # VAL-08: adapter_pre_hash incorrecte → REJECTED
+    # (el register ja valida el pre_hash — simulem manipulació POST-registre)
+    coord.register_uploaded_contribution(
+        "val-08", "run8", "r8", "asg-0", "w-0", 100,
+        base64.b64encode(vdelta).decode(),
+        hashlib.sha256(vdelta).hexdigest(), "rq" * 32, Pv, "src")
+    coord._conn.execute(
+        "UPDATE model_contributions SET adapter_pre_hash=? WHERE cid=?",
+        ("PRE-STALE", "val-08"))
+    coord._conn.commit()
+    try:
+        coord.validate_contribution("val-08")
+        check("VAL-08 pre_hash incorrecte → REJECTED", False)
+    except ModelRecoveryError as e:
+        ok = e.reason == "adapter_pre_hash_mismatch"
+        st = coord.contribution("val-08")["status"]
+        check("VAL-08 pre_hash incorrecte → REJECTED",
+              ok and st == "RECEIVED", f"{e.reason} status={st}")
+
     # ════════ EXPLOIT A ════════
     print("\n=== EXPLOIT A: worker normal intenta TOT ===")
     base_w2 = {"worker_id": "w-X", "session_id": "SX", "run_id": "run-X",
@@ -323,8 +436,8 @@ def main():
                         "adapter_0_bundle_b64": base64.b64encode(b"x" * 64).decode()}),
                     "admin_required")
     n_rounds = conn.execute("SELECT COUNT(*) AS n FROM model_rounds").fetchone()["n"]
-    check("EXPLOIT A: cap fila nova a model_rounds", n_rounds == 5,
-          f"rounds={n_rounds} (run1..run4+run7; run5/6 es creen després)")
+    check("EXPLOIT A: cap fila nova a model_rounds", n_rounds == 6,
+          f"rounds={n_rounds} (run1..run4+run7+run8; run5/6 es creen després)")
 
     # ════════ EXPLOIT B ════════
     print("\n=== EXPLOIT B: 1/2 contribucions → ROUND_NOT_READY ===")

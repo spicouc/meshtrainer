@@ -394,17 +394,96 @@ class ModelRoundCoordinator:
                 "revision": contrib_revision}
 
     def validate_contribution(self, cid):
+        """R2.5.1 (punt 1): VALIDATED = realment validat.
+
+        Carrega contribution + assignment + round i exigeix TOTS els checks
+        abans de marcar VALIDATED. Qualsevol mismatch -> REJECTED i l'estat
+        continua RECEIVED (mai passa a VALIDATED).
+        """
         cur = self._conn.execute(
-            "SELECT status FROM model_contributions WHERE cid=?",
+            "SELECT * FROM model_contributions WHERE cid=?",
             (cid,)).fetchone()
-        if cur is None or cur["status"] != "RECEIVED":
+        if cur is None:
+            raise ModelRecoveryError("contribution_not_found", cid=cid,
+                                     msg="contribució no existeix — REJECTED")
+        if cur["status"] != "RECEIVED":
             raise ModelRecoveryError("cannot_validate", cid=cid,
-                                     status=cur["status"] if cur else "MISSING")
+                                     status=cur["status"],
+                                     msg=f"estat {cur['status']} ≠ RECEIVED — "
+                                         f"REJECTED")
+        # assignment ha d'existir i coincidir en els 4 camps de binding
+        a = self._conn.execute(
+            "SELECT * FROM model_assignments WHERE run_id=? AND round_id=?"
+            " AND assignment_id=? AND worker_id=?",
+            (cur["run_id"], cur["round_id"], cur["assignment_id"],
+             cur["worker_id"])).fetchone()
+        if a is None:
+            raise ModelRecoveryError(
+                "assignment_not_found", cid=cid,
+                msg="assignment no existeix per al binding de la contribució "
+                    "— REJECTED (VAL-07)")
+        binds = [
+            ("run_id", cur["run_id"], a["run_id"]),
+            ("round_id", cur["round_id"], a["round_id"]),
+            ("assignment_id", cur["assignment_id"], a["assignment_id"]),
+            ("worker_id", cur["worker_id"], a["worker_id"]),
+        ]
+        for field, cv, av in binds:
+            if cv != av:
+                raise ModelRecoveryError(
+                    "validation_binding_mismatch", cid=cid, field=field,
+                    contribution=cv, assignment=av,
+                    msg=f"{field} de la contribució ≠ assignment — REJECTED "
+                        f"(VAL-07)")
+        # revision vinculant (R2.5): contribution.revision == assignment.revision
+        if cur["revision"] != a["revision"]:
+            raise ModelRecoveryError(
+                "stale_revision", cid=cid, contribution_revision=cur["revision"],
+                assignment_revision=a["revision"],
+                msg=f"revision {cur['revision']} ≠ assignment revision "
+                    f"{a['revision']} — REJECTED (VAL-04)")
+        # adapter_pre_hash ha de ser el de la ronda (baseline global)
+        rnd = self.get_round(cur["run_id"], cur["round_id"])
+        if rnd is None:
+            raise ModelRecoveryError("round_not_found", cid=cid)
+        if cur["adapter_pre_hash"] != rnd["adapter_pre_hash"]:
+            raise ModelRecoveryError(
+                "adapter_pre_hash_mismatch", cid=cid,
+                msg="adapter_pre_hash ≠ ronda — REJECTED (VAL-08)")
+        # ETT: ha de coincidir amb expected_ett de l'assignació
+        if cur["ett"] != a["expected_ett"]:
+            raise ModelRecoveryError(
+                "ett_mismatch", cid=cid, contribution_ett=cur["ett"],
+                expected_ett=a["expected_ett"],
+                msg=f"ett {cur['ett']} ≠ expected_ett {a['expected_ett']} — "
+                    f"REJECTED (VAL-05)")
+        # ETT: si ett_registered > 0, ha de coincidir també
+        if a["ett_registered"] and cur["ett"] != a["ett_registered"]:
+            raise ModelRecoveryError(
+                "ett_registered_mismatch", cid=cid,
+                contribution_ett=cur["ett"],
+                ett_registered=a["ett_registered"],
+                msg=f"ett {cur['ett']} ≠ ett_registered "
+                    f"{a['ett_registered']} — REJECTED (VAL-05)")
+        # integritat del delta: sha256(bytes) == delta_bundle_sha256
+        try:
+            delta_bytes = base64.b64decode(cur["delta_bundle_b64"])
+        except Exception as e:  # noqa: BLE001
+            raise ModelRecoveryError(
+                "delta_b64_invalid", cid=cid,
+                msg=f"delta_bundle_b64 invàlid — REJECTED (VAL-06): {e}")
+        if hashlib.sha256(delta_bytes).hexdigest() != cur["delta_bundle_sha256"]:
+            raise ModelRecoveryError(
+                "delta_sha_mismatch", cid=cid,
+                msg="sha256(delta_bytes) ≠ delta_bundle_sha256 — REJECTED "
+                    "(VAL-06)")
+        # tots els checks superats: VALIDATED
         with self._tx():
             self._conn.execute(
                 "UPDATE model_contributions SET status='VALIDATED'"
                 " WHERE cid=?", (cid,))
-        return {"contribution_id": cid, "status": "VALIDATED"}
+        return {"contribution_id": cid, "status": "VALIDATED",
+                "revision": cur["revision"]}
 
     def activate_contribution(self, cid):
         cur = self._conn.execute(

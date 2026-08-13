@@ -86,8 +86,13 @@ def run_worker(backend_name, worker_id, session, shard, assignment, round_id,
     t0 = time.time()
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
     out = r.stdout + r.stderr
-    print(f"worker {worker_id} exit={r.returncode} ({time.time()-t0:.0f}s)",
-          flush=True)
+    # R2.5.1 (punt 6/8): l'output del worker és EVIDÈNCIA — es reemet a
+    # stdout perquè els logs del gate mostrin "CONTRIBUTION SUBMITTED"
+    # (i mai "CONTRIBUTION VALIDATED" com a acció del worker).
+    if out.strip():
+        for line in out.splitlines():
+            if line.strip():
+                print(f"[worker:{worker_id}] {line}", flush=True)
     if r.returncode != 0:
         print(out[-1500:], flush=True)
     return r.returncode, out

@@ -169,7 +169,7 @@ def main():
     ADMIN_TOKEN = os.environ.get("MESH_ADMIN_TOKEN", "mesh-admin-token-test")
 
     def coord_setup(proto, base_hash, adapter_sha, pre_hash, assignments,
-                    num_ex):
+                    num_ex, ett_by_assignment=None):
         """assignments: [(assignment_id, worker_id, shard)]"""
         proto.handle("round.create", {
             "run_id": "run1", "round_id": "r1", "backend_id": args.backend,
@@ -178,12 +178,14 @@ def main():
             "admin_token": ADMIN_TOKEN})
         from model_worker import load_examples as _lex, shard_manifest_sha as _sms
         # R2.5.1: expected_ett REAL (etapa trusted) — el validate_contribution
-        # exigeix ett == expected_ett; 0 ja no és un valor vàlid.
-        from generic_distributed_run import expected_ett_for_shard as _eett
+        # exigeix ett == expected_ett; 0 ja no és un valor vàlid. El valor es
+        # calcula amb el backend que el test JA té carregat (sense càrrega
+        # extra de model) i es passa via ett_by_assignment.
+        ett_by_assignment = ett_by_assignment or {}
         for aid, wid, shard in assignments:
             exs = _lex(data_dir(args.backend), shard, num_ex)
             mf = _sms([e["source"] for e in exs])
-            exp_ett = _eett(args.backend, None, args.seq_len, shard, num_ex)
+            exp_ett = ett_by_assignment.get(aid, 0)
             proto.handle("assignment.create", {
                 "run_id": "run1", "round_id": "r1", "assignment_id": aid,
                 "worker_id": wid, "shard_id": f"shard-{shard}",
@@ -199,14 +201,33 @@ def main():
     _bk0.load_model()
     _bk0.load_adapter(ad0, ad0_sha, strict=True)
     pre_hash0 = _bk0.adapter_hash()
+    # R2.5.1: expected_ett real calculat amb AQUEST backend (ja carregat),
+    # mateixa lògica que el worker (tokenize + compute_ett per exemple).
+    # TOTS els ETTs es calculen ARA, abans de tancar el model (la Part B
+    # ja no pot tocar _bk0 tancat — evita use-after-close i càrregues extra).
+    def _ett_for(aid, shard, n):
+        exs = _lex(data_dir(args.backend), shard, n)
+        tot = 0
+        for e in exs:
+            tok = _bk0.tokenize_example(e["instruction"], e["response"])
+            tot += _bk0.compute_ett(tok[2] if isinstance(tok, tuple) else tok)
+        return tot
+    ett_map = {}
+    for _aid, _wid, _shard in [("asg-ida", "w-ida", "A"),
+                               ("asg-ida2", "w-ida2", "A"),
+                               ("asg-nc", "w-nc", "A"),
+                               ("asg-cr", "w-cr", "A")]:
+        ett_map[_aid] = _ett_for(_aid, _shard, args.num_examples)
     _bk0.close()
+    import gc as _gc
+    _gc.collect()
     base_hash0 = ident["base_model_hash"]
 
     # worker que fa el pas sencer contra S1 (deixa la unitat COMMITTED i
     # una contribució ACTIVE a la BD)
     coord_setup(proto1, base_hash0, ad0_sha, pre_hash0,
                 [("asg-ida", "w-ida", "A"), ("asg-ida2", "w-ida2", "A")],
-                args.num_examples)
+                args.num_examples, ett_by_assignment=ett_map)
     rc1, out1, _ = run_worker(args.backend, "w-ida", "IDA1", "A", "asg-ida",
                               "r1", ad0_path, ad0_sha, OUT,
                               args.num_examples, args.seq_len)
@@ -354,9 +375,13 @@ def main():
     httpd3, proto3 = server_boot(DB2)
 
     # R2.3: ronda + assignacions per a w-nc / w-cr (recovery)
+    # R2.5.1: expected_ett real — precalculat a la Part A (ett_map) amb el
+    # model ja carregat; aquí NO es toca cap backend (memòria mínima)
     coord_setup(proto3, base_hash0, ad0_sha, pre_hash0,
                 [("asg-nc", "w-nc", "A"), ("asg-cr", "w-cr", "A")],
-                args.num_examples)
+                args.num_examples,
+                ett_by_assignment={"asg-nc": ett_map["asg-nc"],
+                                   "asg-cr": ett_map["asg-cr"]})
 
     # 1) execució NO-CRASH: worker complet -> adapter_post de referència
     out_nc = f"{OUT}/nocrash"

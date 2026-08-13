@@ -351,12 +351,14 @@ def main():
     cid = up["contribution_id"]
     print(f"[{args.worker_id}] CHECKPOINT cid={cid[:16]}", flush=True)
 
-    # ── 11. contribution.register + validate + activate ──
+    # ── 11. contribution.register + validate (R2.4: el worker ENVIA la
+    #    contribució però NO la pot ACTIVAR — l'activate és operació ADMIN;
+    #    el Coordinator/Admin decideix si entra al FedAvg) ──
     rpc(args.server_url, "contribution.register",
         {**lease, "contribution_id": cid})
     rpc(args.server_url, "contribution.validate", {"contribution_id": cid})
-    rpc(args.server_url, "contribution.activate", {"contribution_id": cid})
-    print(f"[{args.worker_id}] CONTRIBUTION ACTIVE {cid[:16]}", flush=True)
+    print(f"[{args.worker_id}] CONTRIBUTION VALIDATED {cid[:16]} "
+          f"(activate = ADMIN)", flush=True)
 
     # ── 12. release ──
     rpc(args.server_url, "step.release", {**lease})

@@ -55,11 +55,12 @@ run_sub() {
 run_sub "dependency" "$PYTHON -c 'import torch, transformers, peft, numpy; print(\"deps OK\")'" 120
 echo "" | tee -a "$GATE_LOG"; echo "=== pycompile ===" | tee -a "$GATE_LOG"
 "$PYTHON" -m py_compile training_backend.py adapter_codec.py \
-    model_round_coordinator.py training_http_server.py model_worker.py \
-    backend_isolation.py coordinator_authority_tests.py \
-    generic_distributed_run.py generic_recovery_tests.py \
-    backends/qwen3_backend.py backends/dummy_backend.py \
-    >> "$LOG_DIR/pycompile.log" 2>&1
+model_round_coordinator.py training_http_server.py model_worker.py \
+backend_isolation.py coordinator_authority_tests.py \
+fedavg_authority_tests.py generic_distributed_run.py \
+generic_recovery_tests.py backends/qwen3_backend.py \
+backends/dummy_backend.py \
+>> "$LOG_DIR/pycompile.log" 2>&1
 [ $? -eq 0 ] && echo "  pycompile: PASS" | tee -a "$GATE_LOG" \
              || { echo "  pycompile: FAIL" | tee -a "$GATE_LOG"; OVERALL=1; }
 
@@ -72,6 +73,9 @@ ec=$?
 
 # 3) adversarials d'autoritat (AUTH-01..14 + explotació)
 run_sub "authority_adversarial" "$ISO_PY coordinator_authority_tests.py" 300
+
+# 3b) adversarials de seguretat/fedavg (SEC-01..12 + Exploit A/B/C)
+run_sub "security_adversarial" "$ISO_PY fedavg_authority_tests.py" 300
 
 # 4) dummy e2e (protocol Coordinator authority)
 run_sub "dummy_e2e" "$PYTHON generic_distributed_run.py --backend dummy --num-examples 4 --seq-len 16" 900

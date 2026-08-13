@@ -415,9 +415,22 @@ class ModelRoundCoordinator:
         return dict(row) if row else None
 
     def ready_to_close(self, run_id, round_id):
+        """R2.4 (punt 8): QUÒRUM EXACTE.
+        - exactament els assignments requerits (cap absent);
+        - exactament UNA contribució ACTIVE per assignment/revision vàlida;
+        - zero contribucions alienes; zero duplicates efectius.
+        Es compten TOTES les assignacions de la ronda (ASSIGNED/CALIBRATED/
+        COMPLETED — el calibrate les marca CALIBRATED)."""
         rows = self._conn.execute(
             "SELECT * FROM model_assignments WHERE run_id=? AND round_id=?"
-            " AND status='ASSIGNED'", (run_id, round_id)).fetchall()
+            " AND status IN ('ASSIGNED','CALIBRATED','COMPLETED')",
+            (run_id, round_id)).fetchall()
+        if not rows:
+            raise ModelRecoveryError("no_assignments", run_id=run_id,
+                                     round_id=round_id,
+                                     msg="cap assignment a la ronda — "
+                                         "ROUND_NOT_READY")
+        expected = len(rows)
         for a in rows:
             acts = self._conn.execute(
                 "SELECT * FROM model_contributions WHERE run_id=? AND"
@@ -425,31 +438,113 @@ class ModelRoundCoordinator:
                 " AND status='ACTIVE'",
                 (run_id, round_id, a["assignment_id"],
                  a["worker_id"])).fetchall()
+            # exactament UNA contribució ACTIVE per assignment
             if len(acts) != 1:
                 raise ModelRecoveryError(
                     "quorum_not_met", assignment_id=a["assignment_id"],
-                    active=len(acts))
-        return {"state": "READY"}
+                    active=len(acts), expected=1,
+                    msg=f"quòrum: {len(acts)}/1 contribucions ACTIVE per "
+                        f"assignment {a['assignment_id']} — ROUND_NOT_READY")
+        # zero contribucions alienes (ACTIVE fora dels assignments de la ronda)
+        total_active = self._conn.execute(
+            "SELECT COUNT(*) AS n FROM model_contributions WHERE run_id=?"
+            " AND round_id=? AND status='ACTIVE'",
+            (run_id, round_id)).fetchone()["n"]
+        if total_active != expected:
+            raise ModelRecoveryError(
+                "quorum_alien_contributions",
+                active=total_active, expected=expected,
+                msg=f"quòrum: {total_active} contribucions ACTIVE, "
+                    f"s'esperaven exactament {expected} — ROUND_NOT_READY")
+        return {"state": "READY", "assignments": expected,
+                "active": total_active}
+
+    def verify_fedavg_baseline(self, run_id, round_id, adapter_0_bytes):
+        """R2.4 (punt 9/10): l'adapter base ha de ser l'AUTORITATIU de la
+        ronda (model_rounds.adapter_0_sha). sha256(bytes) == sha, si no
+        REJECTED (prova d'injecció de baseline)."""
+        r = self.get_round(run_id, round_id)
+        if r is None:
+            raise ModelRecoveryError("round_not_found", run_id=run_id,
+                                     round_id=round_id)
+        actual = hashlib.sha256(adapter_0_bytes).hexdigest()
+        if actual != r["adapter_0_sha"]:
+            raise ModelRecoveryError(
+                "fedavg_baseline_mismatch",
+                expected=r["adapter_0_sha"][:16], got=actual[:16],
+                msg="adapter base NO és el de la ronda (injecció de "
+                    "baseline) — REJECTED (SEC-07)")
+        return r
+
+    def verify_contributions_homogeneous(self, run_id, round_id):
+        """R2.4 (punt 11): TOTES les contribucions ACTIVE han de coincidir
+        amb la ronda en run_id, round_id, base_model_hash, adapter_pre_hash,
+        revision vàlida i assignment vàlid. Heterogeneïtat -> REJECTED."""
+        r = self.get_round(run_id, round_id)
+        if r is None:
+            raise ModelRecoveryError("round_not_found", run_id=run_id,
+                                     round_id=round_id)
+        rows = self.round_active_contributions(run_id, round_id)
+        if not rows:
+            raise ModelRecoveryError("no_active_contributions")
+        for c in rows:
+            a = self._conn.execute(
+                "SELECT * FROM model_assignments WHERE run_id=? AND round_id=?"
+                " AND assignment_id=? AND worker_id=?",
+                (run_id, round_id, c["assignment_id"],
+                 c["worker_id"])).fetchone()
+            if a is None:
+                raise ModelRecoveryError(
+                    "contribution_alien_assignment", cid=c["cid"],
+                    msg="contribució ACTIVE sense assignment vàlid — REJECTED")
+            if c["adapter_pre_hash"] != r["adapter_pre_hash"]:
+                raise ModelRecoveryError(
+                    "heterogeneous_adapter_pre_hash", cid=c["cid"],
+                    msg="adapter_pre_hash de la contribució ≠ ronda — "
+                        "REJECTED (SEC-08)")
+            # el base model de l'assignació ha de ser el de la ronda
+            if a["base_model_hash"] != r["base_model_hash"]:
+                raise ModelRecoveryError(
+                    "heterogeneous_base_model", cid=c["cid"],
+                    msg="base model de l'assignació ≠ ronda — REJECTED (SEC-09)")
+        return {"round": dict(r), "contributions": len(rows)}
 
     # -- FedAvg (model-agnostic via adapter_codec) -------------------------
     def active_deltas(self, run_id, round_id):
+        """R2.4 (punt 12): l'ETT usat pel FedAvg és el del Coordinator
+        (expected_ett de l'assignació), MAI cap camp lliure del request."""
         return self._conn.execute(
-            "SELECT delta_bundle_b64, delta_bundle_sha256, ett FROM"
-            " model_contributions WHERE status='ACTIVE' AND run_id=? AND"
-            " round_id=?", (run_id, round_id)).fetchall()
+            "SELECT c.delta_bundle_b64, c.delta_bundle_sha256,"
+            " COALESCE(a.expected_ett, c.ett) AS ett"
+            " FROM model_contributions c"
+            " LEFT JOIN model_assignments a ON a.run_id=c.run_id"
+            "  AND a.round_id=c.round_id AND a.assignment_id=c.assignment_id"
+            "  AND a.worker_id=c.worker_id"
+            " WHERE c.status='ACTIVE' AND c.run_id=? AND c.round_id=?",
+            (run_id, round_id)).fetchall()
 
     def fedavg(self, run_id, round_id, adapter_0_bundle_b64: str):
         """adapter_1 = adapter_0 + Σ(delta_i * ETT_i) / ΣETT_i (float64).
-        Fórmula idèntica a aggregation.FedAvgLoRA; càlcul via adapter_codec
-        (cap import de model). R2.3: REFUSA contribucions ACTIVE amb
-        adapter_pre_hash heterogeni (AUTH-13)."""
-        # AUTH-13: totes les contribucions ACTIVE han de compartir pre_hash
-        self.verify_contributions_homogeneous_prehash(run_id, round_id)
+        R2.4 (punt 7/9/11/12): abans d'agregar executa OBLIGATÒRIAMENT:
+          1) ready_to_close() — quòrum exacte (SEC-06, Exploit B);
+          2) baseline autoritatiu: sha256(adapter_0) == model_rounds.adapter_0_sha
+             (SEC-07, Exploit C — no confia en bytes arbitraris del caller);
+          3) homogeneïtat completa de contribucions (SEC-08/09);
+          4) ETT autoritzat (expected_ett/validated_ett del Coordinator,
+             mai cap camp lliure del request)."""
+        # 1) quòrum exacte — REJECTED si no ready (mai genera adapter)
+        self.ready_to_close(run_id, round_id)
+        # 2) baseline autoritatiu (bytes del caller verificats contra la ronda)
+        adapter_0_bytes = base64.b64decode(adapter_0_bundle_b64)
+        rnd = self.verify_fedavg_baseline(run_id, round_id, adapter_0_bytes)
+        # 3) homogeneïtat completa (run/round/base/pre_hash/assignment/revision)
+        self.verify_contributions_homogeneous(run_id, round_id)
+        # 4) ETT: només els ETT validats pel Coordinator (expected_ett de
+        #    l'assignació) — els deltes es ponderen amb l'ETT autoritzat
         rows = self.active_deltas(run_id, round_id)
         if not rows:
             raise ModelRecoveryError("no_active_contributions")
-        adapter_0 = adapter_codec.unpack_tensors(
-            base64.b64decode(adapter_0_bundle_b64))
+        adapter_0 = adapter_codec.unpack_tensors(adapter_0_bytes)
         adapter_0_np = adapter_codec.to_numpy_dict(adapter_0)
         deltas_ett = []
         for r in rows:
@@ -458,14 +553,13 @@ class ModelRoundCoordinator:
             deltas_ett.append((adapter_codec.to_numpy_dict(d), r["ett"]))
         out = adapter_codec.fedavg(adapter_0_np, deltas_ett)
         adapter_1_bytes = adapter_codec.numpy_dict_to_bundle(out)
-        # R2.3: retorna el pre_hash homogeni verificat (AUTH-13)
-        pre_hash = self.verify_contributions_homogeneous_prehash(
-            run_id, round_id)
+        pre_hash = rnd["adapter_pre_hash"]
         return {"adapter_1_b64": adapter_codec.b64(adapter_1_bytes),
                 "adapter_1_sha": hashlib.sha256(adapter_1_bytes).hexdigest(),
                 "adapter_pre_hash": pre_hash,
                 "total_ett": sum(r["ett"] for r in rows),
-                "num_contributions": len(rows)}
+                "num_contributions": len(rows),
+                "round_status": "READY"}
 
     # -- tx ----------------------------------------------------------------
     def _tx(self):

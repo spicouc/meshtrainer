@@ -1,13 +1,13 @@
 ══════════════════════════════════════════
- CLEAN EXTRACTION B — 2026-08-11 15:00:34
+ CLEAN EXTRACTION B — 2026-08-11 19:48:01
 ══════════════════════════════════════════
 
 === [1] extracció a directori buit ===
-  extract: PASS (337 fitxers)
+  extract: PASS (338 fitxers)
 
 === [2] manifest sobre l'extracció ===
-  manifest lines: 336
-  regular_files:  336
+  manifest lines: 337
+  regular_files:  337
   sha256sum -c: 0 errors (PASS)
 
 === [3] backend isolation (dummy, venv ISO) ===
@@ -32,13 +32,17 @@
   PASS ISO-01 dummy: load_model + adapter_to_bundle + base_hash OK
   PASS ISO-01 dummy: e2e complet sense deps Qwen — exit=0   "maxdiff_oracle_r2": 0.0
 }
-=== GENERIC DISTRIBUTED RUN (dummy): 15/15 PASS ===
+=== GENERIC DISTRIBUTED RUN (dummy): 17/17 PASS ===
 
 === BACKEND ISOLATION: 5/5 PASS ===
   backend_isolation: PASS
 
 === [4] dummy e2e + recovery (extracció exacta) ===
 adapter_0 86e548fba3bd6392 base=13cb2fcce8f388cf backend=dummy
+  [coord] assignment asg-A -> shard-A expected_ett=41
+  [coord] assignment asg-B -> shard-B expected_ett=43
+  PASS coordinator: round r1 creada (model_rounds)
+  PASS coordinator: assignments A/B creades
 worker w-A exit=0 (3s)
   PASS worker A (subprocess, shard A)
 worker w-B exit=0 (3s)
@@ -51,6 +55,8 @@ worker w-B exit=0 (3s)
   PASS ETT_A > 0 i ETT_B > 0 (dummy: ETT real per exemple) — 41 vs 43
   PASS FedAvg Coordinator: adapter_1 (r1) — sha=b6457ffebf985cb6 ett=84
   PASS oracle == FedAvg Coordinator (r1, tensor per tensor) — maxdiff=0.00e+00
+  [coord] assignment asg-A2 -> shard-A expected_ett=19
+  [coord] assignment asg-B2 -> shard-B expected_ett=24
 worker w-A2 exit=0 (3s)
   PASS worker A2 (round 2)
 worker w-B2 exit=0 (3s)
@@ -68,27 +74,27 @@ worker w-B2 exit=0 (3s)
   "maxdiff_oracle_r1": 0.0,
   "maxdiff_oracle_r2": 0.0
 }
-=== GENERIC DISTRIBUTED RUN (dummy): 15/15 PASS ===
+=== GENERIC DISTRIBUTED RUN (dummy): 17/17 PASS ===
   dummy e2e: PASS
 ============================================================
 PART A: idempotència persistent (servidor mor -> mateixa resposta)
 ============================================================
-[w-ida] 9239 REGISTERED base=13cb2fcce8f388cf
-[w-ida] CALIBRATED ett=41
+[w-ida] 12796 REGISTERED base=13cb2fcce8f388cf
+[w-ida] CALIBRATED ett=41 expected=0
 [w-ida] ASSIGNMENT shard=shard-A
-[w-ida] LEASE ls_11d1040e4 ttl=1786461056.6998968
+[w-ida] LEASE ls_5d5df247e ttl=1786478305.7581458
 [w-ida] step.open OK
 [w-ida] TRAINED 4 exemples ett=41 delta=6b4e72960e5d8412 0s
-[w-ida] APPLIED receipt=tr_b6f0025104da4
+[w-ida] APPLIED receipt=tr_46627b3f0b8d4
 [w-ida] COMMITTED
-[w-ida] CHECKPOINT cid=tr_b6f0025104da4
-[w-ida] CONTRIBUTION ACTIVE tr_b6f0025104da4
+[w-ida] CHECKPOINT cid=tr_46627b3f0b8d4
+[w-ida] CONTRIBUTION ACTIVE tr_46627b3f0b8d4
 [w-ida] RELEASED
 [w-ida] EVIDENCE /tmp/generic_recovery_out_dummy/evidence_w-ida.json
 WORKER_DONE w-ida
 worker w-ida exit=0 killed_by_sigkill=False
   PASS worker S1 complet
-  PASS mini-flux S1 complet (open->submit->commit->upload->register) — cid=tr_58019883b | open={'unit_id': 'unit-ida2', 'state': 'OPEN'} sub={'unit_id': 'unit-ida2', 'state': 'APPLIED', 'receipt': {'receipt_id': 'tr_58019883b3a7423a', 'receipt_nonce': '8e9a66c75dd8dc027eec24fdf5264835', 'update_id': 'ida2-all', 'delta_id': '6b4e72960e5d841276cc2515f993f456', 'run_id': 'run1', 'round_id': 'r1', 'assignment_id': 'asg-ida2', 'micro_unit_id': 'unit-ida2', 'worker_id': 'w-ida2', 'session_id': 'IDA2', 'delta_bundle_sha256': '6b4e72960e5d841276cc2515f993f456aacd64f4aeb01a499eec7a27f8b25840', 'delta_bundle_byte_length': 548, 'effective_trainable_tokens': 41, 'loss': 1.0, 'base_model_hash': '13cb2fcce8f388cf477b98f902a388accb3167420b288385f4091fcf40b9f4c2', 'adapter_pre_hash': '135320b406a1b32292fd4f40e2eef928e09a58f9ab368c34e0e4d2577e284141', 'shard_manifest_sha': '79e774708678663c4124478d8aeb8546d8d7a2c73f85c0d2bf18b3a5735e8e53', 'request_sha': '0000000000000000000000000000000000000000000000000000000000000000'}} com={'unit_id': 'unit-ida2', 'state': 'COMMITTED'} up={'contribution_id': 'tr_58019883b3a7423a', 'status': 'RECEIVED'} reg={'contribution_id': 'tr_58019883b3a7423a', 'status': 'RECEIVED'} estat_final=ACTIVE
+  PASS mini-flux S1 complet (open->submit->commit->upload->register) — cid=tr_b4badb525 | open={'unit_id': 'unit-ida2', 'state': 'OPEN'} sub={'unit_id': 'unit-ida2', 'state': 'APPLIED', 'receipt': {'receipt_id': 'tr_b4badb525f9b463b', 'receipt_nonce': '4ca6594fbb9c6d9f08905ec27456a97a', 'update_id': 'ida2-all', 'delta_id': '6b4e72960e5d841276cc2515f993f456', 'run_id': 'run1', 'round_id': 'r1', 'assignment_id': 'asg-ida2', 'micro_unit_id': 'unit-ida2', 'worker_id': 'w-ida2', 'session_id': 'IDA2', 'delta_bundle_sha256': '6b4e72960e5d841276cc2515f993f456aacd64f4aeb01a499eec7a27f8b25840', 'delta_bundle_byte_length': 548, 'effective_trainable_tokens': 41, 'loss': 1.0, 'base_model_hash': '13cb2fcce8f388cf477b98f902a388accb3167420b288385f4091fcf40b9f4c2', 'adapter_pre_hash': '135320b406a1b32292fd4f40e2eef928e09a58f9ab368c34e0e4d2577e284141', 'shard_manifest_sha': '79e774708678663c4124478d8aeb8546d8d7a2c73f85c0d2bf18b3a5735e8e53', 'request_sha': '0000000000000000000000000000000000000000000000000000000000000000'}} com={'unit_id': 'unit-ida2', 'state': 'COMMITTED'} up={'contribution_id': 'tr_b4badb525f9b463b', 'status': 'RECEIVED'} reg={'contribution_id': 'tr_b4badb525f9b463b', 'status': 'RECEIVED'} estat_final=ACTIVE
   [servidor S1 MOR — procés acabat]
   [servidor S2 NOU — mateixa BD /tmp/generic_recovery_server_dummy.db]
   PASS servidor reiniciat: retry exacte -> mateixa resposta byte-for-byte (open/submit/commit/upload/register)
@@ -96,26 +102,26 @@ worker w-ida exit=0 killed_by_sigkill=False
 ============================================================
 PART B: crash real (SIGKILL després d'APPLIED) -> recovery
 ============================================================
-[w-nc] 9274 REGISTERED base=13cb2fcce8f388cf
-[w-nc] CALIBRATED ett=41
+[w-nc] 12831 REGISTERED base=13cb2fcce8f388cf
+[w-nc] CALIBRATED ett=41 expected=0
 [w-nc] ASSIGNMENT shard=shard-A
-[w-nc] LEASE ls_0fb6a204d ttl=1786461062.3378713
+[w-nc] LEASE ls_17e131a31 ttl=1786478310.53734
 [w-nc] step.open OK
 [w-nc] TRAINED 4 exemples ett=41 delta=6b4e72960e5d8412 0s
-[w-nc] APPLIED receipt=tr_1ad27507c9e54
+[w-nc] APPLIED receipt=tr_ed3a45c387ea4
 [w-nc] COMMITTED
-[w-nc] CHECKPOINT cid=tr_1ad27507c9e54
-[w-nc] CONTRIBUTION ACTIVE tr_1ad27507c9e54
+[w-nc] CHECKPOINT cid=tr_ed3a45c387ea4
+[w-nc] CONTRIBUTION ACTIVE tr_ed3a45c387ea4
 [w-nc] RELEASED
 [w-nc] EVIDENCE /tmp/generic_recovery_out_dummy/nocrash/evidence_w-nc.json
 WORKER_DONE w-nc
 worker w-nc exit=0 killed_by_sigkill=False
   PASS no-crash: worker complet
   no-crash adapter_post_hash=528fbeefad221222
-[w-cr] 9291 REGISTERED base=13cb2fcce8f388cf
-[w-cr] CALIBRATED ett=41
+[w-cr] 12848 REGISTERED base=13cb2fcce8f388cf
+[w-cr] CALIBRATED ett=41 expected=0
 [w-cr] ASSIGNMENT shard=shard-A
-[w-cr] LEASE ls_58b68e91a ttl=1786461065.074631
+[w-cr] LEASE ls_278f89a05 ttl=1786478312.2591581
 [w-cr] step.open OK
 [w-cr] TRAINED 4 exemples ett=41 delta=6b4e72960e5d8412 0s
 [w-cr] CRASH SIMULAT (train-only, sense HTTP)
@@ -123,29 +129,30 @@ WORKER_DONE train-only
 worker w-cr exit=-9 killed_by_sigkill=True
   PASS crash: procés MATAT amb SIGKILL (exit no-zero, no sys.exit(0)) — exit=-9
   PASS journal persistent després del SIGKILL
-[w-cr] 9301 REGISTERED base=13cb2fcce8f388cf
-[w-cr] CALIBRATED ett=41
+[w-cr] 12858 REGISTERED base=13cb2fcce8f388cf
+[w-cr] CALIBRATED ett=41 expected=0
 [w-cr] ASSIGNMENT shard=shard-A
-[w-cr] LEASE RENEWED ls_58b68e91a
-[w-cr] LEASE ls_58b68e91a ttl=1786461067.2645862
+[w-cr] LEASE RENEWED ls_278f89a05
+[w-cr] LEASE ls_278f89a05 ttl=1786478313.6740103
 [w-cr] step.open OK
 [w-cr] pas 0: RECOVERED w-cr-0
 [w-cr] pas 1: RECOVERED w-cr-1
 [w-cr] pas 2: RECOVERED w-cr-2
 [w-cr] pas 3: RECOVERED w-cr-3
 [w-cr] TRAINED 4 exemples ett=41 delta=6b4e72960e5d8412 0s
-[w-cr] APPLIED receipt=tr_221bac6193864
+[w-cr] APPLIED receipt=tr_6b48bc41f67f4
 [w-cr] COMMITTED
-[w-cr] CHECKPOINT cid=tr_221bac6193864
-[w-cr] CONTRIBUTION ACTIVE tr_221bac6193864
+[w-cr] CHECKPOINT cid=tr_6b48bc41f67f4
+[w-cr] CONTRIBUTION ACTIVE tr_6b48bc41f67f4
 [w-cr] RELEASED
 [w-cr] EVIDENCE /tmp/generic_recovery_out_dummy/crash/evidence_w-cr.json
 WORKER_DONE w-cr
 worker w-cr exit=0 killed_by_sigkill=False
   PASS recovery: worker nou (PID diferent) completa el flux
-  PASS recovery: PID diferent del crash
+  PASS recovery: crash_pid != recovery_pid — 12848 -> 12858
+  PASS adapter_post_no_crash == adapter_post_recovered (hash exacte) — nc=528fbeefad221222 rec=528fbeefad221222
   PASS recovery: tots els passos APPLIED (cap COMMITTED perdut) — applied=4
-=== GENERIC RECOVERY TESTS (dummy): 10/10 PASS ===
+=== GENERIC RECOVERY TESTS (dummy): 11/11 PASS ===
   dummy recovery: PASS
 
 ══ CLEAN EXTRACTION B — Overall: PASS ══

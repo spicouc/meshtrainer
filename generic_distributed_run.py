@@ -35,7 +35,9 @@ from model_round_coordinator import ModelRoundCoordinator
 from adapter_codec import unpack_tensors, to_numpy_dict, fedavg
 
 CHECKS = []
-SERVER_URL = "http://127.0.0.1:19862"
+PORT = 19862
+ADMIN_TOKEN = os.environ.get("MESH_ADMIN_TOKEN", "mesh-admin-token-test")
+SERVER_URL = f"http://127.0.0.1:{PORT}"
 
 
 def check(name, ok, detail=""):
@@ -96,7 +98,17 @@ def fedavg_via_coordinator(proto, run_id, round_id, adapter_0_bytes):
     return proto.handle("round_fedavg",
                         {"run_id": run_id, "round_id": round_id,
                          "assignment_id": "asg-A", "worker_id": "w-A",
-                         "adapter_0_bundle_b64": ad0_b64})
+                         "adapter_0_bundle_b64": ad0_b64,
+                         "admin_token": ADMIN_TOKEN})
+
+
+def admin_activate(proto, cids):
+    """R2.4: contribution.activate és operació ADMIN — el driver (admin)
+    activa les contribucions VALIDATED després que els workers les enviïn."""
+    for cid in cids:
+        proto.handle("contribution.activate",
+                     {"contribution_id": cid, "admin_token": ADMIN_TOKEN})
+        print(f"  [admin] contribution.activate {cid[:16]}", flush=True)
 
 
 def create_round_and_assignments(proto, run_id, round_id, backend_name,
@@ -109,7 +121,8 @@ def create_round_and_assignments(proto, run_id, round_id, backend_name,
         "run_id": run_id, "round_id": round_id, "backend_id": backend_name,
         "base_model_hash": base_model_hash, "adapter_0_sha": adapter_0_sha,
         "adapter_pre_hash": adapter_pre_hash,
-        "dataset_manifest_sha": dataset_manifest_sha})
+        "dataset_manifest_sha": dataset_manifest_sha,
+        "admin_token": ADMIN_TOKEN})
     for a in assignments:
         shard_mf = shard_mf_fn(a["shard"])
         exp_ett = expected_ett_fn(a["shard"], a["num_ex"])
@@ -118,7 +131,8 @@ def create_round_and_assignments(proto, run_id, round_id, backend_name,
             "assignment_id": a["assignment_id"], "worker_id": a["worker_id"],
             "shard_id": f"shard-{a['shard']}", "shard_manifest_sha": shard_mf,
             "base_model_hash": base_model_hash, "adapter_0_sha": adapter_0_sha,
-            "expected_ett": exp_ett, "revision": 1})
+            "expected_ett": exp_ett, "revision": 1,
+            "admin_token": ADMIN_TOKEN})
         print(f"  [coord] assignment {a['assignment_id']} -> shard-{a['shard']} "
               f"expected_ett={exp_ett}", flush=True)
 
@@ -215,7 +229,8 @@ def main():
     print(f"adapter_0 {ad0_sha[:16]} base={identity['base_model_hash'][:16]} "
           f"backend={args.backend}", flush=True)
 
-    httpd, proto = serve(port=19862, db_path=args.server_db)
+    httpd, proto = serve(port=19862, db_path=args.server_db,
+                         admin_token=ADMIN_TOKEN)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     time.sleep(0.5)
 
@@ -274,6 +289,11 @@ def main():
               evA["ett_actual"] > 0 and evB["ett_actual"] > 0,
               f"{evA['ett_actual']} vs {evB['ett_actual']}")
 
+    # R2.4: l'ADMIN activa les contribucions (el worker només les envia)
+    admin_activate(proto, [evA["contribution_id"], evB["contribution_id"]])
+    check("ready_to_close: quòrum exacte 2/2 (r1)",
+          proto.coord.ready_to_close("run1", "r1")["state"] == "READY")
+
     # ── 5/6. FedAvg Coordinator + oracle ──
     fed1 = fedavg_via_coordinator(proto, "run1", "r1", ad0)
     check("FedAvg Coordinator: adapter_1 (r1)", fed1["num_contributions"] == 2,
@@ -313,6 +333,10 @@ def main():
     check("round 2: adapter_pre_hash_A == adapter_pre_hash_B (adapter_1)",
           evA2["adapter_pre_hash"] == evB2["adapter_pre_hash"],
           evA2["adapter_pre_hash"][:16])
+    # R2.4: l'ADMIN activa les contribucions de la ronda 2
+    admin_activate(proto, [evA2["contribution_id"], evB2["contribution_id"]])
+    check("ready_to_close: quòrum exacte 2/2 (r2)",
+          proto.coord.ready_to_close("run1", "r2")["state"] == "READY")
     fed2 = fedavg_via_coordinator(proto, "run1", "r2",
                                   base64.b64decode(fed1["adapter_1_b64"]))
     check("FedAvg Coordinator: adapter_2 (r2)", fed2["num_contributions"] == 2,

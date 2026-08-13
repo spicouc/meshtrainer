@@ -46,9 +46,11 @@ def check(name, ok, detail=""):
 
 def server_boot(db_path, port=19862):
     """Engega un servidor en un thread. Retorna (httpd, proto)."""
-    httpd, proto = serve(port=port, db_path=db_path)
+    import os as _os
+    _tok = _os.environ.get("MESH_ADMIN_TOKEN", "mesh-admin-token-test")
+    httpd, proto = serve(port=port, db_path=db_path, admin_token=_tok)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    time.sleep(0.4)
+    time.sleep(0.5)
     return httpd, proto
 
 
@@ -162,14 +164,18 @@ def main():
     # servidor S1
     httpd1, proto1 = server_boot(DB)
 
-    # R2.3: el Coordinator crea la ronda i les assignacions (autoritat)
+    # R2.3/R2.4: el Coordinator crea la ronda i les assignacions (autoritat
+    # ADMIN — requereix admin_token)
+    ADMIN_TOKEN = os.environ.get("MESH_ADMIN_TOKEN", "mesh-admin-token-test")
+
     def coord_setup(proto, base_hash, adapter_sha, pre_hash, assignments,
                     num_ex):
         """assignments: [(assignment_id, worker_id, shard)]"""
         proto.handle("round.create", {
             "run_id": "run1", "round_id": "r1", "backend_id": args.backend,
             "base_model_hash": base_hash, "adapter_0_sha": adapter_sha,
-            "adapter_pre_hash": pre_hash, "dataset_manifest_sha": ""})
+            "adapter_pre_hash": pre_hash, "dataset_manifest_sha": "",
+            "admin_token": ADMIN_TOKEN})
         from model_worker import load_examples as _lex, shard_manifest_sha as _sms
         for aid, wid, shard in assignments:
             exs = _lex(data_dir(args.backend), shard, num_ex)
@@ -179,7 +185,7 @@ def main():
                 "worker_id": wid, "shard_id": f"shard-{shard}",
                 "shard_manifest_sha": mf, "base_model_hash": base_hash,
                 "adapter_0_sha": adapter_sha, "expected_ett": 0,
-                "revision": 1})
+                "revision": 1, "admin_token": ADMIN_TOKEN})
 
     from model_worker import load_backend as _lb, load_examples as _lex
     _bk0 = _lb(args.backend)
@@ -270,11 +276,12 @@ def main():
     resp_s1_up = rpc_raw("checkpoint.upload", p_up)
     cid2 = resp_s1_up.get("result", {}).get("contribution_id", "")
     # ── pas 5: contribution.register (PRIMERA crida -> RECEIVED, es guarda
-    # a la cache d'idempotència) + validate + activate ──
+    # a la cache d'idempotència) + validate + activate (ADMIN) ──
     p_reg = {**lease2, "contribution_id": cid2}
     resp_s1_reg = rpc_raw("contribution.register", p_reg)
     rpc_raw("contribution.validate", {"contribution_id": cid2})
-    rpc_raw("contribution.activate", {"contribution_id": cid2})
+    rpc_raw("contribution.activate",
+            {"contribution_id": cid2, "admin_token": ADMIN_TOKEN})
     # l'estat REAL de la contribució (via coordinator, no cache)
     cstate = proto1.coord.contribution(cid2)["status"]
     check("mini-flux S1 complet (open->submit->commit->upload->register)",

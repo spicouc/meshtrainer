@@ -227,7 +227,7 @@ def main():
     expect_rejected("AUTH-13 FedAvg amb pre_hash heterogeni -> REJECTED",
                     lambda: coord.fedavg("run1", "r1",
                                          base64.b64encode(b"\x00" * 64).decode()),
-                    "heterogeneous_adapter_pre_hash")
+                    "fedavg_baseline_mismatch")
 
     # ── AUTH-14: worker no pot sobreescriure una assignació ──
     print("\n=== AUTH-14: worker cannot overwrite an existing assignment ===")
@@ -259,11 +259,12 @@ def main():
         ett=1)
     expect_rejected("EXPLOIT Worker B (base=B, shard-A, adapter=222, ETT=1)",
                     expl_B, "base_model_mismatch")
-    # FedAvg NO pot executar-se (no hi ha contribucions ACTIVE homogènies)
+    # FedAvg NO pot executar-se (no hi ha contribucions ACTIVE homogènies;
+    # R2.4: primer falla el baseline autoritatiu — REJECTED igualment)
     expect_rejected("EXPLOIT FedAvg no executable (cap contribució vàlida)",
                     lambda: coord.fedavg("run1", "r1",
                                          base64.b64encode(b"\x00" * 64).decode()),
-                    "heterogeneous_adapter_pre_hash")
+                    "fedavg_baseline_mismatch")
 
     # ── resum ──
     npass = sum(1 for _, ok in CHECKS if ok)

@@ -2,29 +2,29 @@ verify.txt — PRE-TARBALL (còpia interna de DELIVERY_INFO; la verificació def
 
 ======================================================================
  DELIVERY_INFO — MeshTrainer Generic Distributed (R2.2 CLOSEOUT)
- Generat: 2026-08-11 17:01:22 CEST
+ Generat: 2026-08-11 21:48:40 CEST
 ======================================================================
 
-COMMIT (complet): 611e4e9edf1203825a4d2019743acd2db2baae81
-PARENT (base):    6b8ef5aaf878e40857fbe02831cf7b3b825b1887
+COMMIT (complet): bd29fab775299bd5358abeab4ca1ca5b3af199ba
+PARENT (base):    0913a154bb9d5d9e82ccd864a917ed9ece92c56e
 BRANCH:           rc5.4-stagea
 
-TARBALL: meshtrainer_generic_distributed_qwen_r2_2_final_611e4e9.tar.gz
-SIZE:    55894315 bytes
-SHA-256 (detached, autoritatiu): 3bb8e38d97311a989c679d6bcc86f6afd5b7ca9ae1c88e1d635728cf3b2eaa93
+TARBALL: meshtrainer_generic_distributed_r2_3_final_bd29fab.tar.gz
+SIZE:    55901903 bytes
+SHA-256 (detached, autoritatiu): 481c2174cc5f11e175dbf0970fea4ee82c0630f94b2f2ea2ae925b46e7159a53
 
-FITXERS REGULARS (repo, sense .git/.venv/pycache/manifest): 336
-MANIFEST LINES: 336
+FITXERS REGULARS (repo, sense .git/.venv/pycache/manifest): 337
+MANIFEST LINES: 337
 sha256sum -c (sobre l'extracció del tarball, A/B): 0 errors — PASS
 
 GATE FINAL (evidence/GENERIC_DISTRIBUTED_FINAL_GATE.log):
   Python venv Qwen: Python 3.13.5
-  Python ISO (sense torch): Python 3.13.5
+  Python ISO: Python 3.13.5
   Model: /root/qwen3_0_6b_snapshot
   dependency: PASS
   pycompile: PASS
-  core_sense_imports_qwen: PASS
   backend_isolation: PASS
+  authority_adversarial: PASS
   dummy_e2e: PASS
   dummy_recovery: PASS
   qwen_e2e: PASS
@@ -33,7 +33,7 @@ GATE FINAL (evidence/GENERIC_DISTRIBUTED_FINAL_GATE.log):
   quality_after:  QUALITY OK
   (CLASSIFICACIÓ: PIPELINE TRAINING PASS · QUALITY PILOT)
   quality: PASS
-  regression: PASS (12/12 byte-for-byte = R3.1)
+  regression: PASS (12/12 = R3.1)
   artefacte adapter_0.bundle: OK
   artefacte adapter_1.bundle: OK
   artefacte adapter_2.bundle: OK
@@ -41,20 +41,20 @@ GATE FINAL (evidence/GENERIC_DISTRIBUTED_FINAL_GATE.log):
   artefacte quality_before.json: OK
   artefacte quality_after.json: OK
   artefactes: PASS
-  GENERIC DISTRIBUTED FINAL GATE (R2.2) — Overall: PASS
-  GENERIC DISTRIBUTED FINAL GATE (R2.2) — Overall: PASS
+  GENERIC DISTRIBUTED FINAL GATE (R2.3) — Overall: PASS
+  GENERIC DISTRIBUTED FINAL GATE (R2.3) — Overall: PASS
 
 ARTEFACTES (qwen_distributed_output/):
   - adapter_0.bundle: sha256=e0877337c987bb873653b22f0016bc8b... (9209691 B)
   - adapter_1.bundle: sha256=e5f6bc7ce9a3c7553fd64d61faf0277f... (9209694 B)
   - adapter_2.bundle: sha256=e4a36bbd017a7b064201de715c34a641... (9209694 B)
   - distributed_metrics.json: sha256=ceb31cdc624b2bd8f15e512bff7e6618... (373 B)
-  - evidence_w-A.json: sha256=f5dfc414ef89e2cf9f5322c4dccc2624... (908 B)
-  - evidence_w-A2.json: sha256=72388e12520e0503f42af178c992bbf9... (911 B)
-  - evidence_w-B.json: sha256=b91cbc5f0ed018e15634a9313d497798... (911 B)
-  - evidence_w-B2.json: sha256=f8ec7ed0fd1758df6376dd0570335f4f... (911 B)
-  - quality_after.json: sha256=c40e9b7c4779fb097bb66f915c77269b... (5399 B)
-  - quality_before.json: sha256=0439d5d07aff2740f735fa5bd8ff25bc... (5901 B)
+  - evidence_w-A.json: sha256=e481ca9ae2db746be67a6603c91c603e... (908 B)
+  - evidence_w-A2.json: sha256=e004bef608b9f49e1f4e5a5963f6c3f3... (912 B)
+  - evidence_w-B.json: sha256=3755a56ed651c1b56312d1cdc5040859... (912 B)
+  - evidence_w-B2.json: sha256=1ce383921f2451b64b7dc75f28a388cd... (913 B)
+  - quality_after.json: sha256=c8e8a2779000c222e7d71fe9961984fe... (5399 B)
+  - quality_before.json: sha256=e31bf6dbb84e1fd67dbe56dc7bbd7b01... (5901 B)
 
 METRICS (distributed_metrics.json):
   backend: qwen3
@@ -75,10 +75,10 @@ QUALITY_AFTER.JSON: validation_loss=2.1686332881450654 ppl=8.74632216619331 hold
 CLASSIFICACIÓ: PIPELINE TRAINING PASS · QUALITY PILOT
 
 EVIDÈNCIES (PIDs):
-  - evidence_w-A.json: pid=6960 worker=w-A shard=A delta=8c72888369c419c2 adapter_post=79083d5ceb117f18
-  - evidence_w-A2.json: pid=7045 worker=w-A2 shard=A delta=6d6077e1ac5a7873 adapter_post=633fc4814099e06a
-  - evidence_w-B.json: pid=7003 worker=w-B shard=B delta=691b5ecd018ebee6 adapter_post=83629440d7717812
-  - evidence_w-B2.json: pid=7087 worker=w-B2 shard=B delta=b7f979b567639819 adapter_post=38dd938835451580
+  - evidence_w-A.json: pid=11740 worker=w-A shard=A delta=8c72888369c419c2 adapter_post=5e190876beb9f318
+  - evidence_w-A2.json: pid=11873 worker=w-A2 shard=A delta=6d6077e1ac5a7873 adapter_post=8bbb795f7480ea7e
+  - evidence_w-B.json: pid=11781 worker=w-B shard=B delta=691b5ecd018ebee6 adapter_post=c261c7e842a33ee0
+  - evidence_w-B2.json: pid=11920 worker=w-B2 shard=B delta=b7f979b567639819 adapter_post=47eff08fde703972
 
 ======================================================================
  FI DELIVERY_INFO — cap camp pendent

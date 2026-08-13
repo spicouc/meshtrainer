@@ -21,8 +21,10 @@ IDEMPOTÈNCIA PERSISTENT (punt 6 de l'ordre):
 import base64
 import hashlib
 import json
+import os
 import sqlite3
 import threading
+import time
 import uuid
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
@@ -46,10 +48,26 @@ class TrainingServerError(Exception):
 
 
 class TrainingProtocolHandler:
-    """Protocol JSON-RPC genèric (una connexió SQLite, single writer)."""
+    """Protocol JSON-RPC genèric (una connexió SQLite, single writer).
+
+    R2.4: frontera administrativa real. Operacions ADMIN:
+      round.create, assignment.create, contribution.activate, round.fedavg
+    requereixen admin_token (configurat, no derivable, comparació segura).
+    Un worker normal NO pot invocar operacions ADMIN (SEC-01..04).
+    """
+
+    # operacions ADMIN (R2.4, punt 1) — qualsevol operació futura que
+    # modifiqui el pla autoritatiu de la ronda s'afegeix aquí
+    ADMIN_METHODS = frozenset([
+        "round.create",
+        "assignment.create",
+        "contribution.activate",
+        "round.fedavg",
+    ])
 
     def __init__(self, db_path="training_server.db", now=None,
-                 default_ttl_seconds=30.0):
+                 default_ttl_seconds=30.0, admin_token="",
+                 admin_token_source="env"):
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         try:
@@ -62,7 +80,30 @@ class TrainingProtocolHandler:
         self._workers = {}   # worker_id -> {session_id, base_model_hash, ...}
         self._units = {}     # unit_id -> dict(state, ett_registered, ...)
         self._lock = threading.RLock()
+        # R2.4: admin_token — configurat al servidor, no derivable del
+        # worker_id, no retornat per cap endpoint, comparació segura.
+        self._admin_token = admin_token
+        self._admin_token_source = admin_token_source
         self._init_db()
+
+    def _require_admin(self, p):
+        """R2.4 (punt 2): credencial ADMIN obligatòria. Comparació segura
+        (constant-time). Worker token/session/lease NO substitueix."""
+        provided = p.get("admin_token", "")
+        if not self._admin_token:
+            raise TrainingServerError(
+                "admin_token_not_configured",
+                msg="el servidor no té admin_token configurat — REJECTED")
+        if not provided:
+            raise TrainingServerError(
+                "admin_required",
+                msg="operació ADMIN sense credencial — REJECTED")
+        import hmac
+        if not hmac.compare_digest(str(provided), self._admin_token):
+            raise TrainingServerError(
+                "admin_credential_invalid",
+                msg="credencial ADMIN incorrecta — REJECTED (SEC-05)")
+        return True
 
     def _init_db(self):
         self._conn.executescript("""
@@ -195,6 +236,13 @@ class TrainingProtocolHandler:
         fn = getattr(self, f"_m_{method.replace('.', '_')}", None)
         if fn is None:
             raise TrainingServerError("method_not_found", method=method)
+        # R2.4: frontera ADMIN (punt 1) — un worker NO pot invocar
+        # operacions de control (SEC-01..04); cal admin_token vàlid.
+        # NORMALITZEM el nom: "round_fedavg" i "round.fedavg" són el mateix
+        # mètode i cap dels dos pot saltar-se la frontera.
+        method_norm = method.replace("_", ".")
+        if method_norm in self.ADMIN_METHODS:
+            self._require_admin(params)
         if method in ("step.open", "step.worker_update.submit", "step.commit",
                       "checkpoint.upload", "step.release",
                       "contribution.register"):
@@ -494,9 +542,14 @@ class TrainingRpcHandler(BaseHTTPRequestHandler):
 
 
 def serve(host="127.0.0.1", port=DEFAULT_PORT, db_path="training_server.db",
-          now=None, default_ttl_seconds=30.0):
+          now=None, default_ttl_seconds=30.0, admin_token=None):
+    """Arrenca el servidor. R2.4: admin_token es llegeix de l'entorn
+    MESH_ADMIN_TOKEN si no es passa explícitament (mai derivable)."""
+    if admin_token is None:
+        admin_token = os.environ.get("MESH_ADMIN_TOKEN", "")
     proto = TrainingProtocolHandler(db_path, now=now,
-                                    default_ttl_seconds=default_ttl_seconds)
+                                    default_ttl_seconds=default_ttl_seconds,
+                                    admin_token=admin_token)
     httpd = ThreadingHTTPServer((host, port), TrainingRpcHandler)
     httpd.proto = proto
     return httpd, proto

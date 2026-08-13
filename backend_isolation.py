@@ -146,8 +146,9 @@ def main():
              "--backend", "dummy", "--num-examples", "2", "--seq-len", "16"],
             capture_output=True, text=True, timeout=300, cwd=HERE)
         out = r.stdout + r.stderr
-        # R2.3: el dummy e2e ara té 17/17 checks (2 nous de round/assignments)
-        ok = r.returncode == 0 and ("15/15 PASS" in out or "17/17 PASS" in out)
+        # R2.3/R2.4: el dummy e2e ha crescut de 15/15 → 17/17 → 19/19 checks
+        ok = r.returncode == 0 and any(
+            f"{n}/" in out and "PASS" in out for n in (15, 17, 19))
         check("ISO-01 dummy: e2e complet sense deps Qwen", ok,
               f"exit={r.returncode} {out.strip()[-80:]}")
     else:

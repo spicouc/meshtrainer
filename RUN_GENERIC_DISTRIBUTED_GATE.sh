@@ -34,7 +34,7 @@ OVERALL=0
 GATE_LOG="$EVIDENCE/GENERIC_DISTRIBUTED_FINAL_GATE.log"
 
 echo "============================================" | tee "$GATE_LOG"
-echo "  GENERIC DISTRIBUTED FINAL GATE (R2.4 FINAL)" | tee -a "$GATE_LOG"
+echo "  GENERIC DISTRIBUTED FINAL GATE (R2.5 FINAL)" | tee -a "$GATE_LOG"
 echo "  Python venv Qwen: $($PYTHON --version 2>&1)" | tee -a "$GATE_LOG"
 echo "  Python ISO: $($ISO_PY --version 2>&1)" | tee -a "$GATE_LOG"
 echo "  Model: $MODEL" | tee -a "$GATE_LOG"
@@ -164,6 +164,6 @@ done
 
 echo "" | tee -a "$GATE_LOG"
 echo "============================================" | tee -a "$GATE_LOG"
-echo "  GENERIC DISTRIBUTED FINAL GATE (R2.4 FINAL) — Overall: $([ $OVERALL -eq 0 ] && echo PASS || echo FAIL)" | tee -a "$GATE_LOG"
+echo "  GENERIC DISTRIBUTED FINAL GATE (R2.5 FINAL) — Overall: $([ $OVERALL -eq 0 ] && echo PASS || echo FAIL)" | tee -a "$GATE_LOG"
 echo "============================================" | tee -a "$GATE_LOG"
 exit $OVERALL

@@ -31,7 +31,7 @@ def main():
     sha_file = tarball + ".sha256" if tarball else None
     L = []
     L.append("=" * 70)
-    L.append(" DELIVERY_INFO — MeshTrainer Generic Distributed (R2.4 FINAL)")
+    L.append(" DELIVERY_INFO — MeshTrainer Generic Distributed (R2.5 FINAL)")
     L.append(f" Generat: {time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
     L.append("=" * 70)
     L.append("")

@@ -1,5 +1,5 @@
 ============================================
-  GENERIC DISTRIBUTED FINAL GATE (R2.4 FINAL)
+  GENERIC DISTRIBUTED FINAL GATE (R2.5 FINAL)
   Python venv Qwen: Python 3.13.5
   Python ISO: Python 3.13.5
   Model: /root/qwen3_0_6b_snapshot
@@ -51,5 +51,5 @@
   artefactes: PASS
 
 ============================================
-  GENERIC DISTRIBUTED FINAL GATE (R2.4 FINAL) — Overall: PASS
+  GENERIC DISTRIBUTED FINAL GATE (R2.5 FINAL) — Overall: PASS
 ============================================

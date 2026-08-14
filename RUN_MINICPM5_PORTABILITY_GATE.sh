@@ -61,12 +61,15 @@ print('UNIT PASS')
 \"" 500
 # 5 MiniCPM adversarial MADV-01..16
 run_sub adversarial "$PYTHON minicpm5_adversarial_tests.py" 500
+# 5b lease/revision REALS (R1.1: MREC-05, MREC-06, MADV-13, MADV-14)
+run_sub lease_revision "$PYTHON minicpm5_lease_revision_tests.py" 200
 # 6 adapter adversarial ADV-A01..07
 run_sub adapter_adversarial "$PYTHON minicpm5_adapter_adversarial_tests.py" 500
-# 7 single-worker real (via quality pilot = training real 3 passos)
-run_sub single_worker "$PYTHON /tmp/mc_quality.py" 600
+# 7 single-worker real (via quality pilot versionat — R1.1 punt 9)
+run_sub single_worker "$PYTHON minicpm5_quality.py" 600
 # 8 distributed Round 1 + FedAvg + oracle R1 + Round 2 + oracle R2
-run_sub distributed "$PYTHON generic_distributed_run.py --backend minicpm5 --model /root/minicpm5_1b_snapshot --num-examples 2 --seq-len 64" 2400
+# R1.1: outputs EXCLUSIUS de minicpm5 (mai qwen_distributed_output)
+run_sub distributed "$PYTHON generic_distributed_run.py --backend minicpm5 --model /root/minicpm5_1b_snapshot --num-examples 2 --seq-len 64 --out-dir /root/meshtrainer/minicpm5_output" 2400
 # 9 distributed recovery MREC
 run_sub recovery "$PYTHON generic_recovery_tests.py --backend minicpm5 --num-examples 1 --seq-len 64" 1800
 # 10 qwen regression (load + adapter + smoke)
@@ -84,8 +87,14 @@ assert bk.compute_ett(tok[2]) > 0
 bk.close()
 print('QWEN REGRESSION PASS')
 \"" 400
-# 11 dummy regression
-run_sub dummy_regression "$PYTHON generic_distributed_run.py --backend dummy --num-examples 4 --seq-len 16" 400
+# 11 dummy regression — R1.1: directori SEPARAT + minicpm5_output immutable
+run_sub dummy_regression "bash -c '
+set -e
+SNAP=\$(find /root/meshtrainer/minicpm5_output -type f -exec sha256sum {} + 2>/dev/null | sort | sha256sum | cut -d\" \" -f1)
+timeout 400 /opt/qwen3-venv/bin/python generic_distributed_run.py --backend dummy --num-examples 4 --seq-len 16 --out-dir /tmp/minicpm5_dummy_regression_output
+SNAP2=\$(find /root/meshtrainer/minicpm5_output -type f -exec sha256sum {} + 2>/dev/null | sort | sha256sum | cut -d\" \" -f1)
+[ \"\$SNAP\" = \"\$SNAP2\" ] && echo \"minicpm5_output immutable després del dummy: OK\" || { echo \"minicpm5_output CANVIAT pel dummy!\"; exit 1; }
+'" 500
 # 12 RC5.4 regression 12/12
 run_sub core_regression "bash -c '
 R31=/root/meshtrainer_rc54_stagea_r3_1_final_77595f4.tar.gz
@@ -104,17 +113,17 @@ run_sub portability "bash -c '
 [ -f PORTABILITY_REPORT.md ] && grep -q \"MULTI-MODEL PORTABILITY: PROVEN\" PORTABILITY_REPORT.md && echo \"PORTABILITY_REPORT.md OK\"
 git diff --stat HEAD -- training_http_server.py model_round_coordinator.py 2>/dev/null | grep -q . && echo \"ALERTA: core canviat!\" && exit 1 || echo \"core sense canvis (Coordinator/HTTP)\"
 '" 60
-# 14 artefactes
+# 14 artefactes — R1.1: NOMÉS els fitxers produïts DIRECTAMENT per MiniCPM5
+# (sense cap cp des de qwen_distributed_output)
 run_sub artefacts "bash -c '
-mkdir -p minicpm5_output
-for f in adapter_0.bundle adapter_1.bundle adapter_2.bundle distributed_metrics.json quality_before.json quality_after.json; do
-  [ -s \"qwen_distributed_output/\$f\" ] && cp \"qwen_distributed_output/\$f\" \"minicpm5_output/\$f\" 2>/dev/null
-done
-cd minicpm5_output 2>/dev/null || exit 1
-for f in adapter_0.bundle adapter_1.bundle adapter_2.bundle distributed_metrics.json quality_before.json quality_after.json; do
+cd minicpm5_output 2>/dev/null || { echo \"minicpm5_output absent\"; exit 1; }
+for f in adapter_0.bundle adapter_1.bundle adapter_2.bundle distributed_metrics.json evidence_w-A.json evidence_w-B.json evidence_w-A2.json evidence_w-B2.json quality_before.json quality_after.json; do
   [ -s \"\$f\" ] && echo \"artefacte \$f: OK\" || { echo \"artefacte \$f: ABSENT\"; exit 1; }
 done
+grep -q \"\\\"backend\\\": \\\"minicpm5\\\"\" distributed_metrics.json && echo \"metrics backend=minicpm5: OK\" || { echo \"metrics backend != minicpm5\"; exit 1; }
 '" 60
+# 14b artefact integrity — R1.1 punt 11 (sense carregar model)
+run_sub artefact_integrity "$PYTHON minicpm5_artefact_integrity.py" 120
 # 15 manifest
 run_sub manifest "bash -c '
 find . -type f ! -path \"./.git/*\" ! -path \"./.venv/*\" ! -path \"*/__pycache__/*\" ! -name \"*.pyc\" ! -name \"MANIFEST.sha256\" -print0 | sort -z | xargs -0 sha256sum > /tmp/mc_manifest.sha256

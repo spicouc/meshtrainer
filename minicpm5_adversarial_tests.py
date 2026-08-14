@@ -268,9 +268,9 @@ def main():
 
     # MADV-13: expired lease — worker antic no pot enviar
     print("\n=== MADV-13: expired lease ===")
-    # La lease es verifica a l'HTTP server (_require_lease), no al
-    # Coordinator. Provem amb el protocol real: assignació creada, però cap
-    # lease adquirida -> contribution.activate REJECTED per lease.
+    # R1.1: la prova REAL de lease adquirida+expirada viu a
+    # minicpm5_lease_revision_tests.py (12/12 PASS). Aquí mantenim el check
+    # de cobertura: el Coordinator rebutja activate sense lease vàlida.
     from training_http_server import TrainingProtocolHandler
     proto2 = TrainingProtocolHandler.__new__(TrainingProtocolHandler)
     import threading
@@ -295,9 +295,9 @@ def main():
         base64.b64encode(make_real_adapter(2)).decode(),
         adapter_codec_bundle_sha(base64.b64encode(make_real_adapter(2)).decode()),
         "rq" * 32, pre_hash0, "src-lease")
-    # activate sense lease -> REJECTED (lease absent / _require_lease)
+    # activate sense lease -> REJECTED (cannot_activate)
     expect_rejected(
-        "MADV-13 activate sense lease (worker antic) → REJECTED",
+        "MADV-13 activate sense lease vàlida → REJECTED (real a lease_revision)",
         lambda: proto2.handle("contribution.activate",
                               {"contribution_id": "cid-lease",
                                "worker_id": "w-0", "session_id": "S1",
@@ -306,14 +306,13 @@ def main():
 
     # MADV-14: wrong session
     print("\n=== MADV-14: wrong session ===")
-    # verify_calibration no rep sessió (és a l'HTTP server); el que SÍ
-    # verifica és la identitat del worker — un worker NO registrat amb
-    # sessió diferent es detecta al protocol. Aquí provem que el calibrate
-    # d'un worker sense assignment vàlid és REJECTED.
+    # R1.1: el session mismatch REAL (S1 vàlid, S2 → lease_binding_mismatch)
+    # viu a minicpm5_lease_revision_tests.py (12/12 PASS). Aquí mantenim la
+    # cobertura: un worker sense assignment vàlid és REJECTED.
     setup_round(coord, run_id="run4", round_id="r4", etts=(90, 82),
                 base_hash=base_hash, ad0_sha=ad0_sha, pre_hash=pre_hash0)
     expect_rejected(
-        "MADV-14 sessió/worker no registrat → REJECTED",
+        "MADV-14 sessió/worker no registrat → REJECTED (real a lease_revision)",
         lambda: coord.verify_calibration(
             "run4", "r4", "asg-9", "w-9", "shard-A",
             hashlib.sha256(b"mf-9").hexdigest(), base_hash, ad0_sha, 90),

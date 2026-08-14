@@ -243,8 +243,13 @@ def main():
     OUT = args.out_dir or os.path.join(os.path.dirname(
         os.path.abspath(__file__)), "qwen_distributed_output")
     import shutil
-    shutil.rmtree(OUT, ignore_errors=True)
+    # R1.1: NO esborrem tot el directori (el quality pilot escriu
+    # quality_before/after.json al mateix OUT abans que nosaltres).
+    # Només netegem els fitxers que AQUEST run genera.
     os.makedirs(OUT, exist_ok=True)
+    for _f in os.listdir(OUT):
+        if _f.startswith(("adapter_", "evidence_w-", "distributed_metrics")):
+            os.remove(os.path.join(OUT, _f))
     for p in (args.server_db,):
         if os.path.exists(p):
             os.remove(p)

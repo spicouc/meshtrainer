@@ -68,6 +68,13 @@ if [ -x "$PYTHON" ]; then
     DR_RES=$([ $DRC -eq 0 ] && echo PASS || echo FAIL)
     echo "Dummy recovery: $DR_RES (exit $DRC)" >> "$LOG"
     [ $DRC -eq 0 ] || OVERALL=1
+    # R1.1: MiniCPM5 artefact integrity (sense carregar el model de 2.1 GB —
+    # només coherència criptogràfica dels artefactes empaquetats)
+    (cd "$EX" && timeout 120 "$PYTHON" minicpm5_artefact_integrity.py) >> "$LOG" 2>&1
+    AIC=$?
+    AI_RES=$([ $AIC -eq 0 ] && echo PASS || echo FAIL)
+    echo "MiniCPM5 artefact integrity: $AI_RES (exit $AIC)" >> "$LOG"
+    [ $AIC -eq 0 ] || OVERALL=1
 fi
 
 echo "══ CLEAN EXTRACTION ${LABEL} — Overall: $([ $OVERALL -eq 0 ] && echo PASS || echo FAIL) ══" >> "$LOG"

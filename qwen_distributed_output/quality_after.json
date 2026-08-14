@@ -1,14 +1,14 @@
 {
-  "adapter_sha": "dabd381d5b4eb62d03ecc58bf113fb9894c7c72f2786959481741137163cffac",
-  "validation_loss": 2.1686332881450654,
-  "validation_perplexity": 8.74632216619331,
+  "adapter_sha": "690038dc15c46be8181b1068d49506c7c828dbd9bb2b4ed294b6b1b10840f3e5",
+  "validation_loss": 2.337364560365677,
+  "validation_perplexity": 10.353913460448961,
   "holdout_prompts": 10,
-  "score_total": 6,
+  "score_total": 8,
   "score_max": 20,
   "holdouts": [
     {
       "prompt": "Què és la hipertensió arterial?",
-      "response": "Una hipertensió arterial és una condició en la qual el sistema vascular s'ha deixat de funcionar amb una pressió arterial elevada, que pot causar daques, obesitat, obesitat, obesitat, obesitat, obesitat",
+      "response": "La hipertensió arterial és una condició en la qual el pèrdu de pressió arterial és elevada, o el pèrdu de pressió arterial és elevat. La hipertensió arterial és una condició general que afecta la pressió arterial",
       "expected": "La hipertensió arterial és l'elevació sostinguda de la pressió de la sang sobre les parets de les artèries, per sobre dels valors considerats normals.",
       "score": 2,
       "keywords_found": [
@@ -18,21 +18,23 @@
     },
     {
       "prompt": "Què és un ecosistema?",
-      "response": "Una natura complexa de recursos i funcions que permet a una especie de vida a existir. Els ecosistemes són la combinació de la fauna, flora, fauna i ambió que formen una interacció dinàmica entre les espècies",
+      "response": "La resposta és que un ecosistema és un conjunt de plantes, animals, arbres, raigs, rius, etc., que formen una interacció dinàmica entre les seves funcions i les seves interaccions. Els ecosist",
       "expected": "Un ecosistema és el conjunt format per una comunitat d'organismes i el seu medi físic, amb les interaccions que s'hi estableixen.",
-      "score": 0,
-      "keywords_found": []
+      "score": 1,
+      "keywords_found": [
+        "interaccions"
+      ]
     },
     {
       "prompt": "Qui va ser Leonardo da Vinci?",
-      "response": "Okay, the user is asking who Leonardo da Vinci was. I need to provide a clear and accurate answer. Let me start by recalling the key points about his life and contributions. He was an Italian polymath from the 15th century, known for his art, science, and engineering.",
+      "response": "superior\nOkay, the user is asking who Leonardo da Vinci was. I need to provide a clear and accurate answer. Let me start by recalling the key points about Leonardo da Vinci. He was an Italian polymath from the 15th century, known for his art, science, and",
       "expected": "Leonardo da Vinci va ser un artista i científic italià del Renaixement, autor de La Gioconda i de nombrosos estudis d'anatomia i enginyeria.",
       "score": 0,
       "keywords_found": []
     },
     {
       "prompt": "Quin és el continent més poblat?",
-      "response": "El continent més poblat és el continent de l'Antarctic, amb una població de 100.000 habitats. Aquest continent és el més poblat del món, i és el continent més poblat del món. Aquest continent és",
+      "response": "La terra més poblat del món és el continent de l'Amazonia, però també es pot referir a l'Amazonia com a continent més poblat. Aquest continent és el més poblat del món, amb una població de més de 5",
       "expected": "El continent més poblat és Àsia, amb més de quatre mil milions d'habitants, aproximadament el 60 per cent de la població mundial.",
       "score": 1,
       "keywords_found": [
@@ -41,23 +43,24 @@
     },
     {
       "prompt": "Què és una antònim?",
-      "response": "Una antònim és una persona o cosa que va passar o va existir anteriorment. Per exemple, si vols dir que un personatge va passar una cosa, la antònim és la persona que va fer-ho. Això és una teoria que va",
+      "response": "La antònim és una teoria que busca aclarir la relació entre la realitat actual i la realitat antiga, o entre la realitat antiga i la realitat actual. Aquesta teoria és basada en la idea de que la realitat actual és",
       "expected": "Un antònim és una paraula que té un significat oposat al d'una altra, com ara fred i calor.",
       "score": 0,
       "keywords_found": []
     },
     {
       "prompt": "Què és la derivada?",
-      "response": "Una derivada és una funció que representa la velocitat en funció de temps, o la velocitat en funció de posició, o la velocitat en funció de la posició. La derivada és una funció que representa la velocitat en funció de temps",
+      "response": "La derivada és una funció que representa la velocitat en funció de temps. La velocitat és la velocitat instantània, que és la velocitat que es pot calcular en funció de la velocitat instantània. La velocitat instantània és la velocitat que",
       "expected": "La derivada és una operació del càlcul que mesura la taxa de variació instantània d'una funció en un punt.",
-      "score": 1,
+      "score": 2,
       "keywords_found": [
+        "instantània",
         "funció"
       ]
     },
     {
       "prompt": "Què és la biosfera?",
-      "response": "La biosfera és la superfície terrestre que és la més diversa i complexa de tot el planeta, i és la màxima de la vida. La biosfera és la superfície terrestre que és la més diversa i complexa de",
+      "response": "La biosfera és la superfície terrestre que és la màxima de la vida. La biosfera és la superfície terrestre que és la màxima de la vida. La biosfera és la superfície terrestre que és la màxima de",
       "expected": "La biosfera és la capa de la Terra on es desenvolupa la vida, que comprèn parts de la litosfera, la hidrosfera i l'atmosfera.",
       "score": 1,
       "keywords_found": [
@@ -66,7 +69,7 @@
     },
     {
       "prompt": "Què és un sistema operatiu?",
-      "response": "Una sistema operatiu és un software que permet a un usuari accedir a una computadora i a utilitzar-la. Els sistemes operatius generalment tenen una funció de gestió de recursos com la memòria, la CPU i la disc, i",
+      "response": "La resposta és que un sistema operatiu és un software que permet a un usuari de l’Internet a accedir a la informació i recursos de la computadora. El sistema operatiu és el que fa tot això, i és el que permet a l’",
       "expected": "Un sistema operatiu és el programari que gestiona els recursos d'un ordinador i ofereix una interfície entre l'usuari i el maquinari; exemples en són Linux i Windows.",
       "score": 1,
       "keywords_found": [
@@ -75,18 +78,18 @@
     },
     {
       "prompt": "Què és la UNESCO?",
-      "response": "El UNESCO (Unesco) és una organització internacional que fa part de la UNESCO, que fa part de la UNESCO, que fa part de la UNESCO, que fa part de la UNESCO, que fa part de la UNESCO, que fa part de la UNESCO, que fa part de",
+      "response": "La UNESCO (Unesco) és una organització internacional que fa part de la UNESCO, que fa part de la UNESCO, que fa part de la UNESCO, que fa part de la UNESCO, que fa part de la UNESCO, que fa part de la UNESCO, que fa part de",
       "expected": "La UNESCO és l'organisme de les Nacions Unides per a l'educació, la ciència i la cultura, amb seu a París.",
       "score": 0,
       "keywords_found": []
     },
     {
       "prompt": "Què és l'arquitectura gòtica?",
-      "response": "El gòtic és una religió que va evolucir en l'antimitèria, amb una estructura que va tenir una gran influència dels més antiguos pèrgons i dels més antiguos pèrgons. La",
+      "response": "La gòtica és una arquitectura que és basada en la teologia i la religió, amb una estructura que és més complexa que la romàntica. La gòtica és una arquitectura que és basada en la teologia i la",
       "expected": "L'arquitectura gòtica és un estil medieval caracteritzat per les arcades apuntades, els vitralls i les voltes de creueria, present a catedrals com la de Barcelona.",
       "score": 0,
       "keywords_found": []
     }
   ],
-  "temps_s": 154.4
+  "temps_s": 145.6
 }

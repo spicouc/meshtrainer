@@ -1,0 +1,53 @@
+============================================
+  MINICPM5 PORTABILITY GATE (b146723)
+  2026-08-14T19:50:28Z
+============================================
+
+=== dependency ===
+  dependency: PASS
+
+=== pycompile ===
+  pycompile: PASS
+
+=== backend_isolation ===
+  backend_isolation: PASS
+
+=== backend_unit ===
+  backend_unit: PASS
+
+=== adversarial ===
+  adversarial: PASS
+
+=== adapter_adversarial ===
+  adapter_adversarial: PASS
+
+=== single_worker ===
+  single_worker: PASS
+
+=== distributed ===
+  distributed: PASS
+
+=== recovery ===
+  recovery: PASS
+
+=== qwen_regression ===
+  qwen_regression: PASS
+
+=== dummy_regression ===
+  dummy_regression: PASS
+
+=== core_regression ===
+  core_regression: PASS
+
+=== portability ===
+  portability: PASS
+
+=== artefacts ===
+  artefacts: PASS
+
+=== manifest ===
+  manifest: PASS
+
+============================================
+  MINICPM5 PORTABILITY GATE — Overall: PASS
+============================================

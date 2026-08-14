@@ -49,8 +49,13 @@ def make_adapter_0(backend_name, model, seq_len, out_dir, bcfg):
     """Genera adapter_0 amb el mateix backend (plugin) i el retorna."""
     from model_worker import load_backend
     cls = load_backend(backend_name)
-    mp = model or ("dummy" if backend_name == "dummy"
-                   else "/root/qwen3_0_6b_snapshot")
+    if backend_name == "dummy":
+        mp = model or "dummy"
+    elif backend_name == "minicpm5":
+        mp = model or os.environ.get(
+            "MINICPM5_MODEL", "/root/minicpm5_1b_snapshot")
+    else:
+        mp = model or "/root/qwen3_0_6b_snapshot"
     dbp = f"/tmp/generic_ad0_{backend_name}.db"
     if os.path.exists(dbp):
         os.remove(dbp)
@@ -79,6 +84,11 @@ def run_worker(backend_name, worker_id, session, shard, assignment, round_id,
         cmd += ["--model", "dummy"]
         cmd += ["--data-dir", os.path.join(os.path.dirname(
             os.path.abspath(__file__)), "qwen3_pilot_data")]
+    elif backend_name == "minicpm5":
+        cmd += ["--model", os.environ.get(
+            "MINICPM5_MODEL", "/root/minicpm5_1b_snapshot")]
+        cmd += ["--data-dir", os.environ.get(
+            "MINICPM5_DATA", "/root/meshtrainer/qwen3_pilot_data")]
     if extra:
         cmd += ["--backend-config", json.dumps(extra)]
     if train_only:
@@ -169,8 +179,13 @@ def expected_ett_for_shard(backend_name, model, seq_len, shard, num_ex,
     (etapa trusted/backend-aware). El Coordinator només guarda el valor."""
     from model_worker import load_backend, load_examples
     cls = load_backend(backend_name)
-    mp = model or ("dummy" if backend_name == "dummy"
-                   else "/root/qwen3_0_6b_snapshot")
+    if backend_name == "dummy":
+        mp = model or "dummy"
+    elif backend_name == "minicpm5":
+        mp = model or os.environ.get(
+            "MINICPM5_MODEL", "/root/minicpm5_1b_snapshot")
+    else:
+        mp = model or "/root/qwen3_0_6b_snapshot"
     dbp = f"/tmp/generic_plan_{backend_name}_{shard}.db"
     if os.path.exists(dbp):
         os.remove(dbp)
@@ -197,8 +212,13 @@ def compute_pre_hash(backend_name, model, seq_len, adapter_bytes):
     carregat (baseline de la ronda). Etapa trusted del Coordinator."""
     from model_worker import load_backend
     cls = load_backend(backend_name)
-    mp = model or ("dummy" if backend_name == "dummy"
-                   else "/root/qwen3_0_6b_snapshot")
+    if backend_name == "dummy":
+        mp = model or "dummy"
+    elif backend_name == "minicpm5":
+        mp = model or os.environ.get(
+            "MINICPM5_MODEL", "/root/minicpm5_1b_snapshot")
+    else:
+        mp = model or "/root/qwen3_0_6b_snapshot"
     dbp = f"/tmp/generic_prehash_{backend_name}_{hashlib.sha256(adapter_bytes).hexdigest()[:8]}.db"
     bk = cls(mp, db_path=dbp, seq_len=seq_len)
     bk.load_model()
@@ -211,7 +231,8 @@ def compute_pre_hash(backend_name, model, seq_len, adapter_bytes):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--backend", required=True, choices=["qwen3", "dummy"])
+    ap.add_argument("--backend", required=True,
+                    choices=["qwen3", "dummy", "minicpm5"])
     ap.add_argument("--num-examples", type=int, default=10)
     ap.add_argument("--seq-len", type=int, default=128)
     ap.add_argument("--model", default=None)

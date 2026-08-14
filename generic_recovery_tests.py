@@ -54,10 +54,19 @@ def server_boot(db_path, port=19862):
     return httpd, proto
 
 
+def _model_path_for(backend_name, default_qwen="/root/qwen3_0_6b_snapshot"):
+    if backend_name == "dummy":
+        return "dummy"
+    if backend_name == "minicpm5":
+        import os
+        return os.environ.get("MINICPM5_MODEL", "/root/minicpm5_1b_snapshot")
+    return default_qwen
+
+
 def make_adapter_0(backend_name, out_dir, seq_len=128):
     from model_worker import load_backend
     cls = load_backend(backend_name)
-    mp = "dummy" if backend_name == "dummy" else "/root/qwen3_0_6b_snapshot"
+    mp = _model_path_for(backend_name)
     dbp = f"/tmp/generic_recovery_ad0_{backend_name}.db"
     if os.path.exists(dbp):
         os.remove(dbp)
@@ -85,12 +94,18 @@ def run_worker(backend_name, worker_id, session, shard, assignment, round_id,
         cmd += ["--model", os.environ.get("QWEN3_MODEL", "/root/qwen3_0_6b_snapshot")]
         cmd += ["--data-dir", os.environ.get("QWEN3_DATA",
                                              "/root/meshtrainer/qwen3_pilot_data")]
-        # determinisme OBLIGATORI per a recovery bit-exacte (com R-Q1)
-        cmd += ["--deterministic"]
+    elif backend_name == "minicpm5":
+        cmd += ["--model", _model_path_for(backend_name)]
+        cmd += ["--data-dir", os.environ.get(
+            "MINICPM5_DATA", "/root/meshtrainer/qwen3_pilot_data")]
     else:
         cmd += ["--model", "dummy"]
         cmd += ["--data-dir", os.path.join(os.path.dirname(
             os.path.abspath(__file__)), "qwen3_pilot_data")]
+    # determinisme OBLIGATORI per a recovery bit-exacte (R-Q1, MREC-04):
+    # només té efecte per qwen3 (set_num_threads(1)); el minicpm5 és
+    # determinista per seed fixa.
+    cmd += ["--deterministic"]
     if train_only:
         cmd += ["--train-only"]
 
@@ -130,7 +145,8 @@ def data_dir(backend_name):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--backend", required=True, choices=["qwen3", "dummy"])
+    ap.add_argument("--backend", required=True,
+                    choices=["qwen3", "dummy", "minicpm5"])
     # NOTA (fidel al R-Q1 certificat): el recovery encadenat del backend Qwen
     # verifica pre_hash amb hash estricte float32; la reconstrucció pre+delta
     # acumula ~1 ulp per pas encadenat, per això el test certificat fa servir
@@ -195,7 +211,7 @@ def main():
 
     from model_worker import load_backend as _lb, load_examples as _lex
     _bk0 = _lb(args.backend)
-    _mp0 = ("dummy" if args.backend == "dummy" else "/root/qwen3_0_6b_snapshot")
+    _mp0 = _model_path_for(args.backend)
     _bk0 = _bk0(_mp0, db_path=f"/tmp/genrec_pre_{args.backend}.db",
                 seq_len=args.seq_len)
     _bk0.load_model()

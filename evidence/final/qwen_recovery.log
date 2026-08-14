@@ -1,0 +1,103 @@
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<01:12,  4.29it/s]Loading weights:  58%|█████▊    | 181/311 [00:00<00:00, 685.99it/s]Loading weights:  92%|█████████▏| 287/311 [00:00<00:00, 762.97it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 653.44it/s]
+============================================================
+PART A: idempotència persistent (servidor mor -> mateixa resposta)
+============================================================
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<01:35,  3.26it/s]Loading weights:  59%|█████▊    | 182/311 [00:00<00:00, 566.77it/s]Loading weights:  91%|█████████ | 283/311 [00:00<00:00, 694.37it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 573.41it/s]
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]
+Loading weights:   0%|          | 1/311 [00:00<02:24,  2.15it/s]
+Loading weights:  77%|███████▋  | 241/311 [00:00<00:00, 380.02it/s]
+Loading weights:  92%|█████████▏| 287/311 [00:09<00:01, 23.15it/s] 
+Loading weights: 100%|██████████| 311/311 [00:09<00:00, 32.42it/s]
+[w-ida] 30346 REGISTERED base=0e7b2917757b5bb1
+[w-ida] CALIBRATED ett=93 expected=93
+[w-ida] ASSIGNMENT shard=shard-A
+[w-ida] LEASE ls_9af1b13b1 ttl=1786703376.5099204
+[w-ida] step.open OK
+[w-ida] TRAINED 2 exemples ett=93 delta=31ab6c7efeb77d8c 15s
+[w-ida] APPLIED receipt=tr_5c441d2cf59d4
+[w-ida] COMMITTED
+[w-ida] CHECKPOINT cid=tr_5c441d2cf59d4
+[w-ida] CONTRIBUTION SUBMITTED tr_5c441d2cf59d4 (validate+activate = ADMIN)
+[w-ida] RELEASED
+[w-ida] EVIDENCE /tmp/generic_recovery_out_qwen3/evidence_w-ida.json
+WORKER_DONE w-ida
+worker w-ida exit=0 killed_by_sigkill=False
+  PASS worker S1 complet
+  PASS mini-flux S1 complet (open->submit->commit->upload->register) — cid=tr_d9df9081f | open={'unit_id': 'unit-ida2', 'state': 'OPEN'} sub={'unit_id': 'unit-ida2', 'state': 'APPLIED', 'receipt': {'receipt_id': 'tr_d9df9081f2a341b0', 'receipt_nonce': '31ac0cde693ab8a90ca49a99a15e996f', 'update_id': 'ida2-all', 'delta_id': '31ab6c7efeb77d8c31395fd32479d07d', 'run_id': 'run1', 'round_id': 'r1', 'assignment_id': 'asg-ida2', 'micro_unit_id': 'unit-ida2', 'worker_id': 'w-ida2', 'session_id': 'IDA2', 'delta_bundle_sha256': '31ab6c7efeb77d8c31395fd32479d07d1eda86df20eab4eadd472eae668a592a', 'delta_bundle_byte_length': 9209691, 'effective_trainable_tokens': 93, 'loss': 1.0, 'base_model_hash': '0e7b2917757b5bb103707f83667da60980394df2c42254d2ca79495500d09d75', 'adapter_pre_hash': '4413d15984302be5fe0139d7f0ea70c4ab5f8aad0dbed74e7542d3bfc02475e9', 'shard_manifest_sha': 'fe46d22cebe7581c905367fd38a51328a4cd6e9c7949067114ab5b01ca18ccf1', 'request_sha': '0000000000000000000000000000000000000000000000000000000000000000'}} com={'unit_id': 'unit-ida2', 'state': 'COMMITTED'} up={'contribution_id': 'tr_d9df9081f2a341b0', 'status': 'RECEIVED'} reg={'contribution_id': 'tr_d9df9081f2a341b0', 'status': 'RECEIVED'} estat_final=ACTIVE
+  [servidor S1 MOR — procés acabat]
+  [servidor S2 NOU — mateixa BD /tmp/generic_recovery_server_qwen3.db]
+  PASS servidor reiniciat: retry exacte -> mateixa resposta byte-for-byte (open/submit/commit/upload/register)
+  PASS mateix lk + payload diferent -> REJECTED — idempotency_sha_mismatch
+============================================================
+PART B: crash real (SIGKILL després d'APPLIED) -> recovery
+============================================================
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]
+Loading weights:   0%|          | 1/311 [00:00<02:00,  2.58it/s]
+Loading weights:  79%|███████▉  | 247/311 [00:00<00:00, 663.53it/s]
+Loading weights: 100%|██████████| 311/311 [00:00<00:00, 566.59it/s]
+[w-nc] 30388 REGISTERED base=0e7b2917757b5bb1
+[w-nc] CALIBRATED ett=93 expected=93
+[w-nc] ASSIGNMENT shard=shard-A
+[w-nc] LEASE ls_2f24e3c15 ttl=1786703404.8671122
+[w-nc] step.open OK
+[w-nc] TRAINED 2 exemples ett=93 delta=31ab6c7efeb77d8c 15s
+[w-nc] APPLIED receipt=tr_d268bca2efca4
+[w-nc] COMMITTED
+[w-nc] CHECKPOINT cid=tr_d268bca2efca4
+[w-nc] CONTRIBUTION SUBMITTED tr_d268bca2efca4 (validate+activate = ADMIN)
+[w-nc] RELEASED
+[w-nc] EVIDENCE /tmp/generic_recovery_out_qwen3/nocrash/evidence_w-nc.json
+WORKER_DONE w-nc
+worker w-nc exit=0 killed_by_sigkill=False
+  PASS no-crash: worker complet
+  no-crash adapter_post_hash=b95df5b52f72e440
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]
+Loading weights:   0%|          | 1/311 [00:00<01:50,  2.81it/s]
+Loading weights:  76%|███████▌  | 235/311 [00:00<00:00, 669.79it/s]
+Loading weights: 100%|██████████| 311/311 [00:00<00:00, 562.64it/s]
+[w-cr] 30413 REGISTERED base=0e7b2917757b5bb1
+[w-cr] CALIBRATED ett=93 expected=93
+[w-cr] ASSIGNMENT shard=shard-A
+[w-cr] LEASE ls_3785c8bd0 ttl=1786703429.463685
+[w-cr] step.open OK
+[w-cr] TRAINED 2 exemples ett=93 delta=31ab6c7efeb77d8c 15s
+[w-cr] CRASH SIMULAT (train-only, sense HTTP)
+WORKER_DONE train-only
+worker w-cr exit=-9 killed_by_sigkill=True
+  PASS crash: procés MATAT amb SIGKILL (exit no-zero, no sys.exit(0)) — exit=-9
+  PASS journal persistent després del SIGKILL
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]
+Loading weights:   0%|          | 1/311 [00:00<01:48,  2.86it/s]
+Loading weights:  82%|████████▏ | 256/311 [00:00<00:00, 741.35it/s]
+Loading weights: 100%|██████████| 311/311 [00:00<00:00, 611.74it/s]
+[w-cr] 30432 REGISTERED base=0e7b2917757b5bb1
+[w-cr] CALIBRATED ett=93 expected=93
+[w-cr] ASSIGNMENT shard=shard-A
+[w-cr] LEASE RENEWED ls_3785c8bd0
+[w-cr] LEASE ls_3785c8bd0 ttl=1786703452.9554389
+[w-cr] step.open OK
+[w-cr] pas 0: RECOVERED w-cr-0
+[w-cr] pas 1: RECOVERED w-cr-1
+[w-cr] TRAINED 2 exemples ett=93 delta=31ab6c7efeb77d8c 6s
+[w-cr] APPLIED receipt=tr_97c172c796c14
+[w-cr] COMMITTED
+[w-cr] CHECKPOINT cid=tr_97c172c796c14
+[w-cr] CONTRIBUTION SUBMITTED tr_97c172c796c14 (validate+activate = ADMIN)
+[w-cr] RELEASED
+[w-cr] EVIDENCE /tmp/generic_recovery_out_qwen3/crash/evidence_w-cr.json
+WORKER_DONE w-cr
+worker w-cr exit=0 killed_by_sigkill=False
+  PASS recovery: worker nou (PID diferent) completa el flux
+  PASS recovery: crash_pid != recovery_pid — 30413 -> 30432
+  PASS adapter_post_no_crash == adapter_post_recovered (hash exacte) — nc=b95df5b52f72e440 rec=b95df5b52f72e440
+  PASS recovery: tots els passos APPLIED (cap COMMITTED perdut) — applied=2
+=== GENERIC RECOVERY TESTS (qwen3): 11/11 PASS ===

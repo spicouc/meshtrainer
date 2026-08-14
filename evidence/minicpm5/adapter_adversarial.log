@@ -1,0 +1,36 @@
+============================================================
+ MINICPM5 ADAPTER ADVERSARIALS
+============================================================
+Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:01<05:24,  1.49s/it]Loading weights:   1%|          | 2/219 [00:01<02:29,  1.45it/s]Loading weights:  38%|███▊      | 83/219 [00:01<00:01, 88.06it/s]Loading weights:  53%|█████▎    | 116/219 [00:01<00:00, 111.77it/s]Loading weights:  66%|██████▌   | 145/219 [00:02<00:00, 126.74it/s]Loading weights:  78%|███████▊  | 170/219 [00:02<00:00, 136.28it/s]Loading weights:  88%|████████▊ | 193/219 [00:02<00:00, 149.55it/s]Loading weights: 100%|██████████| 219/219 [00:02<00:00, 92.40it/s] 
+  base_model_hash: 63d736ad11ad8f7e
+  adapter vàlid: 44878741 B, 336 tensors, sha=5df80ee69db1
+
+=== ADV-A01: wrong SHA ===
+  PASS ADV-A01 wrong SHA → REJECTED — ValueError: adapter SHA mismatch: 5df80ee69db1 != ffffffffffff — REJECTED
+
+=== ADV-A02: partial adapter ===
+  PASS ADV-A02 partial (missing tensor) → REJECTED — ValueError: adapter schema mismatch: missing=['base_model.model.model.layers.0.mlp
+
+=== ADV-A03: extra tensor ===
+  PASS ADV-A03 extra tensor → REJECTED — ValueError: adapter schema mismatch: missing=[] extra=['base_model.model.extra_pha
+
+=== ADV-A04: wrong shape ===
+  PASS ADV-A04 wrong shape → REJECTED — ValueError: shape mismatch base_model.model.model.layers.0.mlp.down_proj.lora_A.de
+
+=== ADV-A05: wrong dtype ===
+  PASS ADV-A05 wrong dtype → REJECTED — ValueError: dtype mismatch base_model.model.model.layers.0.mlp.down_proj
+
+=== ADV-A06: stale adapter ===
+  PASS ADV-A06 stale/alien adapter (dummy) → REJECTED — ValueError: adapter schema mismatch: missing=['base_model.model.model.layers.0.mlp
+
+=== ADV-A07: adapter d'un altre model ===
+  PASS ADV-A07 adapter altre model → REJECTED — ValueError: adapter schema mismatch: missing=['base_model.model.model.layers.0.mlp
+
+=== control positiu ===
+  PASS control: bundle vàlid carrega OK
+
+=== validate_adapter_schema (no muta el model) ===
+  PASS schema partial → REJECTED
+  PASS schema: model no mutat
+
+=== MINICPM5 ADAPTER ADVERSARIALS: 10/10 PASS ===

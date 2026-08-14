@@ -37,6 +37,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 BACKENDS = {
     "dummy": ("backends.dummy_backend", "DummyBackend"),
     "qwen3": ("backends.qwen3_backend", "Qwen3Backend"),
+    "minicpm5": ("backends.minicpm5_backend", "MiniCPM5Backend"),
 }
 
 
@@ -162,6 +163,9 @@ def main():
     backend_cls = load_backend(args.backend)
     if args.backend == "dummy":
         model_path = args.model or "dummy"
+    elif args.backend == "minicpm5":
+        model_path = args.model or os.environ.get(
+            "MINICPM5_MODEL", "/root/minicpm5_1b_snapshot")
     else:
         model_path = args.model or os.environ.get(
             "QWEN3_MODEL", "/root/qwen3_0_6b_snapshot")

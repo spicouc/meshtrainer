@@ -1,0 +1,31 @@
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<01:35,  3.24it/s]Loading weights:  61%|██████    | 189/311 [00:00<00:00, 596.78it/s]Loading weights:  96%|█████████▋| 300/311 [00:00<00:00, 702.61it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 576.58it/s]
+val_loss=2.8255 ppl=16.8685 score=2/20 (144s)
+  [0] Què és la hipertensió arterial? -> '<think>\nOkay, the user is asking about hypertension. Let me '
+  [0] Què és un ecosistema? -> '<think>\nOkay, the user is asking what an ecosystem is. Let m'
+  [0] Qui va ser Leonardo da Vinci? -> '<think>\nOkay, the user is asking who Leonardo da Vinci is. L'
+  [0] Quin és el continent més poblat? -> '<think>\nOkay, the user is asking which continent is the most'
+  [0] Què és una antònim? -> '<think>\nOkay, the user is asking what an antonym is. Let me '
+  [0] Què és la derivada? -> '<think>\nOkay, the user is asking what the derivative is. Let'
+  [0] Què és la biosfera? -> '<think>\nOkay, the user is asking what the biosphere is. I ne'
+  [1] Què és un sistema operatiu? -> '<think>\nOkay, the user is asking what a operating system is.'
+  [1] Què és la UNESCO? -> '<think>\nOkay, the user is asking what UNESCO is. I need to e'
+  [0] Què és l'arquitectura gòtica? -> '<think>\nOkay, the user is asking about Gothic architecture. '
+QUALITY OK
+quality_before: QUALITY OK
+convertit adapter_2 → qwen_bundle_v1: 9209691 bytes
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<01:11,  4.33it/s]Loading weights:  49%|████▉     | 153/311 [00:00<00:00, 569.77it/s]Loading weights:  77%|███████▋  | 238/311 [00:00<00:00, 666.30it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 602.57it/s]
+val_loss=2.3374 ppl=10.3539 score=8/20 (146s)
+  [2] Què és la hipertensió arterial? -> 'La hipertensió arterial és una condició en la qual el pèrdu '
+  [1] Què és un ecosistema? -> 'La resposta és que un ecosistema és un conjunt de plantes, a'
+  [0] Qui va ser Leonardo da Vinci? -> 'superior\nOkay, the user is asking who Leonardo da Vinci was.'
+  [1] Quin és el continent més poblat? -> "La terra més poblat del món és el continent de l'Amazonia, p"
+  [0] Què és una antònim? -> 'La antònim és una teoria que busca aclarir la relació entre '
+  [2] Què és la derivada? -> 'La derivada és una funció que representa la velocitat en fun'
+  [1] Què és la biosfera? -> 'La biosfera és la superfície terrestre que és la màxima de l'
+  [1] Què és un sistema operatiu? -> 'La resposta és que un sistema operatiu és un software que pe'
+  [0] Què és la UNESCO? -> 'La UNESCO (Unesco) és una organització internacional que fa '
+  [0] Què és l'arquitectura gòtica? -> 'La gòtica és una arquitectura que és basada en la teologia i'
+QUALITY OK
+quality_after: QUALITY OK

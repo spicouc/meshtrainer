@@ -1,10 +1,10 @@
 {
   "backend": "qwen3",
   "adapter_0_sha": "e0877337c987bb873653b22f0016bc8b1360152956f0a28b09fcdbb26ef1ff5e",
-  "adapter_1_sha": "e5f6bc7ce9a3c7553fd64d61faf0277fa7b33f3e61de29cef8fd8e6d4fa8224d",
-  "adapter_2_sha": "e4a36bbd017a7b064201de715c34a641ea52d6376eb374d16c239d246278afa4",
-  "ett_a": 441,
-  "ett_b": 395,
+  "adapter_1_sha": "c5263edb34b75d533be51207f93376dbf782b437e867e76caf64e53443d8d770",
+  "adapter_2_sha": "103b7144ee07a46f25a49d9aa122ddca46f683a86edcd4c5883246dea0e24493",
+  "ett_a": 171,
+  "ett_b": 156,
   "maxdiff_oracle_r1": 0.0,
   "maxdiff_oracle_r2": 0.0
 }

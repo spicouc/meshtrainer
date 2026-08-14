@@ -1,0 +1,65 @@
+================================================================
+ FEDAVG AUTHORITY — SEC ADVERSARIALS (R2.4, punt 13)
+================================================================
+
+=== SEC-01..04: worker NO pot invocar operacions ADMIN ===
+  PASS SEC-01 worker → round.create → REJECTED — admin_required
+  PASS SEC-02 worker → assignment.create → REJECTED — admin_required
+  PASS SEC-03 worker → contribution.activate → REJECTED — admin_required
+  PASS SEC-04 worker → round.fedavg → REJECTED — admin_required
+
+=== SEC-05: admin credential incorrecta ===
+  PASS SEC-05 admin_token incorrecte → REJECTED — admin_credential_invalid
+
+=== SEC-13: worker NO pot validar la seva contribució ===
+  PASS SEC-13 worker → contribution.validate → REJECTED — admin_required
+  PASS SEC-13b worker validate amb token incorrecte → REJECTED — admin_credential_invalid
+
+=== SEC-06: FedAvg amb 1/2 contribucions ===
+  PASS SEC-06 FedAvg 1/2 → REJECTED (ROUND_NOT_READY) — quorum_not_met
+
+=== SEC-07: FedAvg amb baseline incorrecte ===
+  PASS SEC-07 FedAvg baseline incorrecte → REJECTED — fedavg_baseline_mismatch
+
+=== SEC-08: FedAvg amb adapter_pre_hash heterogeni ===
+  PASS SEC-08 FedAvg pre_hash heterogeni → REJECTED — quorum_not_met
+
+=== SEC-09: FedAvg amb base model heterogeni ===
+  PASS SEC-09 FedAvg base model heterogeni → REJECTED — heterogeneous_base_model
+
+=== SEC-10: contribució stale/revision antiga ===
+  PASS SEC-10 stale pre_hash → REJECTED al registre — adapter_pre_hash_mismatch
+
+=== SEC-11: duplicate effective contribution ===
+  PASS SEC-11 duplicate register → idempotent (mateix cid)
+  PASS SEC-11 duplicate effective → SUPERSEDED (cap doble ACTIVE) — SUPERSEDED/ACTIVE
+
+=== SEC-14: stale revision → ROUND_NOT_READY ===
+  PASS SEC-14 stale revision (contrib=1, assignment=2) → ROUND_NOT_READY — stale_revision
+  PASS SEC-14b FedAvg amb stale revision → REJECTED — stale_revision
+
+=== SEC-15: quòrum correcte + baseline correcte → PASS ===
+  PASS SEC-15 quòrum 2/2 + baseline correcte → FedAvg OK — n=2
+
+=== VAL-01..08: contribution validation authority (R2.5.1) ===
+  PASS VAL-03 contribution legítima → VALIDATED — VALIDATED
+  PASS VAL-04 revision stale → REJECTED — stale_revision status=RECEIVED
+  PASS VAL-05 ett=999999 ≠ expected_ett → REJECTED — ett_mismatch status=RECEIVED
+  PASS VAL-06 sha256 mismatch → REJECTED — delta_sha_mismatch status=RECEIVED
+  PASS VAL-07 binding incorrecte → REJECTED — assignment_not_found status=RECEIVED
+  PASS VAL-08 pre_hash incorrecte → REJECTED — adapter_pre_hash_mismatch status=RECEIVED
+
+=== EXPLOIT A: worker normal intenta TOT ===
+  PASS EXPLOIT A: round.create → REJECTED — admin_required
+  PASS EXPLOIT A: assignment.create → REJECTED — admin_required
+  PASS EXPLOIT A: contribution.activate → REJECTED — admin_required
+  PASS EXPLOIT A: round.fedavg → REJECTED — admin_required
+  PASS EXPLOIT A: cap fila nova a model_rounds — rounds=6 (run1..run4+run7+run8; run5/6 es creen després)
+
+=== EXPLOIT B: 1/2 contribucions → ROUND_NOT_READY ===
+  PASS EXPLOIT B: FedAvg 1/2 → ROUND_NOT_READY — quorum_not_met
+
+=== EXPLOIT C: adapter base diferent → REJECTED ===
+  PASS EXPLOIT C: baseline B ≠ SHA(A) → REJECTED — fedavg_baseline_mismatch
+
+=== FEDAVG AUTHORITY SEC: 30/30 PASS ===

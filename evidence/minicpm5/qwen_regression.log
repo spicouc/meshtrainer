@@ -1,0 +1,3 @@
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:03<20:32,  3.98s/it]Loading weights:  39%|███▉      | 122/311 [00:04<00:04, 42.16it/s]Loading weights:  61%|██████▏   | 191/311 [00:04<00:02, 53.11it/s]Loading weights:  75%|███████▍  | 232/311 [00:05<00:01, 59.63it/s]Loading weights:  84%|████████▍ | 261/311 [00:05<00:00, 62.81it/s]Loading weights:  91%|█████████ | 282/311 [00:06<00:00, 65.11it/s]Loading weights:  96%|█████████▌| 299/311 [00:06<00:00, 69.05it/s]Loading weights: 100%|██████████| 311/311 [00:06<00:00, 49.01it/s]
+QWEN REGRESSION PASS

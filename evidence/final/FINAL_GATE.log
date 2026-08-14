@@ -1,0 +1,55 @@
+============================================
+  R2.5.2 EVIDENCE-ONLY FINAL GATE (b146723)
+  Python venv Qwen: Python 3.13.5
+  Python ISO: Python 3.13.5
+  Model: /root/qwen3_0_6b_snapshot
+============================================
+
+=== dependency ===
+  dependency: PASS
+
+=== pycompile ===
+  pycompile: PASS
+
+=== backend_isolation ===
+  backend_isolation: PASS
+
+=== authority_adversarial ===
+  authority_adversarial: PASS
+
+=== security_validation ===
+  security_validation: PASS
+
+=== dummy_e2e ===
+  dummy_e2e: PASS
+
+=== dummy_recovery ===
+  dummy_recovery: PASS
+
+=== qwen_e2e ===
+  qwen_e2e: PASS
+
+=== qwen_recovery ===
+  qwen_recovery: PASS
+
+=== quality ===
+  quality: PASS
+
+=== regression ===
+  regression: PASS (12/12 = R3.1)
+
+=== artefactes ===
+artefacte adapter_0.bundle: OK
+artefacte adapter_1.bundle: OK
+artefacte adapter_2.bundle: OK
+artefacte distributed_metrics.json: OK
+artefacte evidence_w-A.json: OK
+artefacte evidence_w-B.json: OK
+artefacte evidence_w-A2.json: OK
+artefacte evidence_w-B2.json: OK
+artefacte quality_before.json: OK
+artefacte quality_after.json: OK
+
+============================================
+  R2.5.2 EVIDENCE-ONLY FINAL GATE (b146723) — Overall: PASS
+============================================

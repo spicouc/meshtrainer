@@ -1,0 +1,10 @@
+{
+  "backend": "dummy",
+  "adapter_0_sha": "86e548fba3bd6392f05030bf07a3ec7e7824cafcee8b8bb66736127144d81484",
+  "adapter_1_sha": "b6457ffebf985cb6c490761446ed9a7a8dd1d43ea320e84beb29ccdce389c01a",
+  "adapter_2_sha": "c3be308ef6cd21947d7ab42fc4f31631885428c6ba20b6cb61ba58fc66a654d0",
+  "ett_a": 41,
+  "ett_b": 43,
+  "maxdiff_oracle_r1": 0.0,
+  "maxdiff_oracle_r2": 0.0
+}

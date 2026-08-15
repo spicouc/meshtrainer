@@ -67,6 +67,142 @@ def make_adapter_0(backend_name, model, seq_len, out_dir, bcfg):
     return ad0, identity
 
 
+def prepare_round_data(backend_name, model, seq_len, out_dir, bcfg,
+                       shards=None, num_ex_per_shard=2, log=None):
+    """R1.1 (punt 5): CONSOLIDA les 3 càrregues seqüencials del driver en
+    UNA sola càrrega preparatòria.
+
+    Flux (1 load):
+      1) bk.load_model()
+      2) adapter_to_bundle()            -> adapter_0 (autoritatiu)
+      3) load_adapter(ad0) + adapter_hash() -> adapter_pre_hash
+      4) per shard: tokenize+compute_ett (el model ja està carregat)
+      5) close + del + gc.collect() + malloc_trim(0)   (zero model resident)
+
+    Retorna (ad0, identity, pre_hash, ett_by_shard). No canvia cap semàntica
+    del protocol: el Coordinator només rep hashes i ETTs (etapa trusted).
+    """
+    import gc
+    from model_worker import load_backend, load_examples
+
+    def _mem(tag):
+        if log:
+            try:
+                with open("/proc/self/status") as f:
+                    vmrss = [l for l in f
+                             if l.startswith("VmRSS")][0].split()[1]
+                log.write(f"  {tag}: VmRSS={int(vmrss)//1024} MB\n")
+                log.flush()
+            except Exception:
+                pass
+
+    cls = load_backend(backend_name)
+    if backend_name == "dummy":
+        mp = model or "dummy"
+    elif backend_name == "minicpm5":
+        mp = model or os.environ.get(
+            "MINICPM5_MODEL", "/root/minicpm5_1b_snapshot")
+    else:
+        mp = model or "/root/qwen3_0_6b_snapshot"
+    dbp = f"/tmp/generic_prep_{backend_name}.db"
+    if os.path.exists(dbp):
+        os.remove(dbp)
+
+    _mem("A. abans de carregar MiniCPM")
+    bk = cls(mp, db_path=dbp, seq_len=seq_len, **(bcfg or {}))
+    bk.load_model()
+    _mem("B. model carregat")
+
+    # adapter_0 (autoritatiu — mateixos bytes per A i B)
+    ad0 = bk.adapter_to_bundle()
+    identity = bk.base_model_identity()
+    _mem("C. adapter_0 generat")
+
+    # adapter_pre_hash = hash amb adapter_0 carregat (baseline ronda)
+    sha0 = hashlib.sha256(ad0).hexdigest()
+    bk.load_adapter(ad0, sha0, strict=True)
+    pre_hash = bk.adapter_hash()
+    _mem("D. pre_hash calculat")
+
+    # ETT per shard (el model ja està carregat — zero càrregues extra)
+    ett_map = {}
+    ett_map_half = {}
+    for shard in (shards or ["A", "B"]):
+        exs = load_examples(data_dir_for(backend_name), shard,
+                            num_ex_per_shard)
+        ett = 0
+        for e in exs:
+            tok = bk.tokenize_example(e["instruction"], e["response"])
+            ett += bk.compute_ett(tok[2] if isinstance(tok, tuple) else tok)
+        ett_map[shard] = ett
+        if log:
+            log.write(f"  ETT[{shard}]={ett}\n")
+        # ETT per a meitat d'exemples (R2 usa n2 = num_examples//2)
+        exs2 = load_examples(data_dir_for(backend_name), shard,
+                             max(1, num_ex_per_shard // 2))
+        ett2 = 0
+        for e in exs2:
+            tok = bk.tokenize_example(e["instruction"], e["response"])
+            ett2 += bk.compute_ett(tok[2] if isinstance(tok, tuple) else tok)
+        ett_map_half[shard] = ett2
+        if log:
+            log.write(f"  ETT_half[{shard}]={ett2}\n")
+    _mem("E. ETT calculat")
+
+    # alliberament ESTRICTE (punt 4): cap MiniCPM5 resident al driver
+    bk.close()
+    for attr in ("model", "tokenizer", "peft_model", "optimizer"):
+        if hasattr(bk, attr):
+            try:
+                setattr(bk, attr, None)
+            except Exception:
+                pass
+    del bk
+    gc.collect()
+    try:
+        import ctypes
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:
+        pass
+    _mem("F/G. close+del+gc+malloc_trim")
+    return ad0, identity, pre_hash, ett_map, ett_map_half
+
+
+def run_worker_popen(backend_name, worker_id, session, shard, assignment,
+                     round_id, adapter_path, adapter_sha, out_dir,
+                     num_examples, seq_len, extra=None, train_only=False,
+                     stagger=0.0):
+    """Retorna un subprocess.Popen per a execució PARAL·LELA (punt 7:
+    PID A != PID B, A i B vius simultàniament)."""
+    if stagger:
+        time.sleep(stagger)
+    cmd = [sys.executable, "model_worker.py", "--backend", backend_name,
+           "--worker-id", worker_id, "--session-id", session, "--shard", shard,
+           "--assignment-id", assignment, "--round-id", round_id,
+           "--server-url", SERVER_URL, "--adapter-0", adapter_path,
+           "--adapter-0-sha", adapter_sha, "--out-dir", out_dir,
+           "--num-examples", str(num_examples), "--seq-len", str(seq_len)]
+    if backend_name == "qwen3":
+        cmd += ["--model", os.environ.get("QWEN3_MODEL", "/root/qwen3_0_6b_snapshot")]
+        cmd += ["--data-dir", os.environ.get("QWEN3_DATA",
+                                             "/root/meshtrainer/qwen3_pilot_data")]
+    elif backend_name == "dummy":
+        cmd += ["--model", "dummy"]
+        cmd += ["--data-dir", os.path.join(os.path.dirname(
+            os.path.abspath(__file__)), "qwen3_pilot_data")]
+    elif backend_name == "minicpm5":
+        cmd += ["--model", os.environ.get(
+            "MINICPM5_MODEL", "/root/minicpm5_1b_snapshot")]
+        cmd += ["--data-dir", os.environ.get(
+            "MINICPM5_DATA", "/root/meshtrainer/qwen3_pilot_data")]
+    if extra:
+        cmd += ["--backend-config", json.dumps(extra)]
+    if train_only:
+        cmd += ["--train-only"]
+    return subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, text=True)
+
+
 def run_worker(backend_name, worker_id, session, shard, assignment, round_id,
                adapter_path, adapter_sha, out_dir, num_examples, seq_len,
                extra=None, train_only=False):
@@ -106,6 +242,94 @@ def run_worker(backend_name, worker_id, session, shard, assignment, round_id,
     if r.returncode != 0:
         print(out[-1500:], flush=True)
     return r.returncode, out
+
+
+def run_workers_parallel(backend_name, specs, adapter_path, adapter_sha,
+                         out_dir, seq_len, stagger=8.0, log=None):
+    """Punt 7: A i B com a subprocessos INDEPENDENTS vius SIMULTÀNIAMENT.
+    Stagger de LOAD permès (A arrenca i carrega; llavors B arrenca).
+    Retorna (rcs, outs) per worker_id."""
+    import time as _t
+    procs = {}
+    for spec in specs:
+        worker_id = spec["worker_id"]
+        _t.sleep(stagger if worker_id != specs[0]["worker_id"] else 0.0)
+        p = run_worker_popen(
+            backend_name, worker_id, spec["session"], spec["shard"],
+            spec["assignment"], spec["round_id"], adapter_path, adapter_sha,
+            out_dir, spec["num_ex"], seq_len)
+        procs[worker_id] = p
+        if log:
+            log.write(f"  spawned {worker_id} pid={p.pid}\n")
+            log.flush()
+    rcs, outs = {}, {}
+    for worker_id, p in procs.items():
+        out = p.communicate(timeout=3600)[0]
+        outs[worker_id] = out
+        rcs[worker_id] = p.returncode
+        if out.strip():
+            for line in out.splitlines():
+                if line.strip():
+                    print(f"[worker:{worker_id}] {line}", flush=True)
+        if p.returncode != 0:
+            print(out[-1500:], flush=True)
+    return rcs, outs
+
+
+def compute_pre_hash_clean(backend_name, model, seq_len, adapter_bytes,
+                           log=None):
+    """R1.1: pre_hash de l'adapter amb UNA càrrega + alliberament estricte
+    (close+del+gc+malloc_trim). Equivalent semàntic de compute_pre_hash,
+    però sense deixar cap model resident al driver (punt 4)."""
+    import gc
+    from model_worker import load_backend
+    cls = load_backend(backend_name)
+    if backend_name == "dummy":
+        mp = model or "dummy"
+    elif backend_name == "minicpm5":
+        mp = model or os.environ.get(
+            "MINICPM5_MODEL", "/root/minicpm5_1b_snapshot")
+    else:
+        mp = model or "/root/qwen3_0_6b_snapshot"
+    dbp = f"/tmp/generic_prehash_{backend_name}.db"
+    if os.path.exists(dbp):
+        os.remove(dbp)
+    bk = cls(mp, db_path=dbp, seq_len=seq_len)
+    bk.load_model()
+    sha = hashlib.sha256(adapter_bytes).hexdigest()
+    bk.load_adapter(adapter_bytes, sha, strict=True)
+    pre = bk.adapter_hash()
+    bk.close()
+    for attr in ("model", "tokenizer", "peft_model", "optimizer"):
+        if hasattr(bk, attr):
+            try:
+                setattr(bk, attr, None)
+            except Exception:
+                pass
+    del bk
+    gc.collect()
+    try:
+        import ctypes
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:
+        pass
+    if log:
+        log.write(f"  pre_hash(adapter) calculat + alliberat\n")
+        log.flush()
+    return pre
+
+
+def _pid_of(worker_out):
+    """Extreu el PID del worker de l'output.
+    Format worker: '[w-A] 38966 REGISTERED base=...' (model_worker línia 208)."""
+    import re
+    for line in (worker_out or "").splitlines():
+        if " REGISTERED " in line:
+            m = re.match(r"\[[\w-]+\]\s+(\d+)\s+REGISTERED", line)
+            if m:
+                return m.group(1)
+    m = re.search(r"pid=(\d+)", worker_out or "")
+    return m.group(1) if m else "?"
 
 
 def fedavg_via_coordinator(proto, run_id, round_id, adapter_0_bytes):
@@ -254,9 +478,33 @@ def main():
         if os.path.exists(p):
             os.remove(p)
 
-    # ── 1. adapter_0 (backend plugin) + servidor genèric ──
-    ad0, identity = make_adapter_0(args.backend, args.model, args.seq_len,
-                                   OUT, {})
+    # ── 1. Preparació consolidada (R1.1 punt 5): UNA càrrega del model ──
+    #    adapter_0 (autoritatiu) + adapter_pre_hash + ETT per shard, i
+    #    alliberament ESTRICTE del driver abans dels workers (punt 4).
+    #    Memory profile (punt 3) -> evidence/minicpm5/memory_profile.log
+    mprof = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "evidence", "minicpm5", "memory_profile.log")
+    os.makedirs(os.path.dirname(mprof), exist_ok=True)
+    mlog = open(mprof, "a")
+    mlog.write(f"\n=== RUN {time.strftime('%Y-%m-%d %H:%M:%S')} "
+               f"backend={args.backend} ===\n")
+
+    def _mem_host(tag):
+        try:
+            with open("/proc/meminfo") as f:
+                mi = dict(l.split(":") for l in f if ":" in l)
+            free_mb = int(mi.get("MemAvailable", "0").split()[0]) // 1024
+            mlog.write(f"  {tag}: host MemAvailable={free_mb} MB\n")
+            mlog.flush()
+        except Exception:
+            pass
+
+    _mem_host("H-0 inici")
+    ad0, identity, adapter_pre_hash, ett_map, ett_map_half = prepare_round_data(
+        args.backend, args.model, args.seq_len, OUT, {}, shards=["A", "B"],
+        num_ex_per_shard=args.num_examples, log=mlog)
+    _mem_host("H-1 despres preparacio (driver zero model)")
+
     ad0_path = os.path.join(OUT, "adapter_0.bundle")
     with open(ad0_path, "wb") as f:
         f.write(ad0)
@@ -270,8 +518,7 @@ def main():
     time.sleep(0.5)
 
     # ── R2.3: el Coordinator crea la ronda i les assignacions (autoritat).
-    #    expected_ett i shard_manifest es calculen PRÈVIAMENT amb el backend
-    #    (etapa trusted) — mateixa lògica que el worker (load_examples).
+    #    expected_ett i shard_manifest es calculen PRÈVIAMENT (etapa trusted).
     from model_worker import load_examples as _lex, shard_manifest_sha as _sms
 
     def _shard_mf(shard, n):
@@ -279,11 +526,12 @@ def main():
         return _sms([e["source"] for e in exs])
 
     def _expected_ett(shard, n):
-        return expected_ett_for_shard(args.backend, args.model, args.seq_len,
-                                      shard, n)
+        # R1.1: ETT precalculat a la preparació consolidada (1 load).
+        # R2 usa n2 = num_examples//2 -> ett_map_half; R1 usa num_examples.
+        if n == max(1, args.num_examples // 2):
+            return ett_map_half[shard]
+        return ett_map[shard]
     base_hash = identity["base_model_hash"]
-    adapter_pre_hash = compute_pre_hash(args.backend, args.model,
-                                        args.seq_len, ad0)
     create_round_and_assignments(
         proto, "run1", "r1", args.backend, base_hash, ad0_sha,
         adapter_pre_hash,
@@ -299,15 +547,25 @@ def main():
           proto.coord.get_assignment("run1", "r1", "asg-A", "w-A") is not None
           and proto.coord.get_assignment("run1", "r1", "asg-B", "w-B") is not None)
 
-    # ── 3/4. Worker A i B (subprocessos reals) ──
-    wA_rc, wA_out = run_worker(args.backend, "w-A", "A1", "A", "asg-A", "r1",
-                               ad0_path, ad0_sha, OUT, args.num_examples,
-                               args.seq_len)
+    # ── 3/4. Worker A i B PARAL·LELS (punt 7: PIDs diferents, vius
+    #    simultàniament; stagger de LOAD permès) ──
+    _mem_host("H-2 abans de spawn A/B")
+    rcs1, outs1 = run_workers_parallel(
+        args.backend,
+        [{"worker_id": "w-A", "session": "A1", "shard": "A",
+          "assignment": "asg-A", "round_id": "r1", "num_ex": args.num_examples},
+         {"worker_id": "w-B", "session": "B1", "shard": "B",
+          "assignment": "asg-B", "round_id": "r1", "num_ex": args.num_examples}],
+        ad0_path, ad0_sha, OUT, args.seq_len, stagger=40.0, log=mlog)
+    _mem_host("H-3 despres Round 1 (A/B acabats)")
+    wA_rc, wA_out = rcs1["w-A"], outs1["w-A"]
+    wB_rc, wB_out = rcs1["w-B"], outs1["w-B"]
     check("worker A (subprocess, shard A)", wA_rc == 0 and "WORKER_DONE" in wA_out)
-    wB_rc, wB_out = run_worker(args.backend, "w-B", "B1", "B", "asg-B", "r1",
-                               ad0_path, ad0_sha, OUT, args.num_examples,
-                               args.seq_len)
     check("worker B (subprocess, shard B)", wB_rc == 0 and "WORKER_DONE" in wB_out)
+    check("PID A != PID B (workers independents)",
+          _pid_of(wA_out) != "?" and _pid_of(wB_out) != "?" and
+          _pid_of(wA_out) != _pid_of(wB_out),
+          f"A={_pid_of(wA_out)} B={_pid_of(wB_out)}")
 
     evA = json.load(open(os.path.join(OUT, f"evidence_w-A.json")))
     evB = json.load(open(os.path.join(OUT, f"evidence_w-B.json")))
@@ -345,7 +603,10 @@ def main():
     # R2.3: nova ronda r2 amb adapter_1 com a adapter global + assignments
     n2 = max(1, args.num_examples // 2)
     a1_bytes = base64.b64decode(fed1["adapter_1_b64"])
-    a1_pre = compute_pre_hash(args.backend, args.model, args.seq_len, a1_bytes)
+    # R1.1: pre_hash de r2 amb 1 load + alliberament estricte (punt 4)
+    a1_pre = compute_pre_hash_clean(args.backend, args.model, args.seq_len,
+                                    a1_bytes, log=mlog)
+    _mem_host("H-4 pre_hash r2 (driver zero model)")
     create_round_and_assignments(
         proto, "run1", "r2", args.backend, base_hash,
         fed1["adapter_1_sha"], a1_pre,
@@ -355,14 +616,24 @@ def main():
           "num_ex": n2}],
         shard_mf_fn=lambda sh, n=n2: _shard_mf(sh, n),
         expected_ett_fn=_expected_ett)
-    wA2_rc, wA2_out = run_worker(args.backend, "w-A2", "A2", "A", "asg-A2",
-                                 "r2", a1_path, fed1["adapter_1_sha"], OUT,
-                                 n2, args.seq_len)
+    # A2/B2 PARAL·LELS (punt 7: mateix patró que R1)
+    rcs2, outs2 = run_workers_parallel(
+        args.backend,
+        [{"worker_id": "w-A2", "session": "A2", "shard": "A",
+          "assignment": "asg-A2", "round_id": "r2", "num_ex": n2},
+         {"worker_id": "w-B2", "session": "B2", "shard": "B",
+          "assignment": "asg-B2", "round_id": "r2", "num_ex": n2}],
+        a1_path, fed1["adapter_1_sha"], OUT, args.seq_len, stagger=40.0,
+        log=mlog)
+    _mem_host("H-5 despres Round 2 (A2/B2 acabats)")
+    wA2_rc, wA2_out = rcs2["w-A2"], outs2["w-A2"]
+    wB2_rc, wB2_out = rcs2["w-B2"], outs2["w-B2"]
     check("worker A2 (round 2)", wA2_rc == 0 and "WORKER_DONE" in wA2_out)
-    wB2_rc, wB2_out = run_worker(args.backend, "w-B2", "B2", "B", "asg-B2",
-                                 "r2", a1_path, fed1["adapter_1_sha"], OUT,
-                                 max(1, args.num_examples // 2), args.seq_len)
     check("worker B2 (round 2)", wB2_rc == 0 and "WORKER_DONE" in wB2_out)
+    check("PID A2 != PID B2 (round 2 paral·lel)",
+          _pid_of(wA2_out) != "?" and _pid_of(wB2_out) != "?" and
+          _pid_of(wA2_out) != _pid_of(wB2_out),
+          f"A2={_pid_of(wA2_out)} B2={_pid_of(wB2_out)}")
     evA2 = json.load(open(os.path.join(OUT, f"evidence_w-A2.json")))
     evB2 = json.load(open(os.path.join(OUT, f"evidence_w-B2.json")))
     check("round 2: adapter_pre_hash_A == adapter_pre_hash_B (adapter_1)",
@@ -401,6 +672,8 @@ def main():
     npass = sum(1 for _, ok in CHECKS if ok)
     print(f"=== GENERIC DISTRIBUTED RUN ({args.backend}): "
           f"{npass}/{len(CHECKS)} PASS ===")
+    mlog.write(f"=== FI RUN (pass={npass}/{len(CHECKS)}) ===\n")
+    mlog.close()
     sys.exit(0 if npass == len(CHECKS) else 1)
 
 

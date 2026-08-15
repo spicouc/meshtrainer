@@ -236,7 +236,21 @@ def main():
         ett_map[_aid] = _ett_for(_aid, _shard, args.num_examples)
     _bk0.close()
     import gc as _gc
+    # R1.1 (punt 4): alliberament ESTRICTE — del + gc + malloc_trim perquè
+    # el model del pare (4.4 GB) no quedi resident quan els workers arrenquin
+    for _attr in ("model", "tokenizer", "peft_model", "optimizer"):
+        if hasattr(_bk0, _attr):
+            try:
+                setattr(_bk0, _attr, None)
+            except Exception:
+                pass
+    del _bk0
     _gc.collect()
+    try:
+        import ctypes as _ct
+        _ct.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:
+        pass
     base_hash0 = ident["base_model_hash"]
 
     # worker que fa el pas sencer contra S1 (deixa la unitat COMMITTED i

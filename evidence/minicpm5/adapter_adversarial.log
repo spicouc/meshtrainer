@@ -1,7 +1,7 @@
 ============================================================
  MINICPM5 ADAPTER ADVERSARIALS
 ============================================================
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:01<05:24,  1.49s/it]Loading weights:   1%|          | 2/219 [00:01<02:29,  1.45it/s]Loading weights:  38%|███▊      | 83/219 [00:01<00:01, 88.06it/s]Loading weights:  53%|█████▎    | 116/219 [00:01<00:00, 111.77it/s]Loading weights:  66%|██████▌   | 145/219 [00:02<00:00, 126.74it/s]Loading weights:  78%|███████▊  | 170/219 [00:02<00:00, 136.28it/s]Loading weights:  88%|████████▊ | 193/219 [00:02<00:00, 149.55it/s]Loading weights: 100%|██████████| 219/219 [00:02<00:00, 92.40it/s] 
+Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:02<07:25,  2.04s/it]Loading weights:  64%|██████▍   | 140/219 [00:02<00:00, 91.09it/s]Loading weights: 100%|██████████| 219/219 [00:02<00:00, 125.09it/s]Loading weights: 100%|██████████| 219/219 [00:02<00:00, 88.08it/s] 
   base_model_hash: 63d736ad11ad8f7e
   adapter vàlid: 44878741 B, 336 tensors, sha=5df80ee69db1
 

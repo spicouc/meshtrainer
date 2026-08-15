@@ -1,0 +1,21 @@
+{
+  "worker_id": "w-B2",
+  "session_id": "B2",
+  "shard": "B",
+  "pid": 41644,
+  "db_path": "/root/meshtrainer/minicpm5_output/journal_w-B2.db",
+  "base_model_hash": "63d736ad11ad8f7e5f2578bf7d50f1c74853b5814551fdc62249c12abeb19813",
+  "adapter_pre_hash": "edbbacfdea362553a52360ad71197f0e6eef1766e944f1d9d7206e0539f3de12",
+  "shard_manifest_sha": "1a2a219500e973898a7027cd6ad9402a30e9b98c095529b09c976feaebd615aa",
+  "ett_registered": 41,
+  "ett_actual": 41,
+  "delta_sha": "55610102b7730f55f42f664c50e09ff210d3b2780359a118e75d6a6f09554bf4",
+  "delta_b64_len": 59838324,
+  "receipt_id": "tr_186216550a5b49ad",
+  "contribution_id": "tr_186216550a5b49ad",
+  "loss": 3.5207180976867676,
+  "train_time_s": 6.8696300983428955,
+  "lease_id": "ls_5a09487d9c214950",
+  "lease_nonce": "5aef73aed2ccc119ebc60e9f3ac5b863",
+  "adapter_post_hash": "b1e38366093c879f6703285b9d0f35b3e2450e9c7d05a5f498b621c89b66b753"
+}

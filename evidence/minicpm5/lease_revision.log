@@ -1,0 +1,25 @@
+============================================================
+ MINICPM5 LEASE/REVISION REALS — MREC-05, MREC-06, MADV-13, MADV-14
+============================================================
+
+=== MREC-05: lease expirada → worker antic REJECTED ===
+  PASS MREC-05 lease adquirida — status=ACTIVE
+  PASS MREC-05 submit amb lease vàlida: OK (control)
+  PASS MREC-05 step.worker_update.submit amb lease expirada → REJECTED — TrainingServerError: lease_not_active: EXPIRED
+  PASS MREC-05 step.commit amb lease expirada → REJECTED — TrainingServerError: lease_not_active: EXPIRED
+  PASS MREC-05 checkpoint.upload amb lease expirada → REJECTED — TrainingServerError: lease_not_active: EXPIRED
+  PASS MREC-05 contribution.register amb lease expirada → REJECTED — TrainingServerError: lease_not_active: EXPIRED
+
+=== MREC-06: revision 1→2, worker antic REJECTED, nou ACCEPTED ===
+  PASS MREC-06 worker antic REJECTED (rev 1 vs 2) — ModelRecoveryError: assignment_not_found
+  PASS MREC-06 nou worker (rev 2) → VALIDATED — status=VALIDATED
+
+=== MADV-13: activate amb lease expirada (no 'sense lease') ===
+  PASS MADV-13 activate amb lease vàlida: OK (control) — status=ACTIVE
+  PASS MADV-13 register amb lease EXPIRADA → REJECTED — TrainingServerError: lease_not_active: EXPIRED
+
+=== MADV-14: session S2 amb lease de S1 → REJECTED ===
+  PASS MADV-14 submit amb S1: OK (control)
+  PASS MADV-14 submit amb S2 (lease de S1) → REJECTED per session — TrainingServerError: lease_binding_mismatch
+
+=== LEASE/REVISION REALS: 12/12 PASS ===

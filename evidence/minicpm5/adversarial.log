@@ -3,7 +3,7 @@
 ============================================================
 
 --- Part 1: backend real (model) ---
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:00<01:47,  2.04it/s]Loading weights:  41%|████      | 89/219 [00:00<00:00, 183.15it/s]Loading weights:  58%|█████▊    | 126/219 [00:00<00:00, 220.55it/s]Loading weights:  74%|███████▍  | 162/219 [00:00<00:00, 243.59it/s]Loading weights:  89%|████████▉ | 196/219 [00:01<00:00, 225.99it/s]Loading weights: 100%|██████████| 219/219 [00:01<00:00, 185.49it/s]
+Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:02<09:32,  2.63s/it]Loading weights:  39%|███▉      | 85/219 [00:02<00:03, 41.05it/s]Loading weights:  49%|████▉     | 108/219 [00:03<00:02, 48.97it/s]Loading weights:  57%|█████▋    | 125/219 [00:03<00:01, 51.52it/s]Loading weights:  63%|██████▎   | 138/219 [00:03<00:01, 54.52it/s]Loading weights:  68%|██████▊   | 149/219 [00:03<00:01, 53.43it/s]Loading weights:  72%|███████▏  | 158/219 [00:03<00:01, 53.65it/s]Loading weights:  76%|███████▌  | 166/219 [00:04<00:00, 55.50it/s]Loading weights:  81%|████████  | 177/219 [00:04<00:00, 63.58it/s]Loading weights:  93%|█████████▎| 204/219 [00:04<00:00, 100.85it/s]Loading weights: 100%|██████████| 219/219 [00:04<00:00, 51.21it/s] 
 
 === MADV-01: wrong base model ===
   PASS MADV-01 wrong base model (adapter d'un altre backend) → REJECTED — ValueError: adapter schema mismatch: missing=['base_model.model.model.la
@@ -50,10 +50,10 @@
   PASS MADV-11 ready_to_close (validate ja el va rebutjar) — validate ho va bloquejar abans
 
 === MADV-13: expired lease ===
-  PASS MADV-13 activate sense lease (worker antic) → REJECTED — ModelRecoveryError: cannot_activate
+  PASS MADV-13 activate sense lease vàlida → REJECTED (real a lease_revision) — ModelRecoveryError: cannot_activate
 
 === MADV-14: wrong session ===
-  PASS MADV-14 sessió/worker no registrat → REJECTED — ModelRecoveryError: unknown_assignment
+  PASS MADV-14 sessió/worker no registrat → REJECTED (real a lease_revision) — ModelRecoveryError: unknown_assignment
 
 === MADV-16: duplicate contribution ===
   PASS MADV-16 duplicate: una SUPERSEDED i una ACTIVE — cid-dup=SUPERSEDED cid-dup2=ACTIVE

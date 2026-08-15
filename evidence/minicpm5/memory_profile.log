@@ -1,0 +1,48 @@
+
+=== RUN 2026-08-15 08:46:57 backend=minicpm5 ===
+  H-0 inici: host MemAvailable=11529 MB
+  A. abans de carregar MiniCPM: VmRSS=37 MB
+  B. model carregat: VmRSS=4936 MB
+  C. adapter_0 generat: VmRSS=4980 MB
+  D. pre_hash calculat: VmRSS=4995 MB
+  ETT[A]=90
+  ETT_half[A]=45
+  ETT[B]=82
+  ETT_half[B]=41
+  E. ETT calculat: VmRSS=4997 MB
+  F/G. close+del+gc+malloc_trim: VmRSS=788 MB
+  H-1 despres preparacio (driver zero model): host MemAvailable=11035 MB
+  H-2 abans de spawn A/B: host MemAvailable=11035 MB
+  spawned w-A pid=41520
+  spawned w-B pid=41559
+  H-3 despres Round 1 (A/B acabats): host MemAvailable=10902 MB
+  pre_hash(adapter) calculat + alliberat
+  H-4 pre_hash r2 (driver zero model): host MemAvailable=10535 MB
+  spawned w-A2 pid=41605
+  spawned w-B2 pid=41644
+  H-5 despres Round 2 (A2/B2 acabats): host MemAvailable=10481 MB
+=== FI RUN (pass=21/21) ===
+
+=== RUN 2026-08-15 08:53:10 backend=dummy ===
+  H-0 inici: host MemAvailable=11568 MB
+  A. abans de carregar MiniCPM: VmRSS=37 MB
+  B. model carregat: VmRSS=40 MB
+  C. adapter_0 generat: VmRSS=40 MB
+  D. pre_hash calculat: VmRSS=478 MB
+  ETT[A]=41
+  ETT_half[A]=19
+  ETT[B]=43
+  ETT_half[B]=24
+  E. ETT calculat: VmRSS=478 MB
+  F/G. close+del+gc+malloc_trim: VmRSS=478 MB
+  H-1 despres preparacio (driver zero model): host MemAvailable=11308 MB
+  H-2 abans de spawn A/B: host MemAvailable=11308 MB
+  spawned w-A pid=41957
+  spawned w-B pid=41972
+  H-3 despres Round 1 (A/B acabats): host MemAvailable=11305 MB
+  pre_hash(adapter) calculat + alliberat
+  H-4 pre_hash r2 (driver zero model): host MemAvailable=11307 MB
+  spawned w-A2 pid=41988
+  spawned w-B2 pid=42003
+  H-5 despres Round 2 (A2/B2 acabats): host MemAvailable=11305 MB
+=== FI RUN (pass=21/21) ===

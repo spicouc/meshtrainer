@@ -1,127 +1,167 @@
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:01<05:56,  1.63s/it]Loading weights:  64%|██████▍   | 140/219 [00:01<00:00, 112.21it/s]Loading weights: 100%|██████████| 219/219 [00:02<00:00, 108.33it/s]
+Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:00<01:13,  2.98it/s]Loading weights:  43%|████▎     | 94/219 [00:00<00:00, 273.42it/s]Loading weights:  66%|██████▌   | 145/219 [00:00<00:00, 329.03it/s]Loading weights:  88%|████████▊ | 193/219 [00:00<00:00, 363.47it/s]Loading weights: 100%|██████████| 219/219 [00:00<00:00, 306.56it/s]
 adapter_0 5df80ee69db130fa base=63d736ad11ad8f7e backend=minicpm5
-  [coord] assignment asg-A -> shard-A expected_ett=90
-  [coord] assignment asg-B -> shard-B expected_ett=82
+  [coord] assignment asg-A -> shard-A expected_ett=258
+  [coord] assignment asg-B -> shard-B expected_ett=250
   PASS coordinator: round r1 creada (model_rounds)
   PASS coordinator: assignments A/B creades
 [worker:w-A] Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]
-[worker:w-A] Loading weights:   0%|          | 1/219 [00:02<09:04,  2.50s/it]
-[worker:w-A] Loading weights:  39%|███▉      | 85/219 [00:02<00:03, 43.17it/s]
-[worker:w-A] Loading weights:  50%|████▉     | 109/219 [00:02<00:02, 52.67it/s]
-[worker:w-A] Loading weights:  58%|█████▊    | 127/219 [00:03<00:01, 55.66it/s]
-[worker:w-A] Loading weights:  64%|██████▍   | 141/219 [00:03<00:01, 58.67it/s]
-[worker:w-A] Loading weights:  70%|██████▉   | 153/219 [00:03<00:01, 62.74it/s]
-[worker:w-A] Loading weights:  75%|███████▍  | 164/219 [00:03<00:00, 65.39it/s]
-[worker:w-A] Loading weights:  79%|███████▉  | 174/219 [00:03<00:00, 61.28it/s]
-[worker:w-A] Loading weights:  84%|████████▎ | 183/219 [00:03<00:00, 65.45it/s]
-[worker:w-A] Loading weights:  89%|████████▉ | 195/219 [00:04<00:00, 75.28it/s]
-[worker:w-A] Loading weights: 100%|██████████| 219/219 [00:04<00:00, 53.26it/s]
-[worker:w-A] [w-A] 41520 REGISTERED base=63d736ad11ad8f7e
-[worker:w-A] [w-A] CALIBRATED ett=90 expected=90
+[worker:w-A] Loading weights:   0%|          | 1/219 [00:06<21:49,  6.01s/it]
+[worker:w-A] Loading weights:  40%|███▉      | 87/219 [00:06<00:06, 19.62it/s]
+[worker:w-A] Loading weights:  51%|█████     | 111/219 [00:06<00:04, 23.78it/s]
+[worker:w-A] Loading weights:  58%|█████▊    | 127/219 [00:07<00:03, 25.06it/s]
+[worker:w-A] Loading weights:  63%|██████▎   | 138/219 [00:07<00:03, 26.39it/s]
+[worker:w-A] Loading weights:  67%|██████▋   | 146/219 [00:07<00:02, 25.81it/s]
+[worker:w-A] Loading weights:  70%|██████▉   | 153/219 [00:08<00:02, 27.60it/s]
+[worker:w-A] Loading weights:  73%|███████▎  | 159/219 [00:08<00:02, 26.79it/s]
+[worker:w-A] Loading weights:  75%|███████▍  | 164/219 [00:08<00:01, 28.28it/s]
+[worker:w-A] Loading weights:  77%|███████▋  | 169/219 [00:08<00:01, 29.34it/s]
+[worker:w-A] Loading weights:  80%|███████▉  | 175/219 [00:08<00:01, 27.82it/s]
+[worker:w-A] Loading weights:  83%|████████▎ | 181/219 [00:08<00:01, 29.19it/s]
+[worker:w-A] Loading weights:  86%|████████▋ | 189/219 [00:09<00:00, 35.10it/s]
+[worker:w-A] Loading weights:  89%|████████▊ | 194/219 [00:09<00:00, 33.07it/s]
+[worker:w-A] Loading weights:  92%|█████████▏| 202/219 [00:09<00:00, 31.30it/s]
+[worker:w-A] Loading weights:  96%|█████████▋| 211/219 [00:09<00:00, 35.06it/s]
+[worker:w-A] Loading weights: 100%|██████████| 219/219 [00:09<00:00, 22.27it/s]
+[worker:w-A] [w-A] 46055 REGISTERED base=63d736ad11ad8f7e
+[worker:w-A] [w-A] CALIBRATED ett=258 expected=258
 [worker:w-A] [w-A] ASSIGNMENT shard=shard-A
-[worker:w-A] [w-A] LEASE ls_d02af8a84 ttl=1786784249.7539759
+[worker:w-A] [w-A] LEASE ls_4ae8cc5e6 ttl=1786876154.6149938
 [worker:w-A] [w-A] step.open OK
-[worker:w-A] [w-A] TRAINED 2 exemples ett=90 delta=76c2f9a9bbed2e61 15s
-[worker:w-A] [w-A] APPLIED receipt=tr_246434765a924
-[worker:w-A] [w-A] COMMITTED
-[worker:w-A] [w-A] CHECKPOINT cid=tr_246434765a924
-[worker:w-A] [w-A] CONTRIBUTION SUBMITTED tr_246434765a924 (validate+activate = ADMIN)
-[worker:w-A] [w-A] RELEASED
-[worker:w-A] [w-A] EVIDENCE /root/meshtrainer/minicpm5_output/evidence_w-A.json
-[worker:w-A] WORKER_DONE w-A
 [worker:w-B] Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]
-[worker:w-B] Loading weights:   0%|          | 1/219 [00:03<12:35,  3.47s/it]
-[worker:w-B] Loading weights:  63%|██████▎   | 139/219 [00:03<00:01, 54.39it/s]
-[worker:w-B] Loading weights:  94%|█████████▎| 205/219 [00:04<00:00, 58.29it/s]
-[worker:w-B] Loading weights: 100%|██████████| 219/219 [00:04<00:00, 47.43it/s]
-[worker:w-B] [w-B] 41559 REGISTERED base=63d736ad11ad8f7e
-[worker:w-B] [w-B] CALIBRATED ett=82 expected=82
+[worker:w-B] Loading weights:   0%|          | 1/219 [00:01<04:18,  1.19s/it]
+[worker:w-B] Loading weights:  27%|██▋       | 60/219 [00:01<00:02, 57.92it/s]
+[worker:w-B] Loading weights:  36%|███▌      | 78/219 [00:01<00:02, 54.02it/s]
+[worker:w-B] Loading weights:  41%|████      | 90/219 [00:01<00:02, 58.17it/s]
+[worker:w-B] Loading weights:  46%|████▌     | 101/219 [00:02<00:02, 49.28it/s]
+[worker:w-B] Loading weights:  50%|████▉     | 109/219 [00:02<00:03, 32.58it/s]
+[worker:w-B] Loading weights:  53%|█████▎    | 115/219 [00:03<00:03, 33.15it/s]
+[worker:w-B] Loading weights:  55%|█████▍    | 120/219 [00:03<00:03, 31.39it/s]
+[worker:w-B] Loading weights:  57%|█████▋    | 125/219 [00:03<00:04, 21.40it/s]
+[worker:w-B] Loading weights:  59%|█████▉    | 130/219 [00:04<00:06, 14.72it/s]
+[worker:w-B] Loading weights:  61%|██████    | 133/219 [00:04<00:05, 14.91it/s]
+[worker:w-B] Loading weights:  62%|██████▏   | 136/219 [00:04<00:05, 15.07it/s]
+[worker:w-B] Loading weights:  63%|██████▎   | 139/219 [00:05<00:06, 12.93it/s]
+[worker:w-B] Loading weights:  66%|██████▌   | 145/219 [00:05<00:05, 12.98it/s]
+[worker:w-B] Loading weights:  68%|██████▊   | 148/219 [00:06<00:07,  9.24it/s]
+[worker:w-B] Loading weights:  70%|███████   | 154/219 [00:06<00:06, 10.42it/s]
+[worker:w-B] Loading weights:  72%|███████▏  | 157/219 [00:07<00:08,  7.20it/s]
+[worker:w-B] Loading weights:  72%|███████▏  | 158/219 [00:08<00:09,  6.25it/s]
+[worker:w-B] Loading weights:  76%|███████▌  | 166/219 [00:08<00:06,  8.06it/s]
+[worker:w-B] Loading weights:  77%|███████▋  | 168/219 [00:08<00:05,  8.78it/s]
+[worker:w-B] Loading weights:  79%|███████▊  | 172/219 [00:09<00:04, 11.42it/s]
+[worker:w-B] Loading weights:  80%|███████▉  | 175/219 [00:09<00:05,  7.82it/s]
+[worker:w-B] Loading weights:  84%|████████▍ | 184/219 [00:10<00:03,  9.48it/s]
+[worker:w-B] Loading weights:  87%|████████▋ | 190/219 [00:10<00:02, 12.47it/s]
+[worker:w-B] Loading weights:  88%|████████▊ | 193/219 [00:11<00:03,  8.46it/s]
+[worker:w-B] Loading weights:  89%|████████▉ | 195/219 [00:11<00:02,  9.27it/s]
+[worker:w-B] Loading weights:  92%|█████████▏| 202/219 [00:12<00:02,  7.91it/s]
+[worker:w-B] Loading weights:  93%|█████████▎| 204/219 [00:12<00:01,  8.53it/s]
+[worker:w-B] Loading weights:  96%|█████████▋| 211/219 [00:14<00:01,  7.06it/s]
+[worker:w-B] Loading weights:  98%|█████████▊| 215/219 [00:14<00:00,  8.79it/s]
+[worker:w-B] Loading weights: 100%|██████████| 219/219 [00:14<00:00, 15.37it/s]
+[worker:w-B] [w-B] 46090 REGISTERED base=63d736ad11ad8f7e
+[worker:w-B] [w-B] CALIBRATED ett=250 expected=250
 [worker:w-B] [w-B] ASSIGNMENT shard=shard-B
-[worker:w-B] [w-B] LEASE ls_87f09db79 ttl=1786784291.00844
+[worker:w-B] [w-B] LEASE ls_b18015fae ttl=1786876197.3506231
 [worker:w-B] [w-B] step.open OK
-[worker:w-B] [w-B] TRAINED 2 exemples ett=82 delta=4adeaf2fe21c825a 13s
-[worker:w-B] [w-B] APPLIED receipt=tr_85036f32d2344
+[worker:w-B] [w-B] TRAINED 6 exemples ett=250 delta=a341e5b8a3f7b6c5 129s
+[worker:w-B] [w-B] APPLIED receipt=tr_e1926c4b50d94
 [worker:w-B] [w-B] COMMITTED
-[worker:w-B] [w-B] CHECKPOINT cid=tr_85036f32d2344
-[worker:w-B] [w-B] CONTRIBUTION SUBMITTED tr_85036f32d2344 (validate+activate = ADMIN)
+[worker:w-B] [w-B] CHECKPOINT cid=tr_e1926c4b50d94
+[worker:w-B] [w-B] CONTRIBUTION SUBMITTED tr_e1926c4b50d94 (validate+activate = ADMIN)
 [worker:w-B] [w-B] RELEASED
+[worker:w-A] [w-A] TRAINED 6 exemples ett=258 delta=095acbf104c5b2f0 174s
+[worker:w-A] [w-A] APPLIED receipt=tr_721fc092861c4
+[worker:w-A] [w-A] COMMITTED
+[worker:w-A] [w-A] CHECKPOINT cid=tr_721fc092861c4
+[worker:w-A] [w-A] CONTRIBUTION SUBMITTED tr_721fc092861c4 (validate+activate = ADMIN)
+[worker:w-A] [w-A] RELEASED
 [worker:w-B] [w-B] EVIDENCE /root/meshtrainer/minicpm5_output/evidence_w-B.json
 [worker:w-B] WORKER_DONE w-B
+[worker:w-A] [w-A] EVIDENCE /root/meshtrainer/minicpm5_output/evidence_w-A.json
+[worker:w-A] WORKER_DONE w-A
   PASS worker A (subprocess, shard A)
   PASS worker B (subprocess, shard B)
-  PASS PID A != PID B (workers independents) — A=41520 B=41559
+  PASS PID A != PID B (workers independents) — A=46055 B=46090
+  PASS PAR-01 A viu quan B arrenca (B_LEASE després de A_LEASE) — A_lease=1786875554.6 B_lease=1786875597.4
+  PASS PAR-02 A/B leases actives simultàniament (A_LEASE < B_LEASE < A_RELEASE) — A_lease=1786875554.6 < B_lease=1786875597.4 < A_release=1786875738.0
   PASS mateix base_model_hash (A==B)
   PASS shard manifests diferents
   PASS worker_ids diferents
   PASS sessions diferents
   PASS leases diferents
-  PASS ETT_A > 0 i ETT_B > 0 (dummy: ETT real per exemple) — 90 vs 82
-  [admin] contribution validate+activate tr_246434765a924
-  [admin] contribution validate+activate tr_85036f32d2344
+  PASS ETT_A > 0 i ETT_B > 0 (dummy: ETT real per exemple) — 258 vs 250
+  [admin] contribution validate+activate tr_721fc092861c4
+  [admin] contribution validate+activate tr_e1926c4b50d94
   PASS ready_to_close: quòrum exacte 2/2 (r1)
-  PASS FedAvg Coordinator: adapter_1 (r1) — sha=3e0fc536b9e40f85 ett=172
+  PASS FedAvg Coordinator: adapter_1 (r1) — sha=c57269df7f2cde8f ett=508
   PASS oracle == FedAvg Coordinator (r1, tensor per tensor) — maxdiff=0.00e+00
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:06<22:24,  6.17s/it]Loading weights:  63%|██████▎   | 139/219 [00:06<00:02, 31.28it/s]Loading weights:  95%|█████████▍| 208/219 [00:08<00:00, 34.39it/s]Loading weights: 100%|██████████| 219/219 [00:08<00:00, 26.72it/s]
-  [coord] assignment asg-A2 -> shard-A expected_ett=45
-  [coord] assignment asg-B2 -> shard-B expected_ett=41
+Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:00<02:12,  1.65it/s]Loading weights:   1%|          | 2/219 [00:00<01:22,  2.62it/s]Loading weights:  34%|███▍      | 74/219 [00:00<00:01, 117.52it/s]Loading weights:  43%|████▎     | 94/219 [00:02<00:02, 48.68it/s] Loading weights:  59%|█████▉    | 130/219 [00:02<00:01, 71.69it/s]Loading weights:  67%|██████▋   | 146/219 [00:02<00:01, 63.79it/s]Loading weights:  72%|███████▏  | 158/219 [00:03<00:01, 44.81it/s]Loading weights:  76%|███████▋  | 167/219 [00:03<00:01, 43.44it/s]Loading weights:  80%|███████▉  | 175/219 [00:03<00:01, 39.20it/s]Loading weights:  83%|████████▎ | 181/219 [00:03<00:00, 40.57it/s]Loading weights:  85%|████████▌ | 187/219 [00:04<00:00, 36.42it/s]Loading weights:  88%|████████▊ | 193/219 [00:04<00:00, 32.38it/s]Loading weights:  92%|█████████▏| 202/219 [00:04<00:00, 32.85it/s]Loading weights:  95%|█████████▍| 208/219 [00:04<00:00, 35.75it/s]Loading weights:  97%|█████████▋| 213/219 [00:04<00:00, 31.57it/s]Loading weights: 100%|██████████| 219/219 [00:05<00:00, 43.59it/s]
+  [coord] assignment asg-A2 -> shard-A expected_ett=133
+  [coord] assignment asg-B2 -> shard-B expected_ett=122
 [worker:w-A2] Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]
-[worker:w-A2] Loading weights:   0%|          | 1/219 [00:03<13:18,  3.66s/it]
-[worker:w-A2] Loading weights:  53%|█████▎    | 117/219 [00:03<00:02, 43.47it/s]
-[worker:w-A2] Loading weights:  80%|███████▉  | 175/219 [00:03<00:00, 66.94it/s]
-[worker:w-A2] Loading weights: 100%|██████████| 219/219 [00:04<00:00, 87.98it/s]
-[worker:w-A2] Loading weights: 100%|██████████| 219/219 [00:04<00:00, 52.87it/s]
-[worker:w-A2] [w-A2] 41605 REGISTERED base=63d736ad11ad8f7e
-[worker:w-A2] [w-A2] CALIBRATED ett=45 expected=45
+[worker:w-A2] Loading weights:   0%|          | 1/219 [00:00<01:34,  2.30it/s]
+[worker:w-A2] Loading weights:  47%|████▋     | 103/219 [00:00<00:00, 253.37it/s]
+[worker:w-A2] Loading weights:  74%|███████▍  | 163/219 [00:00<00:00, 304.41it/s]
+[worker:w-A2] Loading weights:  98%|█████████▊| 214/219 [00:00<00:00, 329.88it/s]
+[worker:w-A2] Loading weights: 100%|██████████| 219/219 [00:00<00:00, 268.05it/s]
+[worker:w-A2] [w-A2] 46142 REGISTERED base=63d736ad11ad8f7e
+[worker:w-A2] [w-A2] CALIBRATED ett=133 expected=133
 [worker:w-A2] [w-A2] ASSIGNMENT shard=shard-A
-[worker:w-A2] [w-A2] LEASE ls_a7a5b7c82 ttl=1786784354.8222873
+[worker:w-A2] [w-A2] LEASE ls_03b8e245e ttl=1786876407.0324745
 [worker:w-A2] [w-A2] step.open OK
-[worker:w-A2] [w-A2] TRAINED 1 exemples ett=45 delta=a3724f28350280a7 7s
-[worker:w-A2] [w-A2] APPLIED receipt=tr_a61eb0349c624
+[worker:w-B2] Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]
+[worker:w-B2] Loading weights:   0%|          | 1/219 [00:00<01:29,  2.45it/s]
+[worker:w-B2] Loading weights:  40%|███▉      | 87/219 [00:00<00:00, 215.06it/s]
+[worker:w-B2] Loading weights:  60%|█████▉    | 131/219 [00:01<00:01, 70.72it/s]
+[worker:w-B2] Loading weights:  72%|███████▏  | 157/219 [00:03<00:01, 39.51it/s]
+[worker:w-B2] Loading weights:  79%|███████▉  | 173/219 [00:03<00:01, 35.78it/s]
+[worker:w-B2] Loading weights:  84%|████████▍ | 185/219 [00:05<00:01, 22.89it/s]
+[worker:w-B2] Loading weights:  88%|████████▊ | 193/219 [00:06<00:01, 19.73it/s]
+[worker:w-B2] Loading weights:  91%|█████████ | 199/219 [00:06<00:01, 18.16it/s]
+[worker:w-B2] Loading weights:  93%|█████████▎| 204/219 [00:07<00:01, 14.93it/s]
+[worker:w-B2] Loading weights:  97%|█████████▋| 212/219 [00:07<00:00, 15.65it/s]
+[worker:w-B2] Loading weights: 100%|██████████| 219/219 [00:07<00:00, 28.11it/s]
+[worker:w-B2] [w-B2] 46180 REGISTERED base=63d736ad11ad8f7e
+[worker:w-B2] [w-B2] CALIBRATED ett=122 expected=122
+[worker:w-B2] [w-B2] ASSIGNMENT shard=shard-B
+[worker:w-B2] [w-B2] LEASE ls_2f368cffb ttl=1786876444.2185915
+[worker:w-B2] [w-B2] step.open OK
+[worker:w-A2] [w-A2] TRAINED 3 exemples ett=133 delta=5429fdc358775511 162s
+[worker:w-B2] [w-B2] TRAINED 3 exemples ett=122 delta=1b6f4acf91eb85b4 125s
+[worker:w-A2] [w-A2] APPLIED receipt=tr_f8e34108d1584
 [worker:w-A2] [w-A2] COMMITTED
-[worker:w-A2] [w-A2] CHECKPOINT cid=tr_a61eb0349c624
-[worker:w-A2] [w-A2] CONTRIBUTION SUBMITTED tr_a61eb0349c624 (validate+activate = ADMIN)
+[worker:w-A2] [w-A2] CHECKPOINT cid=tr_f8e34108d1584
+[worker:w-B2] [w-B2] APPLIED receipt=tr_9f5214ac8a074
+[worker:w-A2] [w-A2] CONTRIBUTION SUBMITTED tr_f8e34108d1584 (validate+activate = ADMIN)
+[worker:w-B2] [w-B2] COMMITTED
 [worker:w-A2] [w-A2] RELEASED
+[worker:w-B2] [w-B2] CHECKPOINT cid=tr_9f5214ac8a074
+[worker:w-B2] [w-B2] CONTRIBUTION SUBMITTED tr_9f5214ac8a074 (validate+activate = ADMIN)
+[worker:w-B2] [w-B2] RELEASED
 [worker:w-A2] [w-A2] EVIDENCE /root/meshtrainer/minicpm5_output/evidence_w-A2.json
 [worker:w-A2] WORKER_DONE w-A2
-[worker:w-B2] Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]
-[worker:w-B2] Loading weights:   0%|          | 1/219 [00:03<12:50,  3.54s/it]
-[worker:w-B2] Loading weights:  59%|█████▉    | 130/219 [00:03<00:01, 47.49it/s]
-[worker:w-B2] Loading weights:  73%|███████▎  | 160/219 [00:04<00:01, 45.56it/s]
-[worker:w-B2] Loading weights:  81%|████████▏ | 178/219 [00:05<00:00, 44.11it/s]
-[worker:w-B2] Loading weights:  87%|████████▋ | 191/219 [00:05<00:00, 44.79it/s]
-[worker:w-B2] Loading weights:  92%|█████████▏| 201/219 [00:05<00:00, 44.11it/s]
-[worker:w-B2] Loading weights:  95%|█████████▌| 209/219 [00:05<00:00, 47.02it/s]
-[worker:w-B2] Loading weights: 100%|██████████| 219/219 [00:05<00:00, 39.00it/s]
-[worker:w-B2] [w-B2] 41644 REGISTERED base=63d736ad11ad8f7e
-[worker:w-B2] [w-B2] CALIBRATED ett=41 expected=41
-[worker:w-B2] [w-B2] ASSIGNMENT shard=shard-B
-[worker:w-B2] [w-B2] LEASE ls_5a09487d9 ttl=1786784395.155829
-[worker:w-B2] [w-B2] step.open OK
-[worker:w-B2] [w-B2] TRAINED 1 exemples ett=41 delta=55610102b7730f55 7s
-[worker:w-B2] [w-B2] APPLIED receipt=tr_186216550a5b4
-[worker:w-B2] [w-B2] COMMITTED
-[worker:w-B2] [w-B2] CHECKPOINT cid=tr_186216550a5b4
-[worker:w-B2] [w-B2] CONTRIBUTION SUBMITTED tr_186216550a5b4 (validate+activate = ADMIN)
-[worker:w-B2] [w-B2] RELEASED
 [worker:w-B2] [w-B2] EVIDENCE /root/meshtrainer/minicpm5_output/evidence_w-B2.json
 [worker:w-B2] WORKER_DONE w-B2
   PASS worker A2 (round 2)
   PASS worker B2 (round 2)
-  PASS PID A2 != PID B2 (round 2 paral·lel) — A2=41605 B2=41644
-  PASS round 2: adapter_pre_hash_A == adapter_pre_hash_B (adapter_1) — edbbacfdea362553
-  [admin] contribution validate+activate tr_a61eb0349c624
-  [admin] contribution validate+activate tr_186216550a5b4
+  PASS PID A2 != PID B2 (round 2 paral·lel) — A2=46142 B2=46180
+  PASS PAR-03 A2 viu quan B2 arrenca (B2_LEASE després de A2_LEASE) — A2_lease=1786875807.0 B2_lease=1786875844.2
+  PASS PAR-04 A2/B2 leases actives simultàniament (A2_LEASE < B2_LEASE < A2_RELEASE) — A2_lease=1786875807.0 < B2_lease=1786875844.2 < A2_release=1786875976.9
+  PASS round 2: adapter_pre_hash_A == adapter_pre_hash_B (adapter_1) — fbc6117e0bf4ce47
+  [admin] contribution validate+activate tr_f8e34108d1584
+  [admin] contribution validate+activate tr_9f5214ac8a074
   PASS ready_to_close: quòrum exacte 2/2 (r2)
-  PASS FedAvg Coordinator: adapter_2 (r2) — sha=418ec3bd6d42c5a4
+  PASS FedAvg Coordinator: adapter_2 (r2) — sha=22a94a5c0a006717
   PASS oracle == FedAvg Coordinator (r2, tensor per tensor) — maxdiff=0.00e+00
 {
   "backend": "minicpm5",
   "adapter_0_sha": "5df80ee69db130fa61c8c902e673154ca9c6782194edfe11982f218f42660401",
-  "adapter_1_sha": "3e0fc536b9e40f85b63fb4f63aff84d0088a0f3b885a027d652dd50e88121602",
-  "adapter_2_sha": "418ec3bd6d42c5a4aa472354b0910e49138e96062f751de7bb2f6b34f7e6cf79",
-  "ett_a": 90,
-  "ett_b": 82,
+  "adapter_1_sha": "c57269df7f2cde8f617f8e6b0e768d74f8ef14575a5e60ba552da06d65d7d41f",
+  "adapter_2_sha": "22a94a5c0a0067172d19c842f92f6baf780e05a63843bd78bc4d08bd6804a507",
+  "ett_a": 258,
+  "ett_b": 250,
   "maxdiff_oracle_r1": 0.0,
   "maxdiff_oracle_r2": 0.0
 }
-=== GENERIC DISTRIBUTED RUN (minicpm5): 21/21 PASS ===
+=== GENERIC DISTRIBUTED RUN (minicpm5): 25/25 PASS ===

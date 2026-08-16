@@ -3,13 +3,13 @@
 ============================================================
   PASS metrics.backend == minicpm5 — backend='minicpm5'
   PASS sha256(adapter_0) == metrics.adapter_0_sha — 5df80ee69db1 vs 5df80ee69db1
-  PASS sha256(adapter_1) == metrics.adapter_1_sha — 3e0fc536b9e4 vs 3e0fc536b9e4
-  PASS sha256(adapter_2) == metrics.adapter_2_sha — 418ec3bd6d42 vs 418ec3bd6d42
+  PASS sha256(adapter_1) == metrics.adapter_1_sha — c57269df7f2c vs c57269df7f2c
+  PASS sha256(adapter_2) == metrics.adapter_2_sha — 22a94a5c0a00 vs 22a94a5c0a00
   PASS evidence_w-A.json present
   PASS evidence_w-B.json present
   PASS evidence_w-A2.json present
   PASS evidence_w-B2.json present
-  PASS PIDs evidence_w-* == distributed.log (mateixa execució) — pids={'A': 41520, 'B': 41559, 'A2': 41605, 'B2': 41644}
+  PASS PIDs evidence_w-* == distributed.log (mateixa execució) — pids={'A': 46055, 'B': 46090, 'A2': 46142, 'B2': 46180}
   PASS quality_before.json.backend == minicpm5 — backend='minicpm5'
   PASS quality_after.json.backend == minicpm5 — backend='minicpm5'
 

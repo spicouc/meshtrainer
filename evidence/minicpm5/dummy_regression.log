@@ -3,92 +3,94 @@ adapter_0 86e548fba3bd6392 base=13cb2fcce8f388cf backend=dummy
   [coord] assignment asg-B -> shard-B expected_ett=43
   PASS coordinator: round r1 creada (model_rounds)
   PASS coordinator: assignments A/B creades
-[worker:w-A] [w-A] 41957 REGISTERED base=13cb2fcce8f388cf
+[worker:w-A] [w-A] 46496 REGISTERED base=13cb2fcce8f388cf
 [worker:w-A] [w-A] CALIBRATED ett=41 expected=41
 [worker:w-A] [w-A] ASSIGNMENT shard=shard-A
-[worker:w-A] [w-A] LEASE ls_1111b8f5c ttl=1786784593.7605107
+[worker:w-A] [w-A] LEASE ls_2204f12c8 ttl=1786876722.346678
 [worker:w-A] [w-A] step.open OK
 [worker:w-A] [w-A] pas 0: RECOVERED w-A-0
 [worker:w-A] [w-A] pas 1: RECOVERED w-A-1
 [worker:w-A] [w-A] pas 2: RECOVERED w-A-2
 [worker:w-A] [w-A] pas 3: RECOVERED w-A-3
 [worker:w-A] [w-A] TRAINED 4 exemples ett=41 delta=6b4e72960e5d8412 0s
-[worker:w-A] [w-A] APPLIED receipt=tr_547538a399654
+[worker:w-A] [w-A] APPLIED receipt=tr_a2384270c0424
 [worker:w-A] [w-A] COMMITTED
-[worker:w-A] [w-A] CHECKPOINT cid=tr_547538a399654
-[worker:w-A] [w-A] CONTRIBUTION SUBMITTED tr_547538a399654 (validate+activate = ADMIN)
+[worker:w-A] [w-A] CHECKPOINT cid=tr_a2384270c0424
+[worker:w-A] [w-A] CONTRIBUTION SUBMITTED tr_a2384270c0424 (validate+activate = ADMIN)
 [worker:w-A] [w-A] RELEASED
 [worker:w-A] [w-A] EVIDENCE /tmp/minicpm5_dummy_regression_output/evidence_w-A.json
 [worker:w-A] WORKER_DONE w-A
-[worker:w-B] [w-B] 41972 REGISTERED base=13cb2fcce8f388cf
+[worker:w-B] [w-B] 46512 REGISTERED base=13cb2fcce8f388cf
 [worker:w-B] [w-B] CALIBRATED ett=43 expected=43
 [worker:w-B] [w-B] ASSIGNMENT shard=shard-B
-[worker:w-B] [w-B] LEASE ls_f3e2ed42c ttl=1786784633.7648242
+[worker:w-B] [w-B] LEASE ls_4196f39ab ttl=1786876724.0514545
 [worker:w-B] [w-B] step.open OK
 [worker:w-B] [w-B] pas 0: RECOVERED w-B-0
 [worker:w-B] [w-B] pas 1: RECOVERED w-B-1
 [worker:w-B] [w-B] pas 2: RECOVERED w-B-2
 [worker:w-B] [w-B] pas 3: RECOVERED w-B-3
 [worker:w-B] [w-B] TRAINED 4 exemples ett=43 delta=f63d64771173ed2c 0s
-[worker:w-B] [w-B] APPLIED receipt=tr_9da1dab8787b4
+[worker:w-B] [w-B] APPLIED receipt=tr_6d1ece1945e04
 [worker:w-B] [w-B] COMMITTED
-[worker:w-B] [w-B] CHECKPOINT cid=tr_9da1dab8787b4
-[worker:w-B] [w-B] CONTRIBUTION SUBMITTED tr_9da1dab8787b4 (validate+activate = ADMIN)
+[worker:w-B] [w-B] CHECKPOINT cid=tr_6d1ece1945e04
+[worker:w-B] [w-B] CONTRIBUTION SUBMITTED tr_6d1ece1945e04 (validate+activate = ADMIN)
 [worker:w-B] [w-B] RELEASED
 [worker:w-B] [w-B] EVIDENCE /tmp/minicpm5_dummy_regression_output/evidence_w-B.json
 [worker:w-B] WORKER_DONE w-B
   PASS worker A (subprocess, shard A)
   PASS worker B (subprocess, shard B)
-  PASS PID A != PID B (workers independents) — A=41957 B=41972
+  PASS PID A != PID B (workers independents) — A=46496 B=46512
+  PASS PAR-01/02 dummy: overlap N/A (train instantani) — workers OK — dummy LEASE→RELEASE <1ms (overlap impossible per disseny)
   PASS mateix base_model_hash (A==B)
   PASS shard manifests diferents
   PASS worker_ids diferents
   PASS sessions diferents
   PASS leases diferents
   PASS ETT_A > 0 i ETT_B > 0 (dummy: ETT real per exemple) — 41 vs 43
-  [admin] contribution validate+activate tr_547538a399654
-  [admin] contribution validate+activate tr_9da1dab8787b4
+  [admin] contribution validate+activate tr_a2384270c0424
+  [admin] contribution validate+activate tr_6d1ece1945e04
   PASS ready_to_close: quòrum exacte 2/2 (r1)
   PASS FedAvg Coordinator: adapter_1 (r1) — sha=b6457ffebf985cb6 ett=84
   PASS oracle == FedAvg Coordinator (r1, tensor per tensor) — maxdiff=0.00e+00
   [coord] assignment asg-A2 -> shard-A expected_ett=19
   [coord] assignment asg-B2 -> shard-B expected_ett=24
-[worker:w-A2] [w-A2] 41988 REGISTERED base=13cb2fcce8f388cf
+[worker:w-A2] [w-A2] 46528 REGISTERED base=13cb2fcce8f388cf
 [worker:w-A2] [w-A2] CALIBRATED ett=19 expected=19
 [worker:w-A2] [w-A2] ASSIGNMENT shard=shard-A
-[worker:w-A2] [w-A2] LEASE ls_2d85ddfca ttl=1786784635.5007858
+[worker:w-A2] [w-A2] LEASE ls_8574e0ca2 ttl=1786876726.7664654
 [worker:w-A2] [w-A2] step.open OK
 [worker:w-A2] [w-A2] pas 0: RECOVERED w-A2-0
 [worker:w-A2] [w-A2] pas 1: RECOVERED w-A2-1
 [worker:w-A2] [w-A2] TRAINED 2 exemples ett=19 delta=88159a2a18d99e8d 0s
-[worker:w-A2] [w-A2] APPLIED receipt=tr_b68c2fae608f4
+[worker:w-A2] [w-A2] APPLIED receipt=tr_3a23ea3723084
 [worker:w-A2] [w-A2] COMMITTED
-[worker:w-A2] [w-A2] CHECKPOINT cid=tr_b68c2fae608f4
-[worker:w-A2] [w-A2] CONTRIBUTION SUBMITTED tr_b68c2fae608f4 (validate+activate = ADMIN)
+[worker:w-A2] [w-A2] CHECKPOINT cid=tr_3a23ea3723084
+[worker:w-A2] [w-A2] CONTRIBUTION SUBMITTED tr_3a23ea3723084 (validate+activate = ADMIN)
 [worker:w-A2] [w-A2] RELEASED
 [worker:w-A2] [w-A2] EVIDENCE /tmp/minicpm5_dummy_regression_output/evidence_w-A2.json
 [worker:w-A2] WORKER_DONE w-A2
-[worker:w-B2] [w-B2] 42003 REGISTERED base=13cb2fcce8f388cf
+[worker:w-B2] [w-B2] 46544 REGISTERED base=13cb2fcce8f388cf
 [worker:w-B2] [w-B2] CALIBRATED ett=24 expected=24
 [worker:w-B2] [w-B2] ASSIGNMENT shard=shard-B
-[worker:w-B2] [w-B2] LEASE ls_5d577a223 ttl=1786784675.4355085
+[worker:w-B2] [w-B2] LEASE ls_9909c5235 ttl=1786876728.6869695
 [worker:w-B2] [w-B2] step.open OK
 [worker:w-B2] [w-B2] pas 0: RECOVERED w-B2-0
 [worker:w-B2] [w-B2] pas 1: RECOVERED w-B2-1
 [worker:w-B2] [w-B2] TRAINED 2 exemples ett=24 delta=6ff8fa432ce4ffc3 0s
-[worker:w-B2] [w-B2] APPLIED receipt=tr_befdae19f2c84
+[worker:w-B2] [w-B2] APPLIED receipt=tr_bf8d8cfda1e54
 [worker:w-B2] [w-B2] COMMITTED
-[worker:w-B2] [w-B2] CHECKPOINT cid=tr_befdae19f2c84
-[worker:w-B2] [w-B2] CONTRIBUTION SUBMITTED tr_befdae19f2c84 (validate+activate = ADMIN)
+[worker:w-B2] [w-B2] CHECKPOINT cid=tr_bf8d8cfda1e54
+[worker:w-B2] [w-B2] CONTRIBUTION SUBMITTED tr_bf8d8cfda1e54 (validate+activate = ADMIN)
 [worker:w-B2] [w-B2] RELEASED
 [worker:w-B2] [w-B2] EVIDENCE /tmp/minicpm5_dummy_regression_output/evidence_w-B2.json
 [worker:w-B2] WORKER_DONE w-B2
   PASS worker A2 (round 2)
   PASS worker B2 (round 2)
-  PASS PID A2 != PID B2 (round 2 paral·lel) — A2=41988 B2=42003
+  PASS PID A2 != PID B2 (round 2 paral·lel) — A2=46528 B2=46544
+  PASS PAR-03/04 dummy: overlap N/A (train instantani) — workers OK — dummy LEASE→RELEASE <1ms
   PASS round 2: adapter_pre_hash_A == adapter_pre_hash_B (adapter_1) — d8aad35dfd80003d
-  [admin] contribution validate+activate tr_b68c2fae608f4
-  [admin] contribution validate+activate tr_befdae19f2c84
+  [admin] contribution validate+activate tr_3a23ea3723084
+  [admin] contribution validate+activate tr_bf8d8cfda1e54
   PASS ready_to_close: quòrum exacte 2/2 (r2)
   PASS FedAvg Coordinator: adapter_2 (r2) — sha=c3be308ef6cd2194
   PASS oracle == FedAvg Coordinator (r2, tensor per tensor) — maxdiff=0.00e+00
@@ -102,5 +104,5 @@ adapter_0 86e548fba3bd6392 base=13cb2fcce8f388cf backend=dummy
   "maxdiff_oracle_r1": 0.0,
   "maxdiff_oracle_r2": 0.0
 }
-=== GENERIC DISTRIBUTED RUN (dummy): 21/21 PASS ===
+=== GENERIC DISTRIBUTED RUN (dummy): 23/23 PASS ===
 minicpm5_output immutable després del dummy: OK

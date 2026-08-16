@@ -3,7 +3,7 @@
 ============================================================
 
 --- Part 1: backend real (model) ---
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:02<09:32,  2.63s/it]Loading weights:  39%|███▉      | 85/219 [00:02<00:03, 41.05it/s]Loading weights:  49%|████▉     | 108/219 [00:03<00:02, 48.97it/s]Loading weights:  57%|█████▋    | 125/219 [00:03<00:01, 51.52it/s]Loading weights:  63%|██████▎   | 138/219 [00:03<00:01, 54.52it/s]Loading weights:  68%|██████▊   | 149/219 [00:03<00:01, 53.43it/s]Loading weights:  72%|███████▏  | 158/219 [00:03<00:01, 53.65it/s]Loading weights:  76%|███████▌  | 166/219 [00:04<00:00, 55.50it/s]Loading weights:  81%|████████  | 177/219 [00:04<00:00, 63.58it/s]Loading weights:  93%|█████████▎| 204/219 [00:04<00:00, 100.85it/s]Loading weights: 100%|██████████| 219/219 [00:04<00:00, 51.21it/s] 
+Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:00<01:31,  2.39it/s]Loading weights:  47%|████▋     | 104/219 [00:00<00:00, 261.79it/s]Loading weights:  74%|███████▍  | 163/219 [00:00<00:00, 312.86it/s]Loading weights:  98%|█████████▊| 214/219 [00:00<00:00, 351.02it/s]Loading weights: 100%|██████████| 219/219 [00:00<00:00, 281.15it/s]
 
 === MADV-01: wrong base model ===
   PASS MADV-01 wrong base model (adapter d'un altre backend) → REJECTED — ValueError: adapter schema mismatch: missing=['base_model.model.model.la

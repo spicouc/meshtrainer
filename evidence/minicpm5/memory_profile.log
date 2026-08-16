@@ -1,48 +1,60 @@
 
-=== RUN 2026-08-15 08:46:57 backend=minicpm5 ===
-  H-0 inici: host MemAvailable=11529 MB
-  A. abans de carregar MiniCPM: VmRSS=37 MB
-  B. model carregat: VmRSS=4936 MB
-  C. adapter_0 generat: VmRSS=4980 MB
-  D. pre_hash calculat: VmRSS=4995 MB
-  ETT[A]=90
-  ETT_half[A]=45
-  ETT[B]=82
-  ETT_half[B]=41
-  E. ETT calculat: VmRSS=4997 MB
-  F/G. close+del+gc+malloc_trim: VmRSS=788 MB
-  H-1 despres preparacio (driver zero model): host MemAvailable=11035 MB
-  H-2 abans de spawn A/B: host MemAvailable=11035 MB
-  spawned w-A pid=41520
-  spawned w-B pid=41559
-  H-3 despres Round 1 (A/B acabats): host MemAvailable=10902 MB
+=== RUN 2026-08-16 10:18:45 backend=minicpm5 ===
+  H-0 inici: host MemAvailable=14632 MB
+  A. abans de carregar MiniCPM: VmRSS=38 MB
+  B. model carregat: VmRSS=4941 MB
+  C. adapter_0 generat: VmRSS=4985 MB
+  D. pre_hash calculat: VmRSS=4999 MB
+  ETT[A]=258
+  ETT_half[A]=133
+  ETT[B]=250
+  ETT_half[B]=122
+  E. ETT calculat: VmRSS=5001 MB
+  F/G. close+del+gc+malloc_trim: VmRSS=770 MB
+  G2. page cache safetensors alliberat (fadvise DONTNEED): VmRSS=770 MB
+  H-1 despres preparacio (driver zero model): host MemAvailable=14161 MB
+  H-2 abans de spawn A/B: host MemAvailable=14161 MB
+  spawned w-A pid=46055 t=1786875537.8
+  spawned w-B pid=46090 t=1786875554.7 (A viu=True)
+  w-A: registered=1786875554.5715764 lease=1786875554.615502 release=1786875737.9559002
+  w-B: registered=1786875597.2180932 lease=1786875597.3702037 release=1786875735.2842934
+  H-3 despres Round 1 (A/B acabats): host MemAvailable=14651 MB
+  PAR R1: A_lease=1786875554.615502 B_lease=1786875597.3702037 A_release=1786875737.9559002
   pre_hash(adapter) calculat + alliberat
-  H-4 pre_hash r2 (driver zero model): host MemAvailable=10535 MB
-  spawned w-A2 pid=41605
-  spawned w-B2 pid=41644
-  H-5 despres Round 2 (A2/B2 acabats): host MemAvailable=10481 MB
-=== FI RUN (pass=21/21) ===
+  H-4 pre_hash r2 (driver zero model): host MemAvailable=14006 MB
+  spawned w-A2 pid=46142 t=1786875797.3
+  spawned w-B2 pid=46180 t=1786875807.1 (A viu=True)
+  w-A2: registered=1786875806.9530246 lease=1786875807.038713 release=1786875976.881763
+  w-B2: registered=1786875844.0553021 lease=1786875844.2402854 release=1786875978.3373244
+  H-5 despres Round 2 (A2/B2 acabats): host MemAvailable=14784 MB
+  PAR R2: A2_lease=1786875807.038713 B2_lease=1786875844.2402854 A2_release=1786875976.881763
+=== FI RUN (pass=25/25) ===
 
-=== RUN 2026-08-15 08:53:10 backend=dummy ===
-  H-0 inici: host MemAvailable=11568 MB
-  A. abans de carregar MiniCPM: VmRSS=37 MB
-  B. model carregat: VmRSS=40 MB
-  C. adapter_0 generat: VmRSS=40 MB
-  D. pre_hash calculat: VmRSS=478 MB
+=== RUN 2026-08-16 10:28:39 backend=dummy ===
+  H-0 inici: host MemAvailable=14953 MB
+  A. abans de carregar MiniCPM: VmRSS=38 MB
+  B. model carregat: VmRSS=41 MB
+  C. adapter_0 generat: VmRSS=41 MB
+  D. pre_hash calculat: VmRSS=487 MB
   ETT[A]=41
   ETT_half[A]=19
   ETT[B]=43
   ETT_half[B]=24
-  E. ETT calculat: VmRSS=478 MB
-  F/G. close+del+gc+malloc_trim: VmRSS=478 MB
-  H-1 despres preparacio (driver zero model): host MemAvailable=11308 MB
-  H-2 abans de spawn A/B: host MemAvailable=11308 MB
-  spawned w-A pid=41957
-  spawned w-B pid=41972
-  H-3 despres Round 1 (A/B acabats): host MemAvailable=11305 MB
+  E. ETT calculat: VmRSS=487 MB
+  F/G. close+del+gc+malloc_trim: VmRSS=487 MB
+  G2. page cache safetensors alliberat (fadvise DONTNEED): VmRSS=487 MB
+  H-1 despres preparacio (driver zero model): host MemAvailable=14694 MB
+  H-2 abans de spawn A/B: host MemAvailable=14694 MB
+  spawned w-A pid=46496 t=1786876121.1
+  spawned w-B pid=46512 t=1786876122.5 (A viu=True)
+  w-A: registered=1786876122.3436453 lease=1786876122.3472567 release=1786876122.3583498
+  w-B: registered=1786876124.043082 lease=1786876124.0521023 release=1786876124.1203933
+  H-3 despres Round 1 (A/B acabats): host MemAvailable=14690 MB
   pre_hash(adapter) calculat + alliberat
-  H-4 pre_hash r2 (driver zero model): host MemAvailable=11307 MB
-  spawned w-A2 pid=41988
-  spawned w-B2 pid=42003
-  H-5 despres Round 2 (A2/B2 acabats): host MemAvailable=11305 MB
-=== FI RUN (pass=21/21) ===
+  H-4 pre_hash r2 (driver zero model): host MemAvailable=14692 MB
+  spawned w-A2 pid=46528 t=1786876125.2
+  spawned w-B2 pid=46544 t=1786876127.0 (A viu=True)
+  w-A2: registered=1786876126.69698 lease=1786876126.7700062 release=1786876126.9536324
+  w-B2: registered=1786876128.5818179 lease=1786876128.6911051 release=1786876129.140121
+  H-5 despres Round 2 (A2/B2 acabats): host MemAvailable=14692 MB
+=== FI RUN (pass=23/23) ===

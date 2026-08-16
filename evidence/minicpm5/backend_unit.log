@@ -1,2 +1,2 @@
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:02<07:53,  2.17s/it]Loading weights:  64%|██████▍   | 140/219 [00:02<00:00, 85.81it/s]Loading weights:  99%|█████████▊| 216/219 [00:03<00:00, 72.45it/s]Loading weights: 100%|██████████| 219/219 [00:03<00:00, 61.71it/s]
+Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:00<01:22,  2.64it/s]Loading weights:  44%|████▍     | 96/219 [00:00<00:00, 257.88it/s]Loading weights:  68%|██████▊   | 149/219 [00:00<00:00, 326.62it/s]Loading weights:  92%|█████████▏| 201/219 [00:00<00:00, 357.12it/s]Loading weights: 100%|██████████| 219/219 [00:00<00:00, 293.11it/s]
 UNIT PASS

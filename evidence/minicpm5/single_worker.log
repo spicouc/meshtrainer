@@ -1,4 +1,4 @@
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:02<09:21,  2.58s/it]Loading weights:  35%|███▌      | 77/219 [00:02<00:03, 40.19it/s]Loading weights:  55%|█████▍    | 120/219 [00:03<00:01, 55.84it/s]Loading weights:  68%|██████▊   | 149/219 [00:03<00:01, 58.69it/s]Loading weights:  77%|███████▋  | 169/219 [00:03<00:00, 59.83it/s]Loading weights:  84%|████████▍ | 184/219 [00:03<00:00, 66.19it/s]Loading weights: 100%|██████████| 219/219 [00:04<00:00, 54.58it/s]
+Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:00<01:13,  2.98it/s]Loading weights:  47%|████▋     | 103/219 [00:00<00:00, 302.77it/s]Loading weights:  74%|███████▎  | 161/219 [00:00<00:00, 319.16it/s]Loading weights:  95%|█████████▍| 208/219 [00:00<00:00, 344.06it/s]Loading weights: 100%|██████████| 219/219 [00:00<00:00, 296.32it/s]
 exemples: 3
 loss_before=5.3892 ppl_before=219.02
   train 0: loss=5.4891

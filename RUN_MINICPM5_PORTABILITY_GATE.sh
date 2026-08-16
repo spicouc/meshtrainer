@@ -69,7 +69,10 @@ run_sub adapter_adversarial "$PYTHON minicpm5_adapter_adversarial_tests.py" 500
 run_sub single_worker "$PYTHON minicpm5_quality.py" 600
 # 8 distributed Round 1 + FedAvg + oracle R1 + Round 2 + oracle R2
 # R1.1: outputs EXCLUSIUS de minicpm5 (mai qwen_distributed_output)
-run_sub distributed "$PYTHON generic_distributed_run.py --backend minicpm5 --model /root/minicpm5_1b_snapshot --num-examples 2 --seq-len 64 --out-dir /root/meshtrainer/minicpm5_output" 2400
+# R1.2: num-examples=6 -> A triga prou perquè B assoleixi la seva lease
+# mentre A encara treballa (PAR-02: A_LEASE < B_LEASE < A_RELEASE) sense
+# canviar model/dataset/seq_len/LoRA/f32
+run_sub distributed "$PYTHON generic_distributed_run.py --backend minicpm5 --model /root/minicpm5_1b_snapshot --num-examples 6 --seq-len 64 --out-dir /root/meshtrainer/minicpm5_output" 2400
 # 9 distributed recovery MREC
 run_sub recovery "$PYTHON generic_recovery_tests.py --backend minicpm5 --num-examples 1 --seq-len 64" 1800
 # 10 qwen regression (load + adapter + smoke)

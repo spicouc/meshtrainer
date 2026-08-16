@@ -1,0 +1,26 @@
+═══ R1.2 RESOURCE RUN — 2026-08-16T09:45Z (run final del distributed) ═══
+⚠ RECONSTRUÏT dels registres reals del monitor RUN_R12_RESOURCE_MONITOR.sh
+  (línies de la run final + PEAKS calculats pel monitor; els fitxers
+  originals es van esborrar accidentalment amb un rm -rf d'evidence/).
+
+Durant la run (exemples de línies reals capturades):
+
+09:47:50 | RAM 8746/4680MB SWAP 8662/11817MB | CT 7372660736/17179869184 CTSWAP 2102165504/6442450944 | RSS 3926MB(python)
+09:47:55 | RAM 9598/3186MB SWAP 9129/11350MB | CT 8957444096/17179869184 CTSWAP 2558541824/6442450944 | RSS 5786MB(python)
+09:48:00 | RAM 10650/1770MB SWAP 9333/11146MB | CT 10103603200/17179869184 CTSWAP 2768797696/6442450944 | RSS 5021MB + 282MB
+09:49:17 | RAM 13819/216MB SWAP 11813/8666MB | CT 12470657024/17179869184 CTSWAP 4908662784/6442450944 | RSS 5422MB + 5149MB ← A i B simultanis
+09:49:22 | RAM 13635/341MB SWAP 11810/8669MB | CT 12452261888/17179869184 CTSWAP 4907921408/6442450944 | RSS 5452MB + 5016MB
+
+─── PEAKS (calculats pel monitor al final de la run) ───
+peak RAM host: 14375 MB (14.4 GB de 15.7 GB)
+peak swap host: 13510 MB (13.5 GB de 20.5 GB — el swapfile de 8 GB va absorbir el pic)
+peak CT memory.current: 13048037376 B (12443 MB = 12.4 GB de 16 GB límit)
+peak CT memory.swap.current: 6434918400 B (6136 MB de 6442 MB = 6 GB límit — 95%, NO superat)
+
+─── OBSERVACIONS ───
+- Cap OOM durant la run final (CAS PASS).
+- Els 2 workers van coexistir: RSS 5422MB + 5149MB simultanis (PAR-01/02).
+- CT memory.swap.current va arribar al 95% del límit de 6 GB però NO el
+  va superar → sense memcg kill (el límit del CT es va mantenir intacte).
+- El swapfile temporal va proporcionar el coixí global que faltava.
+- Ollama: 0 models residents, 0 connexions a :11434 durant la run.

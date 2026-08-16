@@ -101,3 +101,27 @@ bias: none, task_type: CAUSAL_LM
 (Round 1 + Round 2 + FedAvg + oracle + recovery) sense cap modificació
 funcional. El canvi es limita al plugin del backend + registre lazy + drivers
 de test additius.
+
+---
+
+## 11. ADDENDUM R1.2 — SIMULTANEÏTAT REAL (2026-08-16)
+
+### Canvis al DRIVER de test (no al core, no al backend)
+
+| Canvi | Fitxer | Naturalesa |
+|---|---|---|
+| `run_workers_overlap()` — spawn A → monitoritzar stdout → a LEASE d'A spawn B (A.poll() is None) | generic_distributed_run.py | test-harness |
+| PAR-01..04 (4/4): A_LEASE < B_LEASE < A_RELEASE (R1 i R2) amb timestamps explícits | generic_distributed_run.py | test-harness |
+| PAR N/A per dummy (train_step instantani <1 ms — overlap físicament impossible; es verifica completesa) | generic_distributed_run.py | test-harness |
+| fadvise(DONTNEED) + drop_caches del page cache dels safetensors (retorna 2.1 GB al kernel) | generic_distributed_run.py | test-harness |
+| `RUN_OOM_DIAGNOSTIC.sh` + `RUN_R12_RESOURCE_MONITOR.sh` | root | scripts de diagnòstic |
+| `OOM_DIAGNOSTIC.log`, `SWAP_R12_BEFORE.log`, `R12_RESOURCE_RUN.log` | evidence/minicpm5/ | evidències |
+
+### Resultats reals (execució final)
+
+- **PAR-01..04: 4/4 PASS** — A_LEASE=3680.1 < B_LEASE=3701.2 < A_RELEASE=3841.9 (overlap 140.7 s); A2_LEASE=3909.7 < B2_LEASE=3934.2 < A2_RELEASE=4069.8 (overlap 135.6 s)
+- **PIDs**: A=46055 B=46090 A2=46142 B2=46180 (tots diferents, subprocessos reals)
+- **Distributed R1.2: 25/25 PASS** · FedAvg R1 adapter_1 c57269df · oracle R1 maxdiff 0.0 · FedAvg R2 adapter_2 22a94a5c · oracle R2 maxdiff 0.0
+- **Gate complet: 16/16 PASS, GATE_EXIT=0** · CE A/B PASS amb artefact integrity
+- **Swap temporal CAS B**: +8 GB swapfile (UUID 8fa8b168) → peaks: RAM host 14.4 GB, swap host 13.5/20.5 GB, CT memory.current 12.4/16 GB, CT memory.swap.current 6136/6442 MB (95%, no superat); swapfile desactivat després (config original restaurada)
+- memory.swap.max CT112 = 6 GB **intacte** · f32/model/dataset/seq_len/LoRA **intactes** · Core b146723 **inalterat**

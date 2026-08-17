@@ -1,12 +1,12 @@
 {
-  "commit": "23a13fd",
+  "commit": "60ebd29",
   "backend": "qwen3",
   "model": "/root/qwen3_0_6b_snapshot",
-  "job_id": "job-9caabf2e7576",
-  "runner_pid": 52022,
+  "job_id": "job-551fbab49a29",
+  "runner_pid": 52447,
   "worker_pids": [
-    "52087",
-    "52118"
+    "52512",
+    "52546"
   ],
   "ett_workers": [
     18,

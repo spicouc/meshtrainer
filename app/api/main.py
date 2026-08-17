@@ -15,8 +15,9 @@ if _CORE_DIR not in sys.path:
     sys.path.insert(0, _CORE_DIR)
 
 try:
-    from fastapi import APIRouter, FastAPI, File, HTTPException, Query, Request, UploadFile
-    from fastapi.responses import StreamingResponse
+    from fastapi import (APIRouter, FastAPI, File, HTTPException, Query,
+                         Request, UploadFile)
+    from fastapi.responses import FileResponse, StreamingResponse
     from pydantic import BaseModel as PBase
 except ImportError as e:  # pragma: no cover
     raise RuntimeError(
@@ -55,6 +56,33 @@ def _wrap(fn):
 @router.get("/health")
 def health():
     return _wrap(lambda: service.health())
+
+
+# ── Phase 2 (additiu): sistema / settings / descàrrega d'artefactes ─────
+@router.get("/system")
+def system_info():
+    return _wrap(lambda: service.get_system_info())
+
+
+@router.get("/settings")
+def settings():
+    return _wrap(lambda: service.get_settings())
+
+
+@router.get("/artifacts/{job_id}/{artifact_id}/download")
+def artifact_download(job_id: str, artifact_id: str):
+    """Descàrrega segura via API (mai path local com URL directa).
+    Anti path traversal validat a l'application layer."""
+    try:
+        res = service.get_artifact_download(job_id, artifact_id)
+    except KeyError as e:
+        return _err("not_found", str(e))
+    except FileNotFoundError as e:
+        return _err("artifact_unavailable", str(e))
+    except PermissionError as e:
+        return _err("forbidden", str(e))
+    return FileResponse(res["path"], filename=os.path.basename(res["path"]),
+                        media_type="application/octet-stream")
 
 
 @router.get("/backends")
@@ -170,22 +198,28 @@ def job_artifacts(job_id: str):
 
 
 @router.get("/jobs/{job_id}/events")
-def job_events(job_id: str, after_seq: int = Query(0, ge=0)):
+def job_events(job_id: str, after_seq: int = Query(0, ge=0),
+               format: str = Query("sse")):
     """SSE: flux d'events en viu del job (E0-04 R1).
 
     Contracte: Content-Type text/event-stream; cada esdeveniment amb
     'id:' (seq REAL de SQLite, rowid monotònic i estable), 'event:', 'data:'.
     El cursor és el seq (rowid) — mai el timestamp en segons (evita pèrdua
     d'events al mateix segon). NO s'embolica en l'envelope REST.
+
+    format=json (additiu Phase 2): retorna la llista d'events com a JSON
+    (per a resincronització de la UI — mai substitut del SSE en viu).
     """
     events = service.get_events(job_id, after_seq)
+    if format == "json":
+        return _ok(events)
 
     def gen():
         last_seq = after_seq
         for e in events:
             last_seq = e["seq"]
             yield (f"id: {e['seq']}\n"
-                   f"event: {e['type']}\n"
+                   f"event: message\n"
                    f"data: {json.dumps(e, ensure_ascii=False)}\n\n")
         # polling lleuger (long-poll curt) per a events nous
         import time
@@ -195,7 +229,7 @@ def job_events(job_id: str, after_seq: int = Query(0, ge=0)):
                 for e in new:
                     last_seq = e["seq"]
                     yield (f"id: {e['seq']}\n"
-                           f"event: {e['type']}\n"
+                           f"event: message\n"
                            f"data: {json.dumps(e, ensure_ascii=False)}\n\n")
             time.sleep(1)
 
@@ -207,6 +241,38 @@ def job_events(job_id: str, after_seq: int = Query(0, ge=0)):
 def create_app() -> FastAPI:
     app = FastAPI(title="MeshTrainer App MVP", version="0.1.0")
     app.include_router(router)
+
+    # ── Phase 2: serveix la Web UI (vanilla, zero toolchain) ─────────────
+    web_dir = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "web")
+    if os.path.isdir(web_dir):
+        from fastapi.staticfiles import StaticFiles
+        app.mount("/static", StaticFiles(directory=os.path.join(web_dir, "static")),
+                  name="static")
+
+        @app.get("/", include_in_schema=False)
+        def index():
+            return FileResponse(os.path.join(web_dir, "index.html"))
+
+        @app.get("/jobs/new", include_in_schema=False)
+        def jobs_new():
+            return FileResponse(os.path.join(web_dir, "index.html"))
+
+        @app.get("/datasets", include_in_schema=False)
+        def datasets_page():
+            return FileResponse(os.path.join(web_dir, "index.html"))
+
+        @app.get("/workers", include_in_schema=False)
+        def workers_page():
+            return FileResponse(os.path.join(web_dir, "index.html"))
+
+        @app.get("/settings", include_in_schema=False)
+        def settings_page():
+            return FileResponse(os.path.join(web_dir, "index.html"))
+
+        @app.get("/jobs/{job_id}", include_in_schema=False)
+        def job_page(job_id: str):
+            return FileResponse(os.path.join(web_dir, "index.html"))
     return app
 
 

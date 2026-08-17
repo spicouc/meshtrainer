@@ -15,7 +15,8 @@ import sys
 import uuid
 from datetime import datetime, timezone
 
-from app.config import APP_DB_PATH, CORE_SERVER_PORT_BASE, storage_subdir
+from app.config import (APP_DB_PATH, APP_STORAGE_DIR, CORE_SERVER_PORT_BASE,
+                        storage_subdir)
 from app.models.schemas import (BackendInfo, DatasetValidationStatus,
                                 JobStatus, TrainingConfig, TrainingJob,
                                 WorkerConfig)
@@ -107,6 +108,35 @@ class MeshTrainerService:
         j = self.db.get_job(job_id)
         if not j:
             raise KeyError(f"job no trobat: {job_id}")
+        # ── Phase 2 (additiu, només lectura): camps derivats per a la UI ──
+        j = dict(j)
+        evs = self.db.list_events(job_id)
+        j["events"] = evs
+        # progrés de rondes
+        fed_rounds = [e for e in evs if e["type"] == "round.fedavg"]
+        j["rounds_done"] = len(fed_rounds)
+        j["rounds_total"] = j.get("rounds") or 0
+        j["rounds_progress"] = (len(fed_rounds) / j["rounds_total"]
+                                if j["rounds_total"] else 0)
+        # mètriques agregades
+        loss_h = []
+        for m in self.db.list_metrics(job_id):
+            if m.get("loss") is not None:
+                loss_h.append({"round": m.get("round", ""), "value": m["loss"]})
+        j["loss_history"] = loss_h
+        j["last_loss"] = loss_h[-1]["value"] if loss_h else None
+        j["ett_total"] = None
+        etts = [e.get("payload", {}).get("ett") if isinstance(e.get("payload"), dict) else None
+                for e in evs if e["type"] == "contribution.submit"]
+        etts = [x for x in etts if x]
+        if etts:
+            j["ett_total"] = sum(etts)
+        j["recoveries"] = sum(1 for e in evs if e["type"] == "recovery.event")
+        # workers config
+        try:
+            j["workers_cfg_workers"] = (j.get("workers") or 0)
+        except Exception:
+            pass
         return j
 
     def list_jobs(self, status: str = "") -> list[dict]:
@@ -326,3 +356,76 @@ class MeshTrainerService:
     def health(self) -> dict:
         return {"ok": True, "service": "meshtrainer-app",
                 "backends": [b.id for b in self.discover_backends()]}
+
+    # ── Phase 2 (additiu): informació de sistema / settings / download ───
+    def get_system_info(self) -> dict:
+        """Info de sistema per al dashboard (llegeix /proc — read-only)."""
+        def _meminfo():
+            out = {}
+            try:
+                with open("/proc/meminfo") as f:
+                    for line in f:
+                        k, _, v = line.partition(":")
+                        out[k.strip()] = int(v.strip().split()[0])  # kB
+            except Exception:
+                pass
+            return out
+
+        def _cpu_count():
+            try:
+                return os.cpu_count() or 0
+            except Exception:
+                return 0
+
+        def _disk():
+            try:
+                st = os.statvfs("/")
+                return {"total": st.f_blocks * st.f_frsize,
+                        "free": st.f_bavail * st.f_frsize}
+            except Exception:
+                return {}
+
+        mi = _meminfo()
+        ram_total = mi.get("MemTotal", 0) * 1024
+        ram_avail = mi.get("MemAvailable", 0) * 1024
+        swap_total = mi.get("SwapTotal", 0) * 1024
+        swap_free = mi.get("SwapFree", 0) * 1024
+        disk = _disk()
+        return {
+            "cpu": {"cores": _cpu_count()},
+            "ram": {"total": ram_total, "available": ram_avail,
+                    "used": max(0, ram_total - ram_avail)},
+            "swap": {"total": swap_total, "free": swap_free,
+                     "used": max(0, swap_total - swap_free)},
+            "disk": disk,
+        }
+
+    def get_settings(self) -> dict:
+        """Configuració visible per a la UI (sense secrets)."""
+        from app.config import APP_ENV, APP_HOST, APP_PORT, APP_DB_PATH, APP_STORAGE_DIR
+        return {
+            "app_env": APP_ENV,
+            "api_bind": f"{APP_HOST}:{APP_PORT}",
+            "storage_dir": APP_STORAGE_DIR,
+            "db_path": APP_DB_PATH,
+            "admin_token_configured": bool(os.environ.get("APP_API_TOKEN", "")),
+            "backends": [b.id for b in self.discover_backends()],
+        }
+
+    def get_artifact_download(self, job_id: str, artifact_id: str) -> dict:
+        """Retorna el path de l'artefacte per a descàrrega segura via API.
+        Valida que l'artefacte pertany al job i que el path està dins del
+        storage de l'app (anti path traversal)."""
+        self.get_job(job_id)  # existeix?
+        arts = self.db.list_artifacts(job_id)
+        art = next((a for a in arts if a["artifact_id"] == artifact_id), None)
+        if not art:
+            raise KeyError(f"artefacte no trobat: {artifact_id}")
+        path = art["path"]
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"artefacte no disponible: {artifact_id}")
+        # anti path traversal: el path ha d'estar sota el storage de l'app
+        storage = os.path.abspath(APP_STORAGE_DIR)
+        if not os.path.abspath(path).startswith(storage + os.sep):
+            raise PermissionError("path fora del storage — denegat")
+        return {"artifact": art, "path": path}

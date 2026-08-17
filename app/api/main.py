@@ -15,7 +15,7 @@ if _CORE_DIR not in sys.path:
     sys.path.insert(0, _CORE_DIR)
 
 try:
-    from fastapi import APIRouter, FastAPI, HTTPException, Query, Request
+    from fastapi import APIRouter, FastAPI, File, HTTPException, Query, Request, UploadFile
     from fastapi.responses import StreamingResponse
     from pydantic import BaseModel as PBase
 except ImportError as e:  # pragma: no cover
@@ -76,6 +76,14 @@ class DatasetCreate(PBase):
 @router.post("/datasets")
 def dataset_create(body: DatasetCreate):
     return _wrap(lambda: service.add_dataset(body.source_path, body.name))
+
+
+@router.post("/datasets/upload")
+async def dataset_upload(file: UploadFile = File(...)):
+    """E0-02: upload multipart. El nom intern el genera el servidor;
+    el nom del client no determina el path final (anti path traversal)."""
+    data = await file.read()
+    return _wrap(lambda: service.upload_dataset(data, file.filename or ""))
 
 
 @router.get("/datasets")
@@ -163,26 +171,39 @@ def job_artifacts(job_id: str):
 
 @router.get("/jobs/{job_id}/events")
 def job_events(job_id: str, after_ts: str = Query("")):
-    """SSE: flux d'events en viu del job."""
+    """SSE: flux d'events en viu del job (E0-04).
+
+    Contracte: Content-Type text/event-stream; cada esdeveniment amb
+    'id:' (monotònic), 'event:', 'data:'. NO s'embolica en l'envelope
+    REST {ok,data,error} — els events SSE són el payload directe.
+    """
     events = service.get_events(job_id, after_ts)
 
     def gen():
         last = after_ts
-        # primer: events pendents
+        seq = 0
         for e in events:
+            seq += 1
             last = e["ts"]
-            yield f"data: {json.dumps(e)}\n\n"
-        # després: polling lleuger (SSE via long-poll curt)
+            yield (f"id: {seq}\n"
+                   f"event: {e['type']}\n"
+                   f"data: {json.dumps(e, ensure_ascii=False)}\n\n")
+        # polling lleuger (long-poll curt) per a events nous
         import time
         while True:
             new = service.get_events(job_id, last)
             if new:
                 for e in new:
+                    seq += 1
                     last = e["ts"]
-                    yield f"data: {json.dumps(e)}\n\n"
+                    yield (f"id: {seq}\n"
+                           f"event: {e['type']}\n"
+                           f"data: {json.dumps(e, ensure_ascii=False)}\n\n")
             time.sleep(1)
 
-    return StreamingResponse(gen(), media_type="text/event-stream")
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache",
+                                      "X-Accel-Buffering": "no"})
 
 
 def create_app() -> FastAPI:

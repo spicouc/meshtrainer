@@ -1,14 +1,19 @@
 """DatasetService — registre i validació de datasets (Fase 1)."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import uuid
 from datetime import datetime, timezone
 
+from app.config import storage_subdir
 from app.datasets.jsonl_adapter import DatasetAdapter, DatasetValidationError
 from app.models.schemas import Dataset, DatasetValidationStatus
 from app.storage.db import AppDB
+
+# límit d'upload configurable (bytes); default 50 MB
+UPLOAD_MAX_BYTES = int(os.environ.get("APP_UPLOAD_MAX_MB", "50")) * 1024 * 1024
 
 
 def _now() -> str:
@@ -18,6 +23,7 @@ def _now() -> str:
 class DatasetService:
     def __init__(self, db: AppDB):
         self.db = db
+        self.upload_dir = storage_subdir("uploads")
 
     def add_dataset(self, source_path: str, name: str = "") -> dict:
         if not os.path.exists(source_path):
@@ -46,6 +52,53 @@ class DatasetService:
             "validation_errors": [] if parse_ok else ["JSONL no parseja"],
         }
         self.db.insert_dataset(rec)
+        return rec
+
+    def upload_dataset(self, data: bytes, client_filename: str = "",
+                       name: str = "") -> dict:
+        """E0-02: upload multipart. El nom intern el genera el SERVIDOR
+        (uuid); el nom del client NO determina el path final (anti path
+        traversal). Límit de mida configurable + SHA-256."""
+        if len(data) > UPLOAD_MAX_BYTES:
+            raise DatasetValidationError(
+                [f"fitxer massa gran: {len(data)} bytes > límit "
+                 f"{UPLOAD_MAX_BYTES} (configurable APP_UPLOAD_MAX_MB)"])
+        # path final controlat: nom intern generat pel servidor
+        ds_id = f"ds-{uuid.uuid4().hex[:12]}"
+        intern_name = f"{ds_id}.jsonl"
+        dest = os.path.join(self.upload_dir, intern_name)
+        os.makedirs(self.upload_dir, exist_ok=True)
+        with open(dest, "wb") as f:
+            f.write(data)
+        sha = hashlib.sha256(data).hexdigest()
+        size = len(data)
+        adapter = DatasetAdapter(dest)
+        try:
+            n = adapter.count_examples()
+            parse_ok = True
+        except DatasetValidationError:
+            n = 0
+            parse_ok = False
+        rec = {
+            "dataset_id": ds_id,
+            "name": name or (os.path.basename(client_filename) if client_filename
+                             else intern_name),
+            "source_path": dest,
+            "format": "jsonl",
+            "size": size,
+            "examples": n,
+            "train_count": n if parse_ok else 0,
+            "validation_count": 0,
+            "test_count": 0,
+            "schema_json": {"format": "jsonl",
+                            "fields": ["instruction", "response"],
+                            "upload_sha256": sha},
+            "created_at": _now(),
+            "validation_status": "PENDING",
+            "validation_errors": [] if parse_ok else ["JSONL no parseja"],
+        }
+        self.db.insert_dataset(rec)
+        rec["upload_sha256"] = sha
         return rec
 
     def validate_dataset(self, dataset_id: str, tokenize_fn=None,

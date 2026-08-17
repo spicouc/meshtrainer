@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 import signal
 import subprocess
 import sys
@@ -33,6 +34,7 @@ class MeshTrainerService:
         self.db = AppDB(db_path)
         self.datasets = DatasetService(self.db)
         self._runners: dict[str, subprocess.Popen] = {}
+        self.reconcile_runners()
 
     # ── backends / models ────────────────────────────────────────────────
     def discover_backends(self) -> list[BackendInfo]:
@@ -58,6 +60,9 @@ class MeshTrainerService:
     # ── datasets ─────────────────────────────────────────────────────────
     def add_dataset(self, source_path: str, name: str = "") -> dict:
         return self.datasets.add_dataset(source_path, name)
+
+    def upload_dataset(self, data: bytes, client_filename: str = "") -> dict:
+        return self.datasets.upload_dataset(data, client_filename)
 
     def validate_dataset(self, dataset_id: str) -> dict:
         return self.datasets.validate_dataset(dataset_id)
@@ -141,6 +146,8 @@ class MeshTrainerService:
                 raise ValueError("start denegat: validation != PASS")
         self.db.update_job(job_id, status="STARTING")
         port = CORE_SERVER_PORT_BASE + (int(job_id.split("-")[-1][:4], 16) % 100)
+        run_id = f"run-{job_id}"
+        identity = secrets.token_hex(16)  # runner nonce (E0-03)
         cmd = [sys.executable, "-m", "app.services.job_runner",
                "--job-id", job_id, "--app-db", self.db.db_path,
                "--backend", job["backend_id"],
@@ -155,7 +162,8 @@ class MeshTrainerService:
                    "learning_rate": job["learning_rate"], "seed": job["seed"]}),
                "--seed", str(job["seed"]),
                "--workers", str(job["workers"]),
-               "--port", str(port), "--device", job["device"]]
+               "--port", str(port), "--device", job["device"],
+               "--runner-identity", identity]
         delay = os.environ.get("APP_TEST_ROUND_DELAY", "")
         if delay:
             cmd += ["--round-delay", delay]
@@ -163,6 +171,10 @@ class MeshTrainerService:
         p = subprocess.Popen(cmd, stdout=logf, stderr=subprocess.STDOUT,
                              text=True, cwd=os.path.dirname(os.path.abspath(__file__)) + "/../..")
         self._runners[job_id] = p
+        # E0-03: persistim identitat del runner per a reconciliation
+        self.db.update_job(job_id, runner_pid=p.pid, run_id=run_id,
+                           runner_identity=identity,
+                           runner_started_at=_now())
         return self.get_job(job_id)
 
     def cancel_job(self, job_id: str) -> dict:
@@ -185,6 +197,65 @@ class MeshTrainerService:
         return self.get_job(job_id)
 
     # ── consultes de supervisió ──────────────────────────────────────────
+    @staticmethod
+    def _pid_alive(pid) -> bool:
+        try:
+            os.kill(int(pid), 0)
+            return True
+        except (OSError, ValueError, TypeError):
+            return False
+
+    @staticmethod
+    def _is_our_runner(pid, job_id: str) -> bool:
+        """E0-03c: verifica que el procés viu és REALMENT el JobRunner
+        d'aquest job (cmdline: app.services.job_runner + --job-id <job_id>).
+        Un PID qualsevol amb identity arbitrària NO val."""
+        try:
+            with open(f"/proc/{int(pid)}/cmdline", "rb") as f:
+                cmd = f.read().decode("utf-8", "replace").replace("\x00", " ")
+        except Exception:
+            return False
+        return ("app.services.job_runner" in cmd
+                and f"--job-id {job_id}" in cmd)
+
+    def reconcile_runners(self) -> dict:
+        """E0-03: en arrencar l'app, reconcilia els jobs RUNNING/STARTING.
+
+        - PID viu + runner_identity present: procés continuïtat (reattach).
+        - PID mort / sense identity: el runner ja no existeix → FAILED.
+        - PID viu però identity no coincideix amb cap procés nostre: no es
+          confia en el PID → FAILED (evita reattach a un procés aliè).
+        """
+        reconciled = {"reattached": [], "failed": []}
+        for j in self.db.list_jobs(status="RUNNING") + self.db.list_jobs(status="STARTING"):
+            pid = j.get("runner_pid")
+            ident = j.get("runner_identity") or ""
+            # E0-03c: no es confia només en el PID — el procés ha de ser el
+            # nostre JobRunner d'aquest job (cmdline) amb identity vàlida.
+            if (pid and ident and self._pid_alive(pid)
+                    and self._is_our_runner(pid, j["job_id"])):
+                # El procés del runner viu; l'app el pot tornar a supervisar.
+                reconciled["reattached"].append(j["job_id"])
+                self._log_event(j["job_id"], "job.reconcile",
+                                {"pid": pid, "identity": ident[:8],
+                                 "action": "reattach"})
+            else:
+                # runner mort o identitat no vàlida → no deixar RUNNING etern
+                reason = ("runner_pid inexistent" if not pid
+                          else "procés mort" if not self._pid_alive(pid)
+                          else "procés aliè (cmdline no coincideix)"
+                          if not self._is_our_runner(pid, j["job_id"])
+                          else "identity no vàlida")
+                self.db.update_job(j["job_id"], status="FAILED",
+                                   last_error=f"runner no disponible en reinici ({reason})")
+                self._log_event(j["job_id"], "job.reconcile",
+                                {"action": "failed", "reason": reason})
+                reconciled["failed"].append(j["job_id"])
+        return reconciled
+
+    def _log_event(self, job_id: str, type_: str, payload: dict):
+        self.db.add_event(job_id, type_, payload)
+
     def get_workers(self, job_id: str) -> list[dict]:
         self.get_job(job_id)  # existeix?
         out = []

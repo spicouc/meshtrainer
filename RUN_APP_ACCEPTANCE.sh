@@ -56,6 +56,39 @@ else
     ko "APP-01..13/15 al CT112 (dummy)"
 fi
 
+# ── E0-01..04 al CT112 ───────────────────────────────────────────────────
+step "E0-01..04 (CT112, venv)"
+RES=$(lxc-attach -n 112 -- bash -c \
+    'echo +800 > /proc/self/oom_score_adj; cd /root/meshtrainer && /opt/qwen3-venv/bin/python app/tests/e0_gate_tests.py 2>&1')
+echo "$RES" | tail -30
+if echo "$RES" | grep -q "E0-01..04: .* PASS" && ! echo "$RES" | grep -q "FAIL "; then
+    ok "E0-01..04 al CT112"
+else
+    ko "E0-01..04 al CT112"
+fi
+
+# ── REAL-QWEN-APP (smoke qwen3 real) al CT112 ────────────────────────────
+step "REAL-QWEN-APP (smoke qwen3 real, CT112)"
+RES=$(lxc-attach -n 112 -- bash -c \
+    'echo +800 > /proc/self/oom_score_adj; cd /root/meshtrainer && /opt/qwen3-venv/bin/python app/tests/real_qwen_app_test.py 2>&1')
+echo "$RES" | tail -30
+if echo "$RES" | grep -q "REAL-QWEN-APP: .* PASS" && ! echo "$RES" | grep -q "FAIL "; then
+    ok "REAL-QWEN-APP (qwen3 real)"
+else
+    ko "REAL-QWEN-APP (qwen3 real)"
+fi
+
+# ── imports deps API (FastAPI/Pydantic/Uvicorn) ──────────────────────────
+step "imports FastAPI/Pydantic/Uvicorn (CT112)"
+RES=$(lxc-attach -n 112 -- bash -c \
+    '/opt/qwen3-venv/bin/python -c "import fastapi, pydantic, uvicorn, multipart; print(\"DEPS_OK\", fastapi.__version__, pydantic.__version__)" 2>&1')
+echo "$RES"
+if echo "$RES" | grep -q "DEPS_OK"; then
+    ok "imports FastAPI/Pydantic/Uvicorn/multipart"
+else
+    ko "imports FastAPI/Pydantic/Uvicorn/multipart"
+fi
+
 # ── resum ────────────────────────────────────────────────────────────────
 echo ""
 echo "============================================"

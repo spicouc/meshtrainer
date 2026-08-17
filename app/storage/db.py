@@ -105,6 +105,14 @@ CREATE INDEX IF NOT EXISTS idx_metrics_job ON job_metrics(job_id, round);
 CREATE INDEX IF NOT EXISTS idx_artifacts_job ON job_artifacts(job_id);
 """
 
+# Columnes de reconciliation (E0-03) afegides a jobs si no existeixen.
+RECONCILE_COLUMNS = {
+    "runner_pid": "INTEGER",
+    "run_id": "TEXT DEFAULT ''",
+    "runner_started_at": "TEXT DEFAULT ''",
+    "runner_identity": "TEXT DEFAULT ''",
+}
+
 
 class AppDB:
     """Accés SQLite de l'app. Una connexió per thread (check_same_thread=False)
@@ -127,6 +135,13 @@ class AppDB:
     def _init(self):
         with self._lock:
             self._conn.executescript(SCHEMA)
+            self._conn.commit()
+            # migració E0-03: afegeix columnes de reconciliation si no hi són
+            cols = {r["name"] for r in self._conn.execute(
+                "PRAGMA table_info(jobs)").fetchall()}
+            for name, decl in RECONCILE_COLUMNS.items():
+                if name not in cols:
+                    self._conn.execute(f"ALTER TABLE jobs ADD COLUMN {name} {decl}")
             self._conn.commit()
 
     # ── helpers ──────────────────────────────────────────────────────────

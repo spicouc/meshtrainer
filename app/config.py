@@ -46,6 +46,6 @@ def default_api_token() -> str:
 
 
 def storage_subdir(name: str) -> str:
-    d = os.path.join(APP_STORAGE_DIR, name)
+    d = os.path.abspath(os.path.join(APP_STORAGE_DIR, name))
     os.makedirs(d, exist_ok=True)
     return d

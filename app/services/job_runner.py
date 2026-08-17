@@ -39,6 +39,10 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+class CancelledError(Exception):
+    """Llançada quan la cancel·lació atura els workers (no és un error)."""
+
+
 def _model_path(backend: str, model: str) -> str:
     if backend == "minicpm5":
         return model or os.environ.get("MINICPM5_MODEL", "/root/minicpm5_1b_snapshot")
@@ -73,9 +77,11 @@ class JobRunner:
     def __init__(self, job_id: str, app_db: str, backend: str, model: str,
                  dataset_path: str, out_dir: str, rounds: int, seq_len: int,
                  num_examples: int, lora: dict, seed: int, workers_n: int,
-                 server_port: int, device: str = "cpu", round_delay: float = 0.0):
+                 server_port: int, device: str = "cpu", round_delay: float = 0.0,
+                 runner_identity: str = ""):
         self.job_id = job_id
         self.db = AppDB(app_db)
+        self.runner_identity = runner_identity
         self.backend = backend
         self.model = model
         self.dataset_path = dataset_path
@@ -186,6 +192,31 @@ class JobRunner:
         exs = load_examples(self.data_dir, shard, n)
         return shard_manifest_sha([e["source"] for e in exs])
 
+    def _wait_worker_loaded(self, worker_id: str, proc, logf, timeout=1200):
+        """Espera que el worker hagi carregat el model (línia REGISTERED al
+        seu log) abans de spawnar el següent. Política de recursos: evita el
+        doble pic de LOAD; no serialitza el treball (els workers coexisteixen
+        després)."""
+        import re
+        logf.flush()
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if proc.poll() is not None:
+                self._log(f"worker {worker_id} va morir durant el LOAD "
+                          f"(rc={proc.returncode})")
+                return
+            try:
+                logf.flush()
+                with open(logf.name, errors="replace") as f:
+                    if re.search(r"REGISTERED", f.read()):
+                        self._log(f"worker {worker_id} carregat (REGISTERED) — "
+                                  f"spawn següent")
+                        return
+            except Exception:
+                pass
+            time.sleep(1.0)
+        self._log(f"worker {worker_id} no va carregar en {timeout}s")
+
     def _spawn_worker(self, worker_id, session, shard, assignment, round_id,
                       adapter_path, adapter_sha, num_ex, train_only=False):
         cmd = [sys.executable, os.path.join(_CORE_DIR, "model_worker.py"),
@@ -230,11 +261,21 @@ class JobRunner:
                                        adapter_path, adapter_sha, num_ex)
             procs[wid] = p
             logfs[wid] = lf
-            if i == 0:
-                time.sleep(1.0)  # stagger de LOAD (recurs, no serialització)
+            if i == 0 and self.backend != "dummy":
+                # Política de recursos (producte, Fase 1): espera que A hagi
+                # CARREGAT (REGISTERED al seu log) abans de spawnar B.
+                # Evita el doble pic de LOAD dels safetensors (causa de l'OOM
+                # global del host). NO serialitza: un cop B carrega, ambdós
+                # coexisteixen a la mateixa ronda (quòrum 2/2 del core).
+                self._wait_worker_loaded(wid, p, logfs[wid])
+            elif i == 0:
+                time.sleep(1.0)  # dummy: stagger mínim (carrega instantània)
         for wid, p in procs.items():
             rc = p.wait(timeout=3600)
             logfs[wid].close()
+            if rc != 0 and self._stop:
+                # cancel·lació en curs: no és un error de codi
+                raise CancelledError(f"worker {wid} aturat per cancel·lació")
             evf = os.path.join(self.out_dir, f"evidence_{wid}.json")
             if not os.path.exists(evf):
                 raise RuntimeError(f"worker {wid} sense evidència (rc={rc})")
@@ -324,6 +365,10 @@ class JobRunner:
 
     def run(self):
         self._set_status("RUNNING")
+        # E0-03: el runner confirma la seva identitat al job (el procés que
+        # escriu la identity és el runner real; un PID aliè no val).
+        if self.runner_identity:
+            self.db.update_job(self.job_id, runner_identity=self.runner_identity)
         self.db.update_job(self.job_id, started_at=_now())
         try:
             self._prepare_data_dir()
@@ -402,6 +447,16 @@ class JobRunner:
                 self._httpd.shutdown()
             self.db.update_job(self.job_id, finished_at=_now())
             return 0
+        except CancelledError:
+            self._log("cancel·lació neta completada")
+            if self._httpd:
+                try:
+                    self._httpd.shutdown()
+                except Exception:
+                    pass
+            self._set_status("CANCELLED")
+            self.db.update_job(self.job_id, finished_at=_now())
+            return 0
         except Exception as e:
             self._log(f"ERROR: {e}")
             if self._httpd:
@@ -431,6 +486,7 @@ def main():
     ap.add_argument("--port", type=int, default=CORE_SERVER_PORT_BASE)
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--round-delay", type=float, default=0.0)
+    ap.add_argument("--runner-identity", default="")
     args = ap.parse_args()
 
     runner = JobRunner(
@@ -439,7 +495,8 @@ def main():
         out_dir=args.out_dir, rounds=args.rounds, seq_len=args.seq_len,
         num_examples=args.num_examples, lora=json.loads(args.lora),
         seed=args.seed, workers_n=args.workers, server_port=args.port,
-        device=args.device, round_delay=args.round_delay)
+        device=args.device, round_delay=args.round_delay,
+        runner_identity=args.runner_identity)
     import signal as _sig
     _sig.signal(_sig.SIGTERM, runner._handle_sigterm)
     sys.exit(runner.run())

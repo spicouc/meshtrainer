@@ -49,33 +49,36 @@ pct push 112 "$(pwd)/app" /root/meshtrainer/app -r 2>/dev/null || {
 }
 RES=$(lxc-attach -n 112 -- bash -c \
     'echo +800 > /proc/self/oom_score_adj; cd /root/meshtrainer && /opt/qwen3-venv/bin/python app/tests/app_acceptance_tests.py 2>&1')
+APP_EXIT=$?
 echo "$RES" | tail -30
-if echo "$RES" | grep -q "APP ACCEPTANCE: .* PASS" && ! echo "$RES" | grep -q "FAIL "; then
+if [ "$APP_EXIT" = "0" ]; then
     ok "APP-01..13/15 al CT112 (dummy)"
 else
-    ko "APP-01..13/15 al CT112 (dummy)"
+    ko "APP-01..13/15 al CT112 (dummy, exit=$APP_EXIT)"
 fi
 
 # ── E0-01..04 al CT112 ───────────────────────────────────────────────────
 step "E0-01..04 (CT112, venv)"
 RES=$(lxc-attach -n 112 -- bash -c \
     'echo +800 > /proc/self/oom_score_adj; cd /root/meshtrainer && /opt/qwen3-venv/bin/python app/tests/e0_gate_tests.py 2>&1')
+E0_EXIT=$?
 echo "$RES" | tail -30
-if echo "$RES" | grep -q "E0-01..04: .* PASS" && ! echo "$RES" | grep -q "FAIL "; then
+if [ "$E0_EXIT" = "0" ]; then
     ok "E0-01..04 al CT112"
 else
-    ko "E0-01..04 al CT112"
+    ko "E0-01..04 al CT112 (exit=$E0_EXIT)"
 fi
 
 # ── REAL-QWEN-APP (smoke qwen3 real) al CT112 ────────────────────────────
 step "REAL-QWEN-APP (smoke qwen3 real, CT112)"
 RES=$(lxc-attach -n 112 -- bash -c \
     'echo +800 > /proc/self/oom_score_adj; cd /root/meshtrainer && /opt/qwen3-venv/bin/python app/tests/real_qwen_app_test.py 2>&1')
+QWEN_EXIT=$?
 echo "$RES" | tail -30
-if echo "$RES" | grep -q "REAL-QWEN-APP: .* PASS" && ! echo "$RES" | grep -q "FAIL "; then
+if [ "$QWEN_EXIT" = "0" ]; then
     ok "REAL-QWEN-APP (qwen3 real)"
 else
-    ko "REAL-QWEN-APP (qwen3 real)"
+    ko "REAL-QWEN-APP (qwen3 real, exit=$QWEN_EXIT)"
 fi
 
 # ── imports deps API (FastAPI/Pydantic/Uvicorn) ──────────────────────────

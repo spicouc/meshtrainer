@@ -238,19 +238,26 @@ class AppDB:
         return self._rows("SELECT * FROM datasets ORDER BY created_at DESC")
 
     # ── events ───────────────────────────────────────────────────────────
-    def add_event(self, job_id: str, type_: str, payload: Optional[dict] = None) -> str:
+    def add_event(self, job_id: str, type_: str, payload: Optional[dict] = None) -> tuple[str, int]:
         eid = _gen("ev")
-        self._exec("INSERT INTO job_events (event_id,job_id,ts,type,payload) "
-                   "VALUES (?,?,?,?,?)",
-                   (eid, job_id, _now_iso(), type_, json.dumps(payload or {})))
-        return eid
+        with self._lock:
+            cur = self._conn.execute(
+                "INSERT INTO job_events (event_id,job_id,ts,type,payload) "
+                "VALUES (?,?,?,?,?)",
+                (eid, job_id, _now_iso(), type_, json.dumps(payload or {})))
+            # E0-04 (R1): cursor ESTABLE = rowid de SQLite (monotònic,
+            # no reiniciat per connexió, no depèn del timestamp).
+            seq = cur.lastrowid or 0
+        return eid, seq
 
-    def list_events(self, job_id: str, after_ts: str = "") -> list[dict]:
-        if after_ts:
-            return self._rows(
-                "SELECT * FROM job_events WHERE job_id=? AND ts>? ORDER BY ts",
-                (job_id, after_ts))
-        return self._rows("SELECT * FROM job_events WHERE job_id=? ORDER BY ts", (job_id,))
+    def list_events(self, job_id: str, after_seq: int = 0) -> list[dict]:
+        """Events amb seq (rowid) > after_seq, ordenats per seq (monotònic).
+        E0-04 (R1): el cursor és el rowid — mai el timestamp en segons
+        (evita pèrdua d'events creats al mateix segon)."""
+        return self._rows(
+            "SELECT rowid AS seq, event_id, job_id, ts, type, payload "
+            "FROM job_events WHERE job_id=? AND rowid>? ORDER BY rowid",
+            (job_id, int(after_seq)))
 
     # ── artifacts ────────────────────────────────────────────────────────
     def add_artifact(self, job_id: str, type_: str, path: str, sha256: str,

@@ -167,6 +167,9 @@ class MeshTrainerService:
         delay = os.environ.get("APP_TEST_ROUND_DELAY", "")
         if delay:
             cmd += ["--round-delay", delay]
+        pause = os.environ.get("APP_TEST_PAUSE_BEFORE_VALIDATE", "")
+        if pause:
+            cmd += ["--pause-before-validate", pause]
         logf = open(storage_subdir(f"logs/{job_id}") + "/runner_launch.log", "w")
         p = subprocess.Popen(cmd, stdout=logf, stderr=subprocess.STDOUT,
                              text=True, cwd=os.path.dirname(os.path.abspath(__file__)) + "/../..")
@@ -206,17 +209,40 @@ class MeshTrainerService:
             return False
 
     @staticmethod
-    def _is_our_runner(pid, job_id: str) -> bool:
-        """E0-03c: verifica que el procés viu és REALMENT el JobRunner
-        d'aquest job (cmdline: app.services.job_runner + --job-id <job_id>).
-        Un PID qualsevol amb identity arbitrària NO val."""
+    def _is_our_runner(pid, job_id: str, runner_identity: str) -> bool:
+        """E0-03 (R1): verifica EXACTAMENT que el procés és el nostre
+        JobRunner: parseja /proc/<pid>/cmdline per arguments precisos
+        (no substring aproximat). Exigeix simultàniament:
+          - mòdul == app.services.job_runner (via -m)
+          - --job-id == job_id
+          - --runner-identity == runner_identity persistida
+        """
+        if not pid or not runner_identity:
+            return False
         try:
             with open(f"/proc/{int(pid)}/cmdline", "rb") as f:
-                cmd = f.read().decode("utf-8", "replace").replace("\x00", " ")
+                raw = f.read().decode("utf-8", "replace")
         except Exception:
             return False
-        return ("app.services.job_runner" in cmd
-                and f"--job-id {job_id}" in cmd)
+        args = [a for a in raw.split("\x00") if a]
+        if not args:
+            return False
+        # mòdul: esperem "python -m app.services.job_runner" o
+        # "python .../app/services/job_runner.py"
+        joined = " ".join(args)
+        module_ok = ("app.services.job_runner" in args
+                     or any("app/services/job_runner.py" in a for a in args))
+        if not module_ok:
+            return False
+        # parseig exacte de parells --flag valor
+        want = {"--job-id": job_id, "--runner-identity": runner_identity}
+        for flag, expected in want.items():
+            if flag not in args:
+                return False
+            idx = args.index(flag)
+            if idx + 1 >= len(args) or args[idx + 1] != expected:
+                return False
+        return True
 
     def reconcile_runners(self) -> dict:
         """E0-03: en arrencar l'app, reconcilia els jobs RUNNING/STARTING.
@@ -231,9 +257,10 @@ class MeshTrainerService:
             pid = j.get("runner_pid")
             ident = j.get("runner_identity") or ""
             # E0-03c: no es confia només en el PID — el procés ha de ser el
-            # nostre JobRunner d'aquest job (cmdline) amb identity vàlida.
+            # nostre JobRunner d'aquest job (cmdline EXACTA) amb identity
+            # persistida coincident (R1: nonce real, no substring).
             if (pid and ident and self._pid_alive(pid)
-                    and self._is_our_runner(pid, j["job_id"])):
+                    and self._is_our_runner(pid, j["job_id"], ident)):
                 # El procés del runner viu; l'app el pot tornar a supervisar.
                 reconciled["reattached"].append(j["job_id"])
                 self._log_event(j["job_id"], "job.reconcile",
@@ -244,7 +271,7 @@ class MeshTrainerService:
                 reason = ("runner_pid inexistent" if not pid
                           else "procés mort" if not self._pid_alive(pid)
                           else "procés aliè (cmdline no coincideix)"
-                          if not self._is_our_runner(pid, j["job_id"])
+                          if not self._is_our_runner(pid, j["job_id"], ident)
                           else "identity no vàlida")
                 self.db.update_job(j["job_id"], status="FAILED",
                                    last_error=f"runner no disponible en reinici ({reason})")
@@ -255,7 +282,6 @@ class MeshTrainerService:
 
     def _log_event(self, job_id: str, type_: str, payload: dict):
         self.db.add_event(job_id, type_, payload)
-
     def get_workers(self, job_id: str) -> list[dict]:
         self.get_job(job_id)  # existeix?
         out = []
@@ -293,8 +319,9 @@ class MeshTrainerService:
     def list_artifacts(self, job_id: str) -> list[dict]:
         return self.db.list_artifacts(job_id)
 
-    def get_events(self, job_id: str, after_ts: str = "") -> list[dict]:
-        return self.db.list_events(job_id, after_ts)
+    def get_events(self, job_id: str, after_seq: int = 0) -> list[dict]:
+        """Events amb seq (rowid) > after_seq. Cursor ESTABLE (E0-04 R1)."""
+        return self.db.list_events(job_id, after_seq)
 
     def health(self) -> dict:
         return {"ok": True, "service": "meshtrainer-app",

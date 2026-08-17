@@ -150,6 +150,50 @@ def main():
     check("E0-01c run_id únic per job (no reutilitzat)",
           f"run-{j2['job_id']}" != f"run-{job_c['job_id']}")
 
+    # ── E0-01 R1 ADVERSARIAL: cancel DESPRÉS dels workers, ABANS d'activate ─
+    # La finestra exacta: el runner fa la pausa test just després que els
+    # workers acabin i ABANS del primer contribution.validate. Si el cancel
+    # arriba aquí, cap activate ni fedavg pot existir posteriorment.
+    print("--- E0-01 R1: cancel race (workers fets, abans de validate) ---")
+    os.environ["APP_TEST_PAUSE_BEFORE_VALIDATE"] = "60"  # finestra ampla
+    job_r = svc.create_training_job(name="e0-01-race", backend_id="dummy",
+                                    model_id="dummy",
+                                    dataset_id=ds["dataset_id"],
+                                    training={"rounds": 1}, workers_cfg={})
+    svc.validate_job(job_r["job_id"])
+    svc.start_job(job_r["job_id"])
+    # espera que el runner arribi a la pausa (worker DONE a runner.log)
+    import glob as _glob
+    rlog = os.path.join(_CORE, "app_storage", "logs", job_r["job_id"], "runner.log")
+    deadline = time.time() + 90
+    paused = False
+    while time.time() < deadline:
+        if os.path.exists(rlog):
+            with open(rlog, errors="replace") as f:
+                if "test pause" in f.read():
+                    paused = True
+                    break
+        time.sleep(1)
+    check("E0-01r1 runner a la finestra (workers acabats, abans de validate)",
+          paused)
+    # comprova que els workers han acabat (spawn w-A i w-B al log)
+    with open(rlog, errors="replace") as f:
+        rtxt = f.read()
+    check("E0-01r2 workers A/B acabats abans del cancel",
+          "spawn w-A" in rtxt and "spawn w-B" in rtxt)
+    # ara CANCEL·LA en aquest punt exacte
+    j = svc.cancel_job(job_r["job_id"])
+    check("E0-01r3 job CANCELLED", j["status"] == "CANCELLED", j["status"])
+    del os.environ["APP_TEST_PAUSE_BEFORE_VALIDATE"]
+    # cap contribution.activate ni round.fedavg posterior al cancel
+    evs_r = svc.get_events(job_r["job_id"])
+    acts = [e for e in evs_r if e["type"] == "contribution.activate"]
+    feds = [e for e in evs_r if e["type"] == "round.fedavg"]
+    check("E0-01r4 cap contribution.activate posterior al cancel", len(acts) == 0,
+          f"n={len(acts)}")
+    check("E0-01r5 cap round.fedavg posterior al cancel", len(feds) == 0,
+          f"n={len(feds)}")
+
     # ══ E0-03: runner reconciliation ══════════════════════════════════════
     print("--- E0-03: app restart / runner reconciliation ---")
     # Cas A: runner viu → reattach; job continua i COMPLETED
@@ -210,16 +254,94 @@ def main():
           j["status"] == "FAILED" and "procés aliè" in j["last_error"],
           f"status={j['status']} err={j['last_error'][:60]}")
 
+    # ── E0-03 R1 ADVERSARIAL: procés amb aparença de JobRunner + mateix
+    #    job_id + nonce DIFERENT → NO reattach (parseig EXACTE de cmdline) ─
+    print("--- E0-03 R1: nonce real (aparença JobRunner + nonce diferent) ---")
+    # Spawna un procés REAL de job_runner amb job_id del jobD però amb un
+    # runner-identity DIFERENT del persistit (simula procés aliè/segrestat).
+    jobD = svc4.create_training_job(name="e0-03-nonce", backend_id="dummy",
+                                    model_id="dummy",
+                                    dataset_id=ds["dataset_id"],
+                                    training={}, workers_cfg={})
+    svc4.validate_job(jobD["job_id"])
+    real_ident = "real-nonce-A"
+    fake_ident = "fake-nonce-B"  # el procés porta un nonce diferent
+    svc4.db.update_job(jobD["job_id"], status="RUNNING",
+                       runner_identity=real_ident,
+                       runner_started_at="2026-01-01T00:00:00+00:00")
+    port = 19977
+    fake_proc = subprocess.Popen(
+        [sys.executable, "-m", "app.services.job_runner",
+         "--job-id", jobD["job_id"], "--app-db", svc4.db.db_path,
+         "--backend", "dummy", "--model", "dummy",
+         "--dataset-path", ds["source_path"],
+         "--out-dir", os.path.join(_CORE, "app_storage", "output", jobD["job_id"]),
+         "--rounds", "1", "--seq-len", "32", "--num-examples", "2",
+         "--lora", "{}", "--seed", "42", "--workers", "2",
+         "--port", str(port), "--device", "cpu",
+         "--runner-identity", fake_ident],  # nonce DIFERENT del persistit
+        cwd=_CORE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    time.sleep(2)  # deixa que el procés arrenqui i detecti el mismatch
+    # Defensa ACTIVA (R1): el procés aliè s'aborta sol en veure que la DB
+    # ja té un nonce diferent — no pot segrestar el job.
+    check("E0-03r1 procés aliè ABORTAT pel mismatch de nonce (defensa activa)",
+          fake_proc.poll() is not None and fake_proc.returncode != 0,
+          f"pid={fake_proc.pid} rc={fake_proc.returncode}")
+    svc4.db.update_job(jobD["job_id"], runner_pid=fake_proc.pid)
+    svc5 = MeshTrainerService()  # el __init__ reconcilia
+    j = svc5.get_job(jobD["job_id"])
+    # El procés aliè ABORTA en detectar el mismatch de nonce (no sobreescriu
+    # la identity). El job acaba FAILED (mai RUNNING, mai reattach).
+    check("E0-03r2 nonce diferent → NO reattach (FAILED)",
+          j["status"] == "FAILED" and
+          ("identity no vàlida" in j["last_error"]
+           or "runner_identity mismatch" in j["last_error"]),
+          f"status={j['status']} err={j['last_error'][:70]}")
+    # i la identity persistida NO ha canviat (no segrestada)
+    jd = svc5.get_job(jobD["job_id"])
+    check("E0-03r3 identity persistida no sobreescrita pel procés aliè",
+          jd.get("runner_identity") == real_ident,
+          f"identity={str(jd.get('runner_identity'))[:14]}")
+    fake_proc.terminate()
+    try:
+        fake_proc.wait(timeout=5)
+    except Exception:
+        fake_proc.kill()
+
     # ══ E0-04: SSE contract ═══════════════════════════════════════════════
     print("--- E0-04: SSE contract ---")
-    # verificació del format sense aixecar el servidor: l'endpoint es
-    # construeix sobre get_events; comprovem que els events tenen ts
-    # monotònic (base dels IDs) i el tipus esperat.
+    # E0-04 R1: cursor ESTABLE = seq (rowid SQLite), no timestamp.
     evs = svc4.get_events(jobA["job_id"])
-    ts_list = [e["ts"] for e in evs]
-    check("E0-04 events amb ts monotònic (base IDs)",
-          ts_list == sorted(ts_list) and len(ts_list) >= 3,
-          f"n={len(ts_list)}")
+    seq_list = [e["seq"] for e in evs]
+    check("E0-04 events amb seq monotònic (rowid, cursor estable)",
+          seq_list == sorted(seq_list) and len(seq_list) >= 3
+          and all(isinstance(s, int) for s in seq_list),
+          f"n={len(seq_list)} seq={seq_list[:5]}...")
+
+    # SSE-01: dos events al MATEIX segon → tots dos arriben (cursor seq)
+    db_ev = svc4.db
+    eid1, seq1 = db_ev.add_event(jobA["job_id"], "sse.test.one", {})
+    eid2, seq2 = db_ev.add_event(jobA["job_id"], "sse.test.two", {})
+    got = [e for e in db_ev.list_events(jobA["job_id"], after_seq=seq1 - 1)
+           if e["type"] in ("sse.test.one", "sse.test.two")]
+    check("SSE-01 dos events mateix segon → tots dos (seq diferents)",
+          len(got) == 2 and seq1 != seq2 and {e["seq"] for e in got} == {seq1, seq2},
+          f"seq1={seq1} seq2={seq2}")
+
+    # SSE-02: reconnect → els IDs originals no canvien (rowid immutable)
+    re_evs = db_ev.list_events(jobA["job_id"], after_seq=0)
+    orig = {e["event_id"]: e["seq"] for e in re_evs}
+    re_evs2 = db_ev.list_events(jobA["job_id"], after_seq=0)
+    orig2 = {e["event_id"]: e["seq"] for e in re_evs2}
+    check("SSE-02 reconnect → IDs originals no canvien",
+          orig == orig2 and len(orig) == len(orig2),
+          f"n={len(orig)}")
+
+    # SSE-03: event nou → seq > anterior
+    last_max = max(e["seq"] for e in db_ev.list_events(jobA["job_id"]))
+    eid3, seq3 = db_ev.add_event(jobA["job_id"], "sse.test.three", {})
+    check("SSE-03 event nou → id > anterior", seq3 > last_max,
+          f"{last_max} -> {seq3}")
 
     # E0-04 real sobre HTTP: arrenquem uvicorn i llegim el stream
     import socket

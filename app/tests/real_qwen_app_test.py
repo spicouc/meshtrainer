@@ -107,9 +107,10 @@ def main():
                     ok_sha = False
     check("SHA(bytes) == metadata (tots)", ok_sha, " ".join(sizes))
 
-    # events: contribucions + fedavg + ETT
+    # events: contribucions + validate + activate + fedavg + ETT
     evs = {e["type"] for e in svc.get_events(job_id)}
     check("contribution.submit present", "contribution.submit" in evs)
+    check("contribution.validate present (R1)", "contribution.validate" in evs)
     check("contribution.activate present", "contribution.activate" in evs)
     check("round.fedavg present", "round.fedavg" in evs)
 
@@ -140,6 +141,47 @@ def main():
           f"pids={pids_found[:4]}")
 
     npass = sum(1 for _, ok, _ in CHECKS if ok)
+
+    # ── evidència (punt 6 R1): evidence/phase1/ ──────────────────────────
+    import subprocess as _sp
+    ev_dir = os.path.join(_CORE, "evidence", "phase1")
+    os.makedirs(ev_dir, exist_ok=True)
+    commit = ""
+    try:
+        commit = _sp.run(["git", "-C", _CORE, "rev-parse", "--short", "HEAD"],
+                         capture_output=True, text=True).stdout.strip()
+    except Exception:
+        pass
+    ev_json = {
+        "commit": commit,
+        "backend": "qwen3",
+        "model": "/root/qwen3_0_6b_snapshot",
+        "job_id": job_id,
+        "runner_pid": j.get("runner_pid"),
+        "worker_pids": pids_found,
+        "ett_workers": etts,
+        "adapter_0": {"sha256": next((a["sha256"] for a in arts if a["type"] == "adapter_0"), ""),
+                      "size": next((os.path.getsize(a["path"]) for a in arts if a["type"] == "adapter_0" and os.path.exists(a["path"])), 0)},
+        "adapter_1": {"sha256": next((a["sha256"] for a in arts if a["type"] == "adapter_1"), ""),
+                      "size": next((os.path.getsize(a["path"]) for a in arts if a["type"] == "adapter_1" and os.path.exists(a["path"])), 0)},
+        "contribution_submit": "contribution.submit" in evs,
+        "contribution_validate": "contribution.validate" in evs,
+        "contribution_activate": "contribution.activate" in evs,
+        "fedavg": "round.fedavg" in evs,
+        "final_status": j["status"],
+        "checks": f"{npass}/{len(CHECKS)}",
+    }
+    ev_path = os.path.join(ev_dir, "REAL_QWEN_APP_EVIDENCE.json")
+    with open(ev_path, "w", encoding="utf-8") as f:
+        json.dump(ev_json, f, ensure_ascii=False, indent=2)
+    log_path = os.path.join(ev_dir, "REAL_QWEN_APP.log")
+    with open(log_path, "w", encoding="utf-8") as f:
+        f.write(f"=== REAL-QWEN-APP {commit} ===\n")
+        for name, ok, detail in CHECKS:
+            f.write(f"{'PASS' if ok else 'FAIL'} {name} — {detail}\n")
+        f.write(f"=== {npass}/{len(CHECKS)} PASS ===\n")
+    print(f"evidència: {ev_path} + {log_path}")
+
     print(f"=== REAL-QWEN-APP: {npass}/{len(CHECKS)} PASS ===")
     sys.exit(0 if npass == len(CHECKS) else 1)
 

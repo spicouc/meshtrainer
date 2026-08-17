@@ -78,10 +78,11 @@ class JobRunner:
                  dataset_path: str, out_dir: str, rounds: int, seq_len: int,
                  num_examples: int, lora: dict, seed: int, workers_n: int,
                  server_port: int, device: str = "cpu", round_delay: float = 0.0,
-                 runner_identity: str = ""):
+                 runner_identity: str = "", pause_before_validate: float = 0.0):
         self.job_id = job_id
         self.db = AppDB(app_db)
         self.runner_identity = runner_identity
+        self.pause_before_validate = pause_before_validate
         self.backend = backend
         self.model = model
         self.dataset_path = dataset_path
@@ -284,6 +285,12 @@ class JobRunner:
         return evs
 
     # ── ronda ────────────────────────────────────────────────────────────
+    def _check_cancel(self):
+        """E0-01 (R1): checkpoint de cancel·lació. Si self._stop està actiu,
+        llança CancelledError perquè el job acabi en CANCELLED (mai FAILED)."""
+        if self._stop:
+            raise CancelledError("cancel·lació en curs — checkpoint")
+
     def _run_round(self, client: CoreClient, round_idx: int, run_id: str,
                    round_id: str, adapter_path, adapter_sha, adapter_bytes,
                    base_hash, pre_hash, num_ex) -> dict:
@@ -304,6 +311,19 @@ class JobRunner:
 
         evs = self._run_workers_round(round_id, adapter_path, adapter_sha,
                                       num_ex, round_idx)
+        # checkpoint 1: immediatament després dels workers (E0-01 R1)
+        self._check_cancel()
+        # E0-01 R1 (test-harness): finestra adversarial — els workers ja han
+        # acabat però encara NO hi ha validate/activate. Si està activat,
+        # el runner s'atura aquí perquè el test pugui cancel·lar en aquest
+        # punt exacte (race real: workers fets, cap operació ADMIN feta).
+        if self.pause_before_validate:
+            self._log(f"test pause {self.pause_before_validate}s abans de "
+                      f"validate (finestra adversarial E0-01)")
+            for _ in range(int(self.pause_before_validate * 10)):
+                if self._stop:
+                    break
+                time.sleep(0.1)
         for wid, ev in evs.items():
             self._event("contribution.submit",
                         {"worker": wid, "ett": ev.get("ett_actual"),
@@ -312,10 +332,18 @@ class JobRunner:
         # ADMIN: validate + activate (frontera certificada)
         for wid, ev in evs.items():
             cid = ev["contribution_id"]
+            # checkpoint 2: abans de cada validate (E0-01 R1)
+            self._check_cancel()
             client.contribution_validate(cid)
+            # punt 4 (R1): event contribution.validate NOMÉS després de PASS
+            self._event("contribution.validate", {"worker": wid, "cid": cid[:12]})
+            # checkpoint 3: abans de cada activate (E0-01 R1)
+            self._check_cancel()
             client.contribution_activate(cid)
             self._event("contribution.activate", {"worker": wid, "cid": cid[:12]})
 
+        # checkpoint 4: OBLIGATÒRIAMENT abans de fedavg (E0-01 R1)
+        self._check_cancel()
         # Quòrum + fedavg
         fed = client.round_fedavg(run_id, round_id,
                                   base64.b64encode(adapter_bytes).decode("ascii"))
@@ -365,9 +393,20 @@ class JobRunner:
 
     def run(self):
         self._set_status("RUNNING")
-        # E0-03: el runner confirma la seva identitat al job (el procés que
-        # escriu la identity és el runner real; un PID aliè no val).
+        # E0-03 (R1): el runner confirma la seva identitat al job, però MAI
+        # sobreescriu una identity ja persistida i DIFERENT: un procés aliè
+        # amb aparença de JobRunner no pot segrestar el job escrivint el seu
+        # propi nonce. Si la DB ja té un altre nonce → procés aliè → ABORT.
         if self.runner_identity:
+            cur = self.db.get_job(self.job_id) or {}
+            persisted = cur.get("runner_identity") or ""
+            if persisted and persisted != self.runner_identity:
+                self._log("runner_identity MISMATCH — procés aliè detectat, "
+                          "ABORT (no reattach)")
+                self._set_status("FAILED",
+                                 error="runner_identity mismatch (procés aliè)")
+                self.db.update_job(self.job_id, finished_at=_now())
+                return 1
             self.db.update_job(self.job_id, runner_identity=self.runner_identity)
         self.db.update_job(self.job_id, started_at=_now())
         try:
@@ -487,6 +526,7 @@ def main():
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--round-delay", type=float, default=0.0)
     ap.add_argument("--runner-identity", default="")
+    ap.add_argument("--pause-before-validate", type=float, default=0.0)
     args = ap.parse_args()
 
     runner = JobRunner(
@@ -496,7 +536,8 @@ def main():
         num_examples=args.num_examples, lora=json.loads(args.lora),
         seed=args.seed, workers_n=args.workers, server_port=args.port,
         device=args.device, round_delay=args.round_delay,
-        runner_identity=args.runner_identity)
+        runner_identity=args.runner_identity,
+        pause_before_validate=args.pause_before_validate)
     import signal as _sig
     _sig.signal(_sig.SIGTERM, runner._handle_sigterm)
     sys.exit(runner.run())

@@ -170,33 +170,31 @@ def job_artifacts(job_id: str):
 
 
 @router.get("/jobs/{job_id}/events")
-def job_events(job_id: str, after_ts: str = Query("")):
-    """SSE: flux d'events en viu del job (E0-04).
+def job_events(job_id: str, after_seq: int = Query(0, ge=0)):
+    """SSE: flux d'events en viu del job (E0-04 R1).
 
     Contracte: Content-Type text/event-stream; cada esdeveniment amb
-    'id:' (monotònic), 'event:', 'data:'. NO s'embolica en l'envelope
-    REST {ok,data,error} — els events SSE són el payload directe.
+    'id:' (seq REAL de SQLite, rowid monotònic i estable), 'event:', 'data:'.
+    El cursor és el seq (rowid) — mai el timestamp en segons (evita pèrdua
+    d'events al mateix segon). NO s'embolica en l'envelope REST.
     """
-    events = service.get_events(job_id, after_ts)
+    events = service.get_events(job_id, after_seq)
 
     def gen():
-        last = after_ts
-        seq = 0
+        last_seq = after_seq
         for e in events:
-            seq += 1
-            last = e["ts"]
-            yield (f"id: {seq}\n"
+            last_seq = e["seq"]
+            yield (f"id: {e['seq']}\n"
                    f"event: {e['type']}\n"
                    f"data: {json.dumps(e, ensure_ascii=False)}\n\n")
         # polling lleuger (long-poll curt) per a events nous
         import time
         while True:
-            new = service.get_events(job_id, last)
+            new = service.get_events(job_id, last_seq)
             if new:
                 for e in new:
-                    seq += 1
-                    last = e["ts"]
-                    yield (f"id: {seq}\n"
+                    last_seq = e["seq"]
+                    yield (f"id: {e['seq']}\n"
                            f"event: {e['type']}\n"
                            f"data: {json.dumps(e, ensure_ascii=False)}\n\n")
             time.sleep(1)

@@ -1,5 +1,57 @@
 # CHANGELOG — meshtrainer
 
+## Unreleased — certified development state (2026-08-17)
+
+### Generic distributed core
+- Generic distributed training core closed and frozen (`b146723` lineage)
+- Coordinator authority, leases, revisions, contribution validation and weighted FedAvg closed
+- Safe crash recovery / exactly-once behavior closed
+- Core remains model-agnostic and isolated from product UI concerns
+
+### Multi-model portability
+- Qwen3 backend certified
+- MiniCPM5 backend certified
+- Real two-worker overlap certified
+- Multi-model portability proven (`a52580c` authoritative closeout lineage)
+- Backend registry keeps model-specific behavior outside the distributed core
+
+### Product MVP Phase 0 — CLOSED
+- Product architecture approved
+- API + Web UI + CLI defined over one shared application layer
+- FastAPI + Pydantic + independent SQLite application state
+- SSE selected for live server-to-browser events
+- Dataset, job, worker, artifact, error and security contracts defined
+
+### Product MVP Phase 1 — CLOSED
+- `MeshTrainerService` application facade implemented
+- Separate `JobRunner` process per training job
+- JSONL dataset registration, controlled upload and validation
+- FastAPI management API skeleton
+- Scriptable CLI skeleton
+- Persistent jobs, logs, metrics and artifacts
+- Cooperative cancellation with no invented core round states
+- Runner restart reconciliation using PID + job ID + nonce identity
+- Stable SQLite-rowid SSE event cursor
+- Dummy backend hidden in production
+- Real Qwen3 E2E through the application layer passed
+- APP acceptance: 17/17 PASS
+- E0 closeout: 31/31 PASS
+- REAL-QWEN-APP: 16/16 PASS
+- Clean extraction A/B: 11/11 PASS each
+- Functional Product Phase 1 lineage: `60ebd29`
+- Final evidence-only closeout lineage: `4696d35`
+
+### Product MVP Phase 2 — AUTHORIZED / NEXT
+- Browser dashboard
+- Training-job wizard
+- Dataset management UI
+- Worker/round monitoring through SSE
+- Metrics and logs
+- Safe cancellation UI
+- Artifact download UI
+- Playwright browser E2E suite
+- Final real-Qwen smoke initiated from the Web UI
+
 ## v1.0.0 (2026-07-26)
 
 ### RC3.3.3 F1 — Worker real i tancament
@@ -48,8 +100,10 @@
 - Guia d'instal·lacio, configuracio, operacio, desplegament
 - Checklist de produccio
 
-## v1.1 (planificat)
+## Earlier v1.1 plan (superseded by current roadmap)
 - Resume automatic d'execucions interrompudes
 - Suport per GPU
 - Dashboard de monitoritzacio
 - Mes workers paral·lels
+
+The current roadmap is tracked in `PROJECT_STATUS.md`; several of the originally planned v1.1 items have since been replaced by the certified distributed-core and Product MVP milestones.

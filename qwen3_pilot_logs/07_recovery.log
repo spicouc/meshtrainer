@@ -1,17 +1,0 @@
-=== QWEN PILOT RECOVERY ===
-  PASS R3 lease ACTIVE inicial
-  PASS R3 lease EXPIRED després del TTL — EXPIRED
-  PASS R3 operació amb lease expirada REJECTED
-  PASS R4 reassignació després d'EXPIRED
-  PASS R4 lease nova per workerB
-  PASS R5 mid-backward -> EXPIRED — EXPIRED
-  PASS R5 reassignació després de mid-backward
-[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<00:58,  5.26it/s]Loading weights:  53%|█████▎    | 166/311 [00:00<00:00, 697.91it/s]Loading weights:  84%|████████▎ | 260/311 [00:00<00:00, 781.63it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 692.06it/s]
-model carregat en 1s
-Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<03:40,  1.40it/s]Loading weights:  37%|███▋      | 116/311 [00:00<00:01, 187.06it/s]Loading weights:  56%|█████▌    | 173/311 [00:00<00:00, 258.13it/s]Loading weights:  74%|███████▍  | 230/311 [00:01<00:00, 240.42it/s]Loading weights:  88%|████████▊ | 273/311 [00:01<00:00, 155.13it/s]Loading weights:  98%|█████████▊| 304/311 [00:02<00:00, 124.84it/s]Loading weights: 100%|██████████| 311/311 [00:02<00:00, 141.41it/s]
-  PASS R1 crash+recovery: mateix delta — 3c370e7090359538
-  PASS R1 delta persistent (b64 igual)
-  PASS R2 recovery sense segon optimizer — replay idempotent, model intacte
-  PASS R2 checkpoint idempotent (2 aplicacions = 1 delta) — 65df093792149d62
-=== RESUM RECOVERY: 11/11 PASS ===

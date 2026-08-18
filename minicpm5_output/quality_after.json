@@ -1,7 +1,0 @@
-{
-  "backend": "minicpm5",
-  "validation_loss": 4.102231025695801,
-  "validation_perplexity": 60.475059509277344,
-  "score_total": 2,
-  "score_max": 5
-}

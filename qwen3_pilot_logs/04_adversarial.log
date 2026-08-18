@@ -1,14 +1,0 @@
-=== QWEN PILOT ADVERSARIAL ===
-  PASS A8 malformed dataset detectat
-  PASS A8 format desconegut detectat
-[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<01:20,  3.87it/s]Loading weights:  51%|█████▏    | 160/311 [00:00<00:00, 562.47it/s]Loading weights:  81%|████████▏ | 253/311 [00:00<00:00, 685.46it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 592.36it/s]
-model carregat en 1s
-  PASS A2 wrong base model detectat (hash canvia) — d932d99320fa -> 65ac5ac8fb1b
-  PASS A3 wrong adapter detectat — Adapter load mismatch: missing=['base_model.wrong.
-  PASS A1 zero delta detectat (lr=0 -> ||delta||==0) — ||d||=0.00e+00
-  PASS A7 second optimizer detectat (replay no fa step)
-  PASS A4 stale adapter detectat (antic != actual) — 4413d1598430 vs d6bdef9a6364
-  PASS A5 wrong shard detectat (shard aliè identificat) — workerA=train:0 aliè=train:10
-  PASS A6 ETT constant detectat (no derivat dels labels) — real=49 constant=12345
-=== RESUM ADVERSARIAL: 9/9 PASS ===

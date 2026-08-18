@@ -1,6 +1,24 @@
 # CHANGELOG — meshtrainer
 
-## v1.0.0 (2026-07-26)
+## v1.3.0 (2026-08-18) — Product MVP Phase 2 (Web UI) CLOSED
+
+- **Web UI** (`app/web/`, vanilla JS, zero toolchain): dashboard amb sistema/backends/jobs, wizard de 5 passos per crear training jobs, monitor SSE en viu (timeline, worker cards, mètriques, gràfica de loss), logs filtrats, artefactes descarregables, settings.
+- **API additiva**: `/api/system`, `/api/settings`, `/api/artifacts/{id}/download` (anti path traversal), `format=json` per events (resincronització).
+- **Gate Phase 2**: UI-01..25 **27/27 PASS** (Playwright) · APP **17/17** · E0 **31/31** · REAL-QWEN-APP **16/16** · REAL-QWEN-UI **PASS** · CE A/B **13/13** · core/drivers **0 canvis**.
+- REAL-QWEN-UI: qwen3 real executat des del navegador, adapter SHA `5c05f972` idèntic a la certificació (determinisme).
+
+## v1.2.0 (2026-08-17) — Product MVP Phase 1 (Application Layer) CLOSED
+
+- `app/`: `MeshTrainerService` (façana), `JobRunner` (orquestrador JSON-RPC amb el core), persistència SQLite, dataset layer (JSONL + validació), API skeleton FastAPI (19 endpoints + SSE), CLI skeleton (11 subcomandes).
+- E0-01 cancel·lació cooperativa sense inventar core state · E0-02 dataset upload multipart segur · E0-03 runner reconciliation amb nonce · E0-04 SSE amb cursor rowid estable.
+- Gate: APP-01..15 **17/17** · E0-01..04 **31/31** · REAL-QWEN-APP **16/16** · CE A/B PASS · core unchanged.
+
+## v1.1.0 (2026-08-14) — Multi-model certificat (a52580c)
+
+- MiniCPM5 backend certificat (portability PROVEN): gate 16/16, overlap real 2 workers, oracle 0.0.
+- Registry lazy de backends a `model_worker.py`; Qwen3 + MiniCPM5 coexisteixen.
+
+## v1.0.0 (2026-07-26) — Core distribuït certificat (b146723)
 
 ### RC3.3.3 F1 — Worker real i tancament
 - Implementacio de Qwen3TrainingBackend amb LoRA real

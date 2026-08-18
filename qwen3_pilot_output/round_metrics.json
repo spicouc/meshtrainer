@@ -1,9 +1,0 @@
-{
-  "ett_a": 441,
-  "ett_b": 434,
-  "adapter_0_sha": "e0877337c987bb873653b22f0016bc8b1360152956f0a28b09fcdbb26ef1ff5e",
-  "adapter_1_sha": "c037e834f2e8839b5a6839df9e183ec3fae865d265abe324df535b047783483c",
-  "adapter_2_sha": "92a6f535c413f2a2e49789ffd6fbe594f2917c6ff9b636cc40fd8b1e53392483",
-  "maxdiff_oracle_r1": 3.725290298461914e-09,
-  "maxdiff_oracle_r2": 3.725290298461914e-09
-}

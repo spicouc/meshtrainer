@@ -391,13 +391,27 @@ class MeshTrainerService:
         swap_total = mi.get("SwapTotal", 0) * 1024
         swap_free = mi.get("SwapFree", 0) * 1024
         disk = _disk()
+        # ── Phase 3 (additiu): detecció completa + guidance ─────────────
+        from app.services.hardware import (detect_hardware,
+                                           model_capability,
+                                           recommended_config)
+        hw = detect_hardware()
+        avail_gb = (hw["memory"]["available_bytes"] + hw["memory"]["swap_available_bytes"]) / (1024**3)
+        caps = {}
+        recs = {}
+        for bid in ("qwen3", "minicpm5"):
+            caps[bid] = model_capability(bid, avail_gb)
+            recs[bid] = recommended_config(bid, avail_gb)
         return {
-            "cpu": {"cores": _cpu_count()},
+            "cpu": {"cores": _cpu_count(), "model": hw["cpu"]["model"]},
             "ram": {"total": ram_total, "available": ram_avail,
                     "used": max(0, ram_total - ram_avail)},
             "swap": {"total": swap_total, "free": swap_free,
                      "used": max(0, swap_total - swap_free)},
             "disk": disk,
+            "hardware": hw,
+            "capabilities": caps,
+            "recommended": recs,
         }
 
     def get_settings(self) -> dict:

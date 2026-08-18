@@ -221,6 +221,38 @@ export async function renderMonitor(main, jobId) {
       if (!arts.length) {
         box.append(el("div", { class: "dim" }, ["No artifacts yet…"])); return;
       }
+      // ── Phase 3 (punt 21): pantalla de resultat per a COMPLETED ────────
+      if (j.status === "COMPLETED") {
+        const adapters = arts.filter((a) => a.type.startsWith("adapter_"));
+        const summary = arts.find((a) => a.type === "training_summary.json");
+        const lastAdapter = adapters[adapters.length - 1];
+        const doneCard = el("div", { class: "result-card" }, [
+          el("h2", { class: "result-title" }, ["✓ Training completed"]),
+        ]);
+        if (lastAdapter) {
+          doneCard.append(
+            el("div", { class: "result-adapter" }, [
+              el("div", { class: "dim small" }, ["Final adapter"]),
+              el("div", { class: "mono" }, [escapeHtml(lastAdapter.type)]),
+              el("div", { class: "small dim" },
+                [`${fmtBytes(lastAdapter.size)} · SHA-256 ${escapeHtml(lastAdapter.sha256.slice(0, 16))}…`]),
+              el("div", { class: "mt" }, [
+                el("a", { class: "btn btn-primary",
+                          href: `/api/artifacts/${j.job_id}/${lastAdapter.artifact_id}/download` },
+                   ["Download adapter"]),
+              ]),
+            ]),
+          );
+        }
+        if (summary) {
+          doneCard.append(el("div", { class: "mt" }, [
+            el("a", { class: "btn btn-sm",
+                      href: `/api/artifacts/${j.job_id}/${summary.artifact_id}/download` },
+               ["Download training summary"]),
+          ]));
+        }
+        box.append(doneCard);
+      }
       const table = el("table", {}, [el("thead", {}, [el("tr", {}, [
         "Type", "Round", "Size", "SHA-256", ""
       ].map((h) => el("th", {}, [h])))]), el("tbody")]);

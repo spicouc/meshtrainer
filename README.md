@@ -42,15 +42,26 @@ La Web UI **només parla amb l'Application API + SSE** — mai importa el core P
 | Qwen3 | `Qwen/Qwen3-0.6B` | **CERTIFICAT** |
 | MiniCPM5 | `openbmb/MiniCPM5-1B` | **CERTIFICAT** |
 
-## Quick Start (Web UI)
+## Quick Start (instal·lació i arrencada)
 
 ```bash
-pip install -r requirements-app.txt
+# 1. Instal·la (crea .venv, instal·la requirements, valida imports)
+./install.sh
 
-uvicorn app.api.main:app --host 0.0.0.0 --port 8000
+# 2. Arrenca el servei
+./meshtrainer start        # → http://localhost:8000
+
+# 3. Altres ordres
+./meshtrainer status       # estat del servei
+./meshtrainer logs         # últims logs
+./meshtrainer stop         # atura el servei
 ```
 
 Obre el navegador: **http://localhost:8000**
+
+La primera vegada veuràs el **First Run Setup** (System Check → Storage →
+Model availability → Recommended profile → Finish), basat en la detecció de
+hardware real del teu equip.
 
 Des del Dashboard pots:
 

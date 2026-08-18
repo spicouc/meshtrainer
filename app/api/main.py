@@ -64,6 +64,26 @@ def system_info():
     return _wrap(lambda: service.get_system_info())
 
 
+# ── Phase 3 (punt 5): first-run status ────────────────────────────────────
+@router.get("/setup/status")
+def setup_status():
+    """Indica si cal First Run Setup (no hi ha config de l'usuari)."""
+    def _check():
+        import os
+        from app.config import MODELS_DIR
+        cfg_path = os.path.join(os.path.expanduser("~"), ".config",
+                                "meshtrainer", "config.toml")
+        first_run = not os.path.exists(cfg_path)
+        return {
+            "first_run": first_run,
+            "config_exists": not first_run,
+            "models_dir": MODELS_DIR,
+            "steps": ["system_check", "storage", "model_availability",
+                      "recommended_profile", "finish"],
+        }
+    return _wrap(_check)
+
+
 @router.get("/settings")
 def settings():
     return _wrap(lambda: service.get_settings())

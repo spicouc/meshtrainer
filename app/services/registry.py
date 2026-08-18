@@ -28,9 +28,35 @@ DEPENDENCIES = {
     "minicpm5": ["torch", "transformers", "peft"],
     "dummy": [],
 }
+# ── Phase 3 (punt 26): paths de models configurables, MAI hardcoded ──────
+_SNAPSHOTS = {"qwen3": "qwen3_0_6b_snapshot", "minicpm5": "minicpm5_1b_snapshot"}
+
+
+def _model_default(backend: str) -> str:
+    """Path per defecte del model: env > MODELS_DIR > repo > pare del repo."""
+    import os
+    from app.config import MODELS_DIR
+    env_map = {"qwen3": "QWEN3_MODEL", "minicpm5": "MINICPM5_MODEL"}
+    env = os.environ.get(env_map.get(backend, ""))
+    if env:
+        return env
+    name = _SNAPSHOTS.get(backend, f"{backend}_snapshot")
+    repo = os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
+    cands = [
+        os.path.join(MODELS_DIR, name),
+        os.path.join(repo, name),
+        os.path.join(os.path.dirname(repo), name),
+    ]
+    for c in cands:
+        if os.path.isdir(c):
+            return c
+    return cands[0]
+
+
 MODEL_DEFAULTS = {
-    "qwen3": "/root/qwen3_0_6b_snapshot",
-    "minicpm5": "/root/minicpm5_1b_snapshot",
+    "qwen3": _model_default("qwen3"),
+    "minicpm5": _model_default("minicpm5"),
     "dummy": "dummy",
 }
 

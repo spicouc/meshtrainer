@@ -1,10 +1,12 @@
 # PRODUCT MVP PHASE 3 — FINAL REPORT (HARDENING + UX POLISH + INSTALL/LAUNCH)
 
-**Commit**: 5249f2a (f83a3b8 Phase 3 base) — pendent commit final d'evidència
+**Commit**: bffb846 (branca product/phase3-hardening)
 **Data**: 2026-08-18
 **Executor**: DinDjarin (pve/Mandalor)
-**Branca**: product/phase3-hardening
 **Base**: main 1435209 · Phase 2 430cbdc · Core b146723 CLOSED · a52580c CERTIFIED
+**Artifact**: meshtrainer_product_mvp_phase3_final_bffb846.tar.gz
+**SHA-256**: 90f769fcc0c2e7bba2505a9e8c116d531cf2204c7fbef50a1c51a1b66ee46845
+**TGFS**: 11900-11906
 
 ---
 
@@ -50,8 +52,9 @@ Core b146723 / backends Qwen3+MiniCPM5: **FROZEN, 0 canvis**.
 | P3-01..30 (Phase 3 gate) | **30/30 PASS** (33 checks) |
 | APP-01..15 (regressió) | **17/17 PASS** |
 | E0-01..04 (regressió) | **31/31 PASS** |
-| UI-01..25 (Playwright, regressió) | pendent al gate final |
-| REAL-QWEN-UI (qwen3 real via Web UI) | pendent — inclou training_summary |
+| UI-01..25 (Playwright, regressió) | **27/27 PASS** |
+| REAL-QWEN-UI (qwen3 real via Web UI) | **PASS** — training_summary present, adapter_0 `5c05f972` determinista |
+| CE A / CE B (extracció independent) | **20/20 PASS cadascuna** |
 
 ## Regressions / core
 
@@ -77,4 +80,6 @@ Core b146723 / backends Qwen3+MiniCPM5: **FROZEN, 0 canvis**.
 
 ## Estat
 
-PRODUCT MVP PHASE 3 — pendent de gate complet + CE A/B + packaging.
+**PRODUCT MVP PHASE 3: CLOSED** — empaquetada i entregada (TGFS 11900-11906).
+**STOP**: esperant auditoria del supervisor. No crear Phase 4. No merge.
+No release GitHub.

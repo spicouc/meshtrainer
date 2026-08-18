@@ -186,13 +186,17 @@ def main():
 
             # artifacts
             arts = api(f"/api/jobs/{job_id}/artifacts")
+            ev["training_summary"] = False
             for a in arts:
                 if a["type"] == "adapter_0":
                     ev["adapter_0"] = {"sha256": a["sha256"], "size": a["size"]}
                 if a["type"] == "adapter_1":
                     ev["adapter_1"] = {"sha256": a["sha256"], "size": a["size"]}
+                if a["type"] == "training_summary.json":
+                    ev["training_summary"] = True
             log(f"adapter_0: {ev['adapter_0']}")
             log(f"adapter_1: {ev['adapter_1']}")
+            log(f"training_summary present (Phase 3): {ev['training_summary']}")
 
             # ── la UI mostra l'artifact final? ────────────────────────────
             page.reload()
@@ -204,7 +208,8 @@ def main():
 
             ok = (status == "COMPLETED" and ev["submit"] and ev["validate"]
                   and ev["activate"] and ev["fedavg"] and ev["adapter_0"]
-                  and ev["adapter_1"] and ev["ui_result"] == "PASS")
+                  and ev["adapter_1"] and ev["training_summary"]
+                  and ev["ui_result"] == "PASS")
             log(f"=== REAL-QWEN-UI: {'PASS' if ok else 'FAIL'} ===")
             browser.close()
 

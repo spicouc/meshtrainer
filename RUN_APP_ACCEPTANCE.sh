@@ -104,6 +104,18 @@ else
     ko "UI-01..25 (Playwright, exit=$UI_EXIT)"
 fi
 
+# ── Phase 2: REAL-QWEN-UI (qwen3 real des del navegador) ─────────────────
+step "REAL-QWEN-UI (qwen3 real via Web UI, CT112)"
+RES=$(lxc-attach -n 112 -- bash -c \
+    'echo +800 > /proc/self/oom_score_adj; cd /root/meshtrainer && /opt/qwen3-venv/bin/python app/tests/real_qwen_ui_test.py 2>&1')
+RQUI_EXIT=$?
+echo "$RES" | tail -16
+if [ "$RQUI_EXIT" = "0" ]; then
+    ok "REAL-QWEN-UI (qwen3 via Web UI)"
+else
+    ko "REAL-QWEN-UI (qwen3 via Web UI, exit=$RQUI_EXIT)"
+fi
+
 # ── resum ────────────────────────────────────────────────────────────────
 echo ""
 echo "============================================"

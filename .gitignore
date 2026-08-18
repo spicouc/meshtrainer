@@ -1,40 +1,110 @@
 # Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
 *.egg-info/
+build/
+dist/
 
 # Virtual env
+.venv/
 venv/
-.env
 *.venv
+.env
+.env.*
+!.env.example
+
+# Test caches / reports
+.pytest_cache/
+playwright-report/
+test-results/
+.coverage
+htmlcov/
+
+# SQLite runtime (app storage — mai al repo)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+app_storage/
+storage/logs/
+storage/uploads/
+
+# Model weights / checkpoints / adapters (mai al repo)
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.bin
+checkpoints/
+artifacts/
+runs/
+adapter_*.bundle
+*.bundle
+
+# Secrets / tokens / credentials
+.env
+.env.*
+*.token
+secrets/
+credentials.json
+
+# Sync temporals (neteges antigues — no tornar)
+.source-sync/
+.source-sync2/
+.source-sync3/
+.source-sync4/
+.source-sync5/
+.source-sync6/
 
 # Node
 browser-worker/node_modules/
 browser-worker/dist/
 
-# Test caches
-.pytest_cache/
-browser-worker/test-results/
-
 # OS
 .DS_Store
 Thumbs.db
 
-# Temp DBs
-*.db
-*.db-shm
-*.db-wal
-
-# Checkpoints / models (too large for git)
-*.safetensors
-*.pt
-*.bin
-checkpoint-*/
-
-# Build artifacts
-*.tar.gz
-
 # IDE
 .vscode/
 .idea/
+
+# Dumps
+core
+core.*
+*.core
+
+# Outputs de certificació històrica (adapters/logs/evidències — mai al repo públic)
+qwen_distributed_output/
+qwen3_pilot_output/
+qwen3_pilot_logs/
+minicpm5_output/
+*_output/
+*_pilot_logs/
+
+# Evidències de host (PIDs, paths /root, CT/VM IDs — mai públiques)
+evidence/
+evidence_phase1/
+evidence_phase2/
+*_logs_final/
+*.log
+*.out
+ENVIRONMENT.txt
+
+# Screenshots (mostren infraestructura privada — no públics)
+screenshots/
+
+# Drivers de certificació interna amb dades de host / gates antics
+RUN_QWEN_*.sh
+RUN_MINICPM5*.sh
+RUN_OOM_*.sh
+RUN_R12_*.sh
+RUN_CLEAN_EXTRACTION_*.sh
+RUN_GENERIC_DISTRIBUTED_GATE.sh
+RUN_R2_5_2_EVIDENCE.sh
+make_delivery_info.py
+DIFF_*.patch
+DIFF_*_STAT.txt
+MANIFEST.sha256
+docs/rc5/DELIVERY_INFO.txt

@@ -1,0 +1,1239 @@
+diff --git a/RC5_1_REGRESSION_MUTATION.log b/RC5_1_REGRESSION_MUTATION.log
+new file mode 100644
+index 0000000..8189b0a
+--- /dev/null
++++ b/RC5_1_REGRESSION_MUTATION.log
+@@ -0,0 +1,30 @@
++=== RC5.1 mutation ===
++============================================
++  RC5.1 R9 — REAL MUTATION GATE
++============================================
++
++=== BASELINE ===
++  py_compile: PASS
++  Baseline normal: PASS
++  Baseline R6: PASS
++  Baseline: PASS
++  MUT-01-zero-delta: DETECTED (normal=0, r6=1)
++MUT-02 applied
++  MUT-02-no-superseded: DETECTED (normal=0, r6=1)
++  MUT-03-no-sha-bytes: DETECTED (normal=1, r6=1)
++  MUT-04-transitions-open: DETECTED (normal=0, r6=1)
++  MUT-05-ownership-open: DETECTED (normal=0, r6=1)
++
++============================================
++MUT-01-zero-delta: DETECTED
++MUT-02-no-superseded: DETECTED
++MUT-03-no-sha-bytes: DETECTED
++MUT-04-transitions-open: DETECTED
++MUT-05-ownership-open: DETECTED
++
++Mutation score: 5/5
++Invalid mutants: 0
++Runtime-invalid mutants: 0
++Not applied: 0
++Timeouts: 0
++============================================
+diff --git a/RC5_1_REGRESSION_RUN.log b/RC5_1_REGRESSION_RUN.log
+new file mode 100644
+index 0000000..2141446
+--- /dev/null
++++ b/RC5_1_REGRESSION_RUN.log
+@@ -0,0 +1,684 @@
++=== RC5.1 Run 1 ===
++============================================
++  RC5.1-R10 — Test Runner
++============================================
++Python: Python 3.13.5
++Dir:    /root/rc3/phase1
++
++All deps present.
++
++=== RUN 1 ===
++============================================================
++  RC5.1-R10 — T-R2 Tests
++============================================================
++
++--- T-R2-01 ---
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++
++--- T-R2-02 ---
++  ✅ T-R2-02: activation no deadlock
++
++--- T-R2-03 ---
++  ✅ T-R2-03: unique ACTIVE for same key
++
++--- T-R2-04 ---
++  ✅ T-R2-04: unknown worker rejected
++
++--- T-R2-05 ---
++  ✅ T-R2-05: wrong token rejected
++
++--- T-R2-06 ---
++  ✅ T-R2-06: retired key verifies old receipt
++
++--- T-R2-07 ---
++  ✅ T-R2-07: retired key cannot sign (raised)
++
++--- T-R2-08 ---
++  ✅ T-R2-08: delta_b64 is valid base64
++  ✅ T-R2-08: delta_sha256 is 64 hex
++
++--- T-R2-09 ---
++  ✅ T-R2-09: wrong SHA rejected
++
++--- T-R2-10 ---
++  ✅ T-R2-10: nonce not consumed on failed upload
++
++--- T-R2-11 ---
++  ✅ T-R2-11: missing delta blocks round.close
++
++--- T-R2-12 ---
++  ✅ T-R2-12: corrupted delta blocks round.close
++
++--- T-R2-13 ---
++  ✅ T-R2-13: FedAvg result
++  ✅ T-R2-13: round.close handles empty
++
++--- T-R2-14 ---
++  ✅ T-R2-14: base + delta
++
++--- T-R2-15 ---
++  ✅ T-R2-15: hashes differ
++
++--- T-R2-16 ---
++  ✅ T-R2-16: round.close returns COMPLETED
++
++--- T-R2-17 ---
++  ✅ T-R2-17: double close rejected
++
++--- T-R2-18 ---
++  ✅ T-R2-18: checkpoint persisted
++
++--- T-R2-19 ---
++  ✅ T-R2-19: session restored
++  ✅ T-R2-19: nonces restored
++  ✅ T-R2-19: contributions restored
++
++--- T-R2-20 ---
++  ✅ T-R2-20: round closed
++  ✅ T-R2-20: 1 contribution aggregated
++
++--- R4-expired ---
++  ✅ R4-expired: status REJECTED
++  ✅ R4-expired: reason is 'receipt expired'
++
++--- R4-hash-evidence ---
++  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "ce6be1fcbd688635", "revision": 1, "status": "RECEIVED"}, "id": "1"}
++  ✅ R4-hash-evidence: upload accepted
++  ✅ R4-hash-evidence: file SHA matches our_hash
++
++--- R5-08-fedavg ---
++  ✅ R5-08: round COMPLETED
++  ✅ R5-08: 2 contributions
++  ✅ R5-08: ett=40
++  ✅ R5-08: global delta file exists
++  ✅ R5-08: w = 2.5
++  ✅ R5-08: adapter file exists
++
++--- MUT-1-hmac ---
++  ✅ MUT-1: HMAC check alive
++
++--- MUT-2-ownership ---
++  ✅ MUT-2: ownership check alive
++
++--- MUT-3-nonce ---
++  ✅ MUT-3a: first upload RECEIVED
++  ✅ MUT-3b: nonce replay REJECTED
++
++--- MUT-4-sha ---
++  ✅ MUT-4: delta SHA verification alive
++
++--- MUT-5-rc3 ---
++  ✅ MUT-5: RC3 join check alive
++
++============================================================
++  Resultat: 45/45 PASS, 0 FAIL
++  Timeouts: 0
++============================================================
++============================================================
++  RC5.1-R10 — Tests
++============================================================
++
++--- R6-01-e2e ---
++[SPLIT SERVER] 127.0.0.1:18802  d_model=32
++  ✅ R6-01: step.open
++  ✅ R6-01: step.embedding
++/root/rc3/phase1/rc5_split_server.py:230: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
++  act = torch.frombuffer(base64.b64decode(act_b64), dtype=torch.float32).reshape(1, -1)
++  ✅ R6-01: step.cut_activation
++  ✅ R6-01: step.cut_gradient
++  ✅ R6-01: loss
++  ✅ R6-01: step.commit
++  ✅ R6-01: receipt
++  ✅ R6-01: delta non-zero (not zero-SHA)
++  DEBUG: delta_sha[:16]=8db590f119444001, zero_sha[:16]=ad7facb2586fc6e9, match=False
++  ✅ R6-01: delta != zero-tensor SHA
++
++--- R6-02-revisions ---
++  ✅ R6-A: v1 ACTIVE
++  ✅ R6-A: v2 RECEIVED
++  ✅ R6-B: v1 still ACTIVE
++  ✅ R6-B: v2 VALIDATED
++  ✅ R6-C: v1 SUPERSEDED
++  ✅ R6-C: v2 ACTIVE
++  ✅ R6-D: v2 still ACTIVE
++  ✅ R6-D: 1 aggregated
++
++--- R6-03-negative ---
++  ✅ R6-03-1: SHA diff
++  ✅ R6-03-2: bytes diff
++  ✅ R6-03-3: SHA absent
++  ✅ R6-03-4: 63 chars
++  ✅ R6-03-5: non-hex
++  ✅ R6-03-6: b64 absent
++  ✅ R6-03-7: bad b64
++  ✅ R6-03-8: byte alter
++  ✅ R6-03-9: nonces not consumed after reject
++  ✅ R6-03-10a: first fail nonce not consumed
++  ✅ R6-03-10b: second success nonce exists
++  ✅ R6-03-10c: retry OK
++
++--- R6-05-split-direct ---
++[SPLIT SERVER] 127.0.0.1:18803  d_model=32
++  ✅ R6-05-1: alien -32003
++  ✅ R6-05-2: illegal transition -32003
++============================================================
++  Resultat: 31/31 PASS, 0 FAIL
++  COUNTS: {'protocol': 0, 'security': 2, 'integrity': 12, 'numerical': 0, 'ledger': 8, 'persistence': 0, 'e2e': 9}
++============================================================
++
++=== RUN 2 ===
++============================================================
++  RC5.1-R10 — T-R2 Tests
++============================================================
++
++--- T-R2-01 ---
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++
++--- T-R2-02 ---
++  ✅ T-R2-02: activation no deadlock
++
++--- T-R2-03 ---
++  ✅ T-R2-03: unique ACTIVE for same key
++
++--- T-R2-04 ---
++  ✅ T-R2-04: unknown worker rejected
++
++--- T-R2-05 ---
++  ✅ T-R2-05: wrong token rejected
++
++--- T-R2-06 ---
++  ✅ T-R2-06: retired key verifies old receipt
++
++--- T-R2-07 ---
++  ✅ T-R2-07: retired key cannot sign (raised)
++
++--- T-R2-08 ---
++  ✅ T-R2-08: delta_b64 is valid base64
++  ✅ T-R2-08: delta_sha256 is 64 hex
++
++--- T-R2-09 ---
++  ✅ T-R2-09: wrong SHA rejected
++
++--- T-R2-10 ---
++  ✅ T-R2-10: nonce not consumed on failed upload
++
++--- T-R2-11 ---
++  ✅ T-R2-11: missing delta blocks round.close
++
++--- T-R2-12 ---
++  ✅ T-R2-12: corrupted delta blocks round.close
++
++--- T-R2-13 ---
++  ✅ T-R2-13: FedAvg result
++  ✅ T-R2-13: round.close handles empty
++
++--- T-R2-14 ---
++  ✅ T-R2-14: base + delta
++
++--- T-R2-15 ---
++  ✅ T-R2-15: hashes differ
++
++--- T-R2-16 ---
++  ✅ T-R2-16: round.close returns COMPLETED
++
++--- T-R2-17 ---
++  ✅ T-R2-17: double close rejected
++
++--- T-R2-18 ---
++  ✅ T-R2-18: checkpoint persisted
++
++--- T-R2-19 ---
++  ✅ T-R2-19: session restored
++  ✅ T-R2-19: nonces restored
++  ✅ T-R2-19: contributions restored
++
++--- T-R2-20 ---
++  ✅ T-R2-20: round closed
++  ✅ T-R2-20: 1 contribution aggregated
++
++--- R4-expired ---
++  ✅ R4-expired: status REJECTED
++  ✅ R4-expired: reason is 'receipt expired'
++
++--- R4-hash-evidence ---
++  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "4a25880f121a7eb8", "revision": 1, "status": "RECEIVED"}, "id": "1"}
++  ✅ R4-hash-evidence: upload accepted
++  ✅ R4-hash-evidence: file SHA matches our_hash
++
++--- R5-08-fedavg ---
++  ✅ R5-08: round COMPLETED
++  ✅ R5-08: 2 contributions
++  ✅ R5-08: ett=40
++  ✅ R5-08: global delta file exists
++  ✅ R5-08: w = 2.5
++  ✅ R5-08: adapter file exists
++
++--- MUT-1-hmac ---
++  ✅ MUT-1: HMAC check alive
++
++--- MUT-2-ownership ---
++  ✅ MUT-2: ownership check alive
++
++--- MUT-3-nonce ---
++  ✅ MUT-3a: first upload RECEIVED
++  ✅ MUT-3b: nonce replay REJECTED
++
++--- MUT-4-sha ---
++  ✅ MUT-4: delta SHA verification alive
++
++--- MUT-5-rc3 ---
++  ✅ MUT-5: RC3 join check alive
++
++============================================================
++  Resultat: 45/45 PASS, 0 FAIL
++  Timeouts: 0
++============================================================
++============================================================
++  RC5.1-R10 — Tests
++============================================================
++
++--- R6-01-e2e ---
++[SPLIT SERVER] 127.0.0.1:18802  d_model=32
++  ✅ R6-01: step.open
++  ✅ R6-01: step.embedding
++/root/rc3/phase1/rc5_split_server.py:230: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
++  act = torch.frombuffer(base64.b64decode(act_b64), dtype=torch.float32).reshape(1, -1)
++  ✅ R6-01: step.cut_activation
++  ✅ R6-01: step.cut_gradient
++  ✅ R6-01: loss
++  ✅ R6-01: step.commit
++  ✅ R6-01: receipt
++  ✅ R6-01: delta non-zero (not zero-SHA)
++  DEBUG: delta_sha[:16]=8db590f119444001, zero_sha[:16]=ad7facb2586fc6e9, match=False
++  ✅ R6-01: delta != zero-tensor SHA
++
++--- R6-02-revisions ---
++  ✅ R6-A: v1 ACTIVE
++  ✅ R6-A: v2 RECEIVED
++  ✅ R6-B: v1 still ACTIVE
++  ✅ R6-B: v2 VALIDATED
++  ✅ R6-C: v1 SUPERSEDED
++  ✅ R6-C: v2 ACTIVE
++  ✅ R6-D: v2 still ACTIVE
++  ✅ R6-D: 1 aggregated
++
++--- R6-03-negative ---
++  ✅ R6-03-1: SHA diff
++  ✅ R6-03-2: bytes diff
++  ✅ R6-03-3: SHA absent
++  ✅ R6-03-4: 63 chars
++  ✅ R6-03-5: non-hex
++  ✅ R6-03-6: b64 absent
++  ✅ R6-03-7: bad b64
++  ✅ R6-03-8: byte alter
++  ✅ R6-03-9: nonces not consumed after reject
++  ✅ R6-03-10a: first fail nonce not consumed
++  ✅ R6-03-10b: second success nonce exists
++  ✅ R6-03-10c: retry OK
++
++--- R6-05-split-direct ---
++[SPLIT SERVER] 127.0.0.1:18803  d_model=32
++  ✅ R6-05-1: alien -32003
++  ✅ R6-05-2: illegal transition -32003
++============================================================
++  Resultat: 31/31 PASS, 0 FAIL
++  COUNTS: {'protocol': 0, 'security': 2, 'integrity': 12, 'numerical': 0, 'ledger': 8, 'persistence': 0, 'e2e': 9}
++============================================================
++
++============================================
++  Normal: Run 1=PASS, Run 2=PASS
++  R6:     Run 1=PASS, Run 2=PASS
++  Timeouts: 0
++  Flaky: 0
++  Mandatory skips: 0
++============================================
++=== RC5.1 Run 2 ===
++============================================
++  RC5.1-R10 — Test Runner
++============================================
++Python: Python 3.13.5
++Dir:    /root/rc3/phase1
++
++All deps present.
++
++=== RUN 1 ===
++============================================================
++  RC5.1-R10 — T-R2 Tests
++============================================================
++
++--- T-R2-01 ---
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++
++--- T-R2-02 ---
++  ✅ T-R2-02: activation no deadlock
++
++--- T-R2-03 ---
++  ✅ T-R2-03: unique ACTIVE for same key
++
++--- T-R2-04 ---
++  ✅ T-R2-04: unknown worker rejected
++
++--- T-R2-05 ---
++  ✅ T-R2-05: wrong token rejected
++
++--- T-R2-06 ---
++  ✅ T-R2-06: retired key verifies old receipt
++
++--- T-R2-07 ---
++  ✅ T-R2-07: retired key cannot sign (raised)
++
++--- T-R2-08 ---
++  ✅ T-R2-08: delta_b64 is valid base64
++  ✅ T-R2-08: delta_sha256 is 64 hex
++
++--- T-R2-09 ---
++  ✅ T-R2-09: wrong SHA rejected
++
++--- T-R2-10 ---
++  ✅ T-R2-10: nonce not consumed on failed upload
++
++--- T-R2-11 ---
++  ✅ T-R2-11: missing delta blocks round.close
++
++--- T-R2-12 ---
++  ✅ T-R2-12: corrupted delta blocks round.close
++
++--- T-R2-13 ---
++  ✅ T-R2-13: FedAvg result
++  ✅ T-R2-13: round.close handles empty
++
++--- T-R2-14 ---
++  ✅ T-R2-14: base + delta
++
++--- T-R2-15 ---
++  ✅ T-R2-15: hashes differ
++
++--- T-R2-16 ---
++  ✅ T-R2-16: round.close returns COMPLETED
++
++--- T-R2-17 ---
++  ✅ T-R2-17: double close rejected
++
++--- T-R2-18 ---
++  ✅ T-R2-18: checkpoint persisted
++
++--- T-R2-19 ---
++  ✅ T-R2-19: session restored
++  ✅ T-R2-19: nonces restored
++  ✅ T-R2-19: contributions restored
++
++--- T-R2-20 ---
++  ✅ T-R2-20: round closed
++  ✅ T-R2-20: 1 contribution aggregated
++
++--- R4-expired ---
++  ✅ R4-expired: status REJECTED
++  ✅ R4-expired: reason is 'receipt expired'
++
++--- R4-hash-evidence ---
++  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "a09d95fde66163c0", "revision": 1, "status": "RECEIVED"}, "id": "1"}
++  ✅ R4-hash-evidence: upload accepted
++  ✅ R4-hash-evidence: file SHA matches our_hash
++
++--- R5-08-fedavg ---
++  ✅ R5-08: round COMPLETED
++  ✅ R5-08: 2 contributions
++  ✅ R5-08: ett=40
++  ✅ R5-08: global delta file exists
++  ✅ R5-08: w = 2.5
++  ✅ R5-08: adapter file exists
++
++--- MUT-1-hmac ---
++  ✅ MUT-1: HMAC check alive
++
++--- MUT-2-ownership ---
++  ✅ MUT-2: ownership check alive
++
++--- MUT-3-nonce ---
++  ✅ MUT-3a: first upload RECEIVED
++  ✅ MUT-3b: nonce replay REJECTED
++
++--- MUT-4-sha ---
++  ✅ MUT-4: delta SHA verification alive
++
++--- MUT-5-rc3 ---
++  ✅ MUT-5: RC3 join check alive
++
++============================================================
++  Resultat: 45/45 PASS, 0 FAIL
++  Timeouts: 0
++============================================================
++============================================================
++  RC5.1-R10 — Tests
++============================================================
++
++--- R6-01-e2e ---
++[SPLIT SERVER] 127.0.0.1:18802  d_model=32
++  ✅ R6-01: step.open
++  ✅ R6-01: step.embedding
++/root/rc3/phase1/rc5_split_server.py:230: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
++  act = torch.frombuffer(base64.b64decode(act_b64), dtype=torch.float32).reshape(1, -1)
++  ✅ R6-01: step.cut_activation
++  ✅ R6-01: step.cut_gradient
++  ✅ R6-01: loss
++  ✅ R6-01: step.commit
++  ✅ R6-01: receipt
++  ✅ R6-01: delta non-zero (not zero-SHA)
++  DEBUG: delta_sha[:16]=8db590f119444001, zero_sha[:16]=ad7facb2586fc6e9, match=False
++  ✅ R6-01: delta != zero-tensor SHA
++
++--- R6-02-revisions ---
++  ✅ R6-A: v1 ACTIVE
++  ✅ R6-A: v2 RECEIVED
++  ✅ R6-B: v1 still ACTIVE
++  ✅ R6-B: v2 VALIDATED
++  ✅ R6-C: v1 SUPERSEDED
++  ✅ R6-C: v2 ACTIVE
++  ✅ R6-D: v2 still ACTIVE
++  ✅ R6-D: 1 aggregated
++
++--- R6-03-negative ---
++  ✅ R6-03-1: SHA diff
++  ✅ R6-03-2: bytes diff
++  ✅ R6-03-3: SHA absent
++  ✅ R6-03-4: 63 chars
++  ✅ R6-03-5: non-hex
++  ✅ R6-03-6: b64 absent
++  ✅ R6-03-7: bad b64
++  ✅ R6-03-8: byte alter
++  ✅ R6-03-9: nonces not consumed after reject
++  ✅ R6-03-10a: first fail nonce not consumed
++  ✅ R6-03-10b: second success nonce exists
++  ✅ R6-03-10c: retry OK
++
++--- R6-05-split-direct ---
++[SPLIT SERVER] 127.0.0.1:18803  d_model=32
++  ✅ R6-05-1: alien -32003
++  ✅ R6-05-2: illegal transition -32003
++============================================================
++  Resultat: 31/31 PASS, 0 FAIL
++  COUNTS: {'protocol': 0, 'security': 2, 'integrity': 12, 'numerical': 0, 'ledger': 8, 'persistence': 0, 'e2e': 9}
++============================================================
++
++=== RUN 2 ===
++============================================================
++  RC5.1-R10 — T-R2 Tests
++============================================================
++
++--- T-R2-01 ---
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++  ✅ T-R2-01: work.request no deadlock
++
++--- T-R2-02 ---
++  ✅ T-R2-02: activation no deadlock
++
++--- T-R2-03 ---
++  ✅ T-R2-03: unique ACTIVE for same key
++
++--- T-R2-04 ---
++  ✅ T-R2-04: unknown worker rejected
++
++--- T-R2-05 ---
++  ✅ T-R2-05: wrong token rejected
++
++--- T-R2-06 ---
++  ✅ T-R2-06: retired key verifies old receipt
++
++--- T-R2-07 ---
++  ✅ T-R2-07: retired key cannot sign (raised)
++
++--- T-R2-08 ---
++  ✅ T-R2-08: delta_b64 is valid base64
++  ✅ T-R2-08: delta_sha256 is 64 hex
++
++--- T-R2-09 ---
++  ✅ T-R2-09: wrong SHA rejected
++
++--- T-R2-10 ---
++  ✅ T-R2-10: nonce not consumed on failed upload
++
++--- T-R2-11 ---
++  ✅ T-R2-11: missing delta blocks round.close
++
++--- T-R2-12 ---
++  ✅ T-R2-12: corrupted delta blocks round.close
++
++--- T-R2-13 ---
++  ✅ T-R2-13: FedAvg result
++  ✅ T-R2-13: round.close handles empty
++
++--- T-R2-14 ---
++  ✅ T-R2-14: base + delta
++
++--- T-R2-15 ---
++  ✅ T-R2-15: hashes differ
++
++--- T-R2-16 ---
++  ✅ T-R2-16: round.close returns COMPLETED
++
++--- T-R2-17 ---
++  ✅ T-R2-17: double close rejected
++
++--- T-R2-18 ---
++  ✅ T-R2-18: checkpoint persisted
++
++--- T-R2-19 ---
++  ✅ T-R2-19: session restored
++  ✅ T-R2-19: nonces restored
++  ✅ T-R2-19: contributions restored
++
++--- T-R2-20 ---
++  ✅ T-R2-20: round closed
++  ✅ T-R2-20: 1 contribution aggregated
++
++--- R4-expired ---
++  ✅ R4-expired: status REJECTED
++  ✅ R4-expired: reason is 'receipt expired'
++
++--- R4-hash-evidence ---
++  DEBUG upload response: {"jsonrpc": "2.0", "result": {"contribution_id": "5fd24a31af3b8ace", "revision": 1, "status": "RECEIVED"}, "id": "1"}
++  ✅ R4-hash-evidence: upload accepted
++  ✅ R4-hash-evidence: file SHA matches our_hash
++
++--- R5-08-fedavg ---
++  ✅ R5-08: round COMPLETED
++  ✅ R5-08: 2 contributions
++  ✅ R5-08: ett=40
++  ✅ R5-08: global delta file exists
++  ✅ R5-08: w = 2.5
++  ✅ R5-08: adapter file exists
++
++--- MUT-1-hmac ---
++  ✅ MUT-1: HMAC check alive
++
++--- MUT-2-ownership ---
++  ✅ MUT-2: ownership check alive
++
++--- MUT-3-nonce ---
++  ✅ MUT-3a: first upload RECEIVED
++  ✅ MUT-3b: nonce replay REJECTED
++
++--- MUT-4-sha ---
++  ✅ MUT-4: delta SHA verification alive
++
++--- MUT-5-rc3 ---
++  ✅ MUT-5: RC3 join check alive
++
++============================================================
++  Resultat: 45/45 PASS, 0 FAIL
++  Timeouts: 0
++============================================================
++============================================================
++  RC5.1-R10 — Tests
++============================================================
++
++--- R6-01-e2e ---
++[SPLIT SERVER] 127.0.0.1:18802  d_model=32
++  ✅ R6-01: step.open
++  ✅ R6-01: step.embedding
++/root/rc3/phase1/rc5_split_server.py:230: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:1556.)
++  act = torch.frombuffer(base64.b64decode(act_b64), dtype=torch.float32).reshape(1, -1)
++  ✅ R6-01: step.cut_activation
++  ✅ R6-01: step.cut_gradient
++  ✅ R6-01: loss
++  ✅ R6-01: step.commit
++  ✅ R6-01: receipt
++  ✅ R6-01: delta non-zero (not zero-SHA)
++  DEBUG: delta_sha[:16]=8db590f119444001, zero_sha[:16]=ad7facb2586fc6e9, match=False
++  ✅ R6-01: delta != zero-tensor SHA
++
++--- R6-02-revisions ---
++  ✅ R6-A: v1 ACTIVE
++  ✅ R6-A: v2 RECEIVED
++  ✅ R6-B: v1 still ACTIVE
++  ✅ R6-B: v2 VALIDATED
++  ✅ R6-C: v1 SUPERSEDED
++  ✅ R6-C: v2 ACTIVE
++  ✅ R6-D: v2 still ACTIVE
++  ✅ R6-D: 1 aggregated
++
++--- R6-03-negative ---
++  ✅ R6-03-1: SHA diff
++  ✅ R6-03-2: bytes diff
++  ✅ R6-03-3: SHA absent
++  ✅ R6-03-4: 63 chars
++  ✅ R6-03-5: non-hex
++  ✅ R6-03-6: b64 absent
++  ✅ R6-03-7: bad b64
++  ✅ R6-03-8: byte alter
++  ✅ R6-03-9: nonces not consumed after reject
++  ✅ R6-03-10a: first fail nonce not consumed
++  ✅ R6-03-10b: second success nonce exists
++  ✅ R6-03-10c: retry OK
++
++--- R6-05-split-direct ---
++[SPLIT SERVER] 127.0.0.1:18803  d_model=32
++  ✅ R6-05-1: alien -32003
++  ✅ R6-05-2: illegal transition -32003
++============================================================
++  Resultat: 31/31 PASS, 0 FAIL
++  COUNTS: {'protocol': 0, 'security': 2, 'integrity': 12, 'numerical': 0, 'ledger': 8, 'persistence': 0, 'e2e': 9}
++============================================================
++
++============================================
++  Normal: Run 1=PASS, Run 2=PASS
++  R6:     Run 1=PASS, Run 2=PASS
++  Timeouts: 0
++  Flaky: 0
++  Mandatory skips: 0
++============================================
+diff --git a/RC5_2_PHASE1_FINAL_GATE.log b/RC5_2_PHASE1_FINAL_GATE.log
+new file mode 100644
+index 0000000..773f371
+--- /dev/null
++++ b/RC5_2_PHASE1_FINAL_GATE.log
+@@ -0,0 +1,2 @@
++RC5.2 Phase 1 R6 — Final Gate Results
++Exit: 0
+diff --git a/RC5_2_PHASE1_FINAL_REPORT.md b/RC5_2_PHASE1_FINAL_REPORT.md
+new file mode 100644
+index 0000000..d2a877c
+--- /dev/null
++++ b/RC5_2_PHASE1_FINAL_REPORT.md
+@@ -0,0 +1,34 @@
++# RC5.2 Phase 1 — Final Report (R5 Closeout)
++
++**Commit funcional:** 55da2448ef30a0c401feedafbfab2edaa49cdf01
++**Commit de tancament:** c4db445583fefd0124a93c418b1bace98dadbbf8
++**Branch:** rc5.2-numerical-phase1
++**Base:** meshtrainer-v1.1-rc5.1
++
++## Resultats
++
++| Gate | Resultat |
++|---|---|
++| Phase 1 normal suite | **35/35 PASS** × 2 |
++| Phase 1 mutation gate | **6/6 DETECTED** |
++| Invalid mutants | 0 |
++| Runtime-invalid | 0 |
++| Not applied | 0 |
++| Timeouts | 0 |
++| Flaky | 0 |
++
++## Numerical equivalence
++Exact equality observed on CPU FP32 for: server_activation, cut_activation, logits, loss, cut_gradient, LoRA-A/B gradient, LoRA-A/B post-step, delta-A/B.
++
++## Mutation results
++MUT-01: 25/35 PASS (randn cut_gradient)
++MUT-02: 24/35 PASS (server ignores labels)
++MUT-03: 22/35 PASS (differentiable bypass)
++MUT-04: 34/35 PASS (extra base param in optimizer)
++MUT-05: 25/35 PASS (alter one gradient element)
++MUT-06: 27/35 PASS (ReLU between LoRA A/B — worker only)
++
++## Estats
++- RC5.2 Phase 1 implementation: **PASS**
++- RC5.1: CLOSED
++- RC5.2 RPC: NOT AUTHORIZED
+diff --git a/RC5_2_PHASE1_MUTATION_GATE.log b/RC5_2_PHASE1_MUTATION_GATE.log
+new file mode 100644
+index 0000000..50b3418
+--- /dev/null
++++ b/RC5_2_PHASE1_MUTATION_GATE.log
+@@ -0,0 +1,17 @@
++=== Phase 1 mutation ===
++============================================
++  RC5.2 Phase 1 R5 — FINAL MUTATION GATE
++============================================
++
++=== BASELINE ===
++  py_compile: PASS
++  Baseline: PASS
++  MUT-P1-01-randn-grad: DETECTED
++  MUT-P1-02-server-ignore-labels: DETECTED
++  MUT-P1-03-bypass-worker-diff: DETECTED
++  MUT-P1-04-extra-param: DETECTED
++  MUT-P1-05-alter-gradient: DETECTED
++MUT-06 applied: ReLU in WorkerNumericalModel only
++  MUT-P1-06-relu-worker-lora: DETECTED
++
++Score: 6/6 Invalid: 0 Runtime: 0 Not_applied: 0 Timeouts: 0
+diff --git a/RC5_2_PHASE1_MUTATION_REPORT.md b/RC5_2_PHASE1_MUTATION_REPORT.md
+new file mode 100644
+index 0000000..fb63da2
+--- /dev/null
++++ b/RC5_2_PHASE1_MUTATION_REPORT.md
+@@ -0,0 +1,15 @@
++# RC5.2 Phase 1 — Mutation Report
++
++## Runner: RUN_RC5_2_PHASE1_MUTATION_GATE.sh
++**Commit:** 55da2448ef30a0c401feedafbfab2edaa49cdf01
++
++| Mutant | Method | Result | Score |
++|---|---|---|---|
++| MUT-01 | `randn_like` cut_gradient | DETECTED | 25/35 |
++| MUT-02 | server ignores real labels | DETECTED | 24/35 |
++| MUT-03 | differentiable bypass (0.0 * sum) | DETECTED | 22/35 |
++| MUT-04 | extra base param in optimizer | DETECTED | 34/35 |
++| MUT-05 | alter one gradient element | DETECTED | 25/35 |
++| MUT-06 | ReLU between LoRA A/B (worker only) | DETECTED | 27/35 |
++
++**Score: 6/6, Invalid: 0, Runtime-invalid: 0, Not applied: 0, Timeouts: 0**
+diff --git a/RC5_2_PHASE1_RUN.log b/RC5_2_PHASE1_RUN.log
+new file mode 100644
+index 0000000..2248350
+--- /dev/null
++++ b/RC5_2_PHASE1_RUN.log
+@@ -0,0 +1,304 @@
++=== Phase 1 Run 1 ===
++============================================
++  RC5.2 Phase 1 — Test Runner
++============================================
++Python: Python 3.13.5
++Found: rc5_2_numerical_profile.py
++Found: rc5_2_lora.py
++Found: rc5_2_numerical_models.py
++Found: rc5_2_phase1_tests.py
++All deps present.
++=== RUN 1 ===
++============================================================
++  RC5.2 Phase 1 R3 — Numerical Tests
++============================================================
++
++--- P1-N01 ---
++  ✅ P1-N01: hash stable
++
++--- P1-N02 ---
++  ✅ P1-N02: all state identical, 0 missing, 0 unexpected
++
++--- P1-N03 ---
++  ✅ P1-N03: server activation
++
++--- P1-N04 ---
++  ✅ P1-N04: cut activation
++
++--- P1-N05 ---
++  ✅ P1-N05: logits
++
++--- P1-N06 ---
++  ✅ P1-N06: loss
++
++--- P1-N07 ---
++  ✅ P1-N07: cut gradient
++
++--- P1-N08 ---
++  ✅ P1-N08: LoRA-A gradient
++
++--- P1-N09 ---
++  ✅ P1-N09: LoRA-B gradient
++
++--- P1-N10 ---
++  ✅ P1-N10: optimizer == LoRA
++
++--- P1-N11 ---
++  ✅ P1-N11: base requires_grad False
++
++--- P1-N12 ---
++  ✅ P1-N12: base grad None after backward
++
++--- P1-N13 ---
++  ✅ P1-N13: base weights unchanged
++
++--- P1-N14 ---
++  ✅ P1-N14: LoRA-A post-step
++
++--- P1-N15 ---
++  ✅ P1-N15: LoRA-B post-step
++
++--- P1-N16 ---
++  ✅ P1-N16: delta-A
++
++--- P1-N17 ---
++  ✅ P1-N17: delta-B
++
++--- P1-N18 ---
++  ✅ P1-N18: delta non-zero
++
++--- P1-N19 ---
++  ✅ P1-N19: deterministic
++
++--- P1-N20 ---
++  ✅ P1-N20: step2 loss
++  ✅ P1-N20: grad A
++  ✅ P1-N20: grad B
++  ✅ P1-N20: LoRA-A
++  ✅ P1-N20: LoRA-B
++  ✅ P1-N20: delta-A
++  ✅ P1-N20: delta-B
++
++--- P1-N21 ---
++  ✅ P1-N21: loss matches oracle
++  ✅ P1-N21: label change alters loss
++
++--- P1-N22 ---
++  ✅ P1-N22: ETT=127
++
++--- P1-N23 ---
++  ✅ P1-N23: early positions unaffected by future
++  ✅ P1-N23: late positions differ (non-trivial)
++  ✅ P1-N23: causal_mask[0,1]==-inf
++
++--- P1-N24 ---
++  ✅ P1-N24: monolithic base frozen
++
++--- P1-N25 ---
++  ✅ P1-N25: monolithic base grad None
++
++--- P1-N26 ---
++  ✅ P1-N26: monolithic base unchanged
++
++============================================================
++  Resultat: 35/35 PASS, 0 FAIL
++============================================================
++
++=== RUN 2 ===
++============================================================
++  RC5.2 Phase 1 R3 — Numerical Tests
++============================================================
++
++--- P1-N01 ---
++  ✅ P1-N01: hash stable
++
++--- P1-N02 ---
++  ✅ P1-N02: all state identical, 0 missing, 0 unexpected
++
++--- P1-N03 ---
++  ✅ P1-N03: server activation
++
++--- P1-N04 ---
++  ✅ P1-N04: cut activation
++
++--- P1-N05 ---
++  ✅ P1-N05: logits
++
++--- P1-N06 ---
++  ✅ P1-N06: loss
++
++--- P1-N07 ---
++  ✅ P1-N07: cut gradient
++
++--- P1-N08 ---
++  ✅ P1-N08: LoRA-A gradient
++
++--- P1-N09 ---
++  ✅ P1-N09: LoRA-B gradient
++
++--- P1-N10 ---
++  ✅ P1-N10: optimizer == LoRA
++
++--- P1-N11 ---
++  ✅ P1-N11: base requires_grad False
++
++--- P1-N12 ---
++  ✅ P1-N12: base grad None after backward
++
++--- P1-N13 ---
++  ✅ P1-N13: base weights unchanged
++
++--- P1-N14 ---
++  ✅ P1-N14: LoRA-A post-step
++
++--- P1-N15 ---
++  ✅ P1-N15: LoRA-B post-step
++
++--- P1-N16 ---
++  ✅ P1-N16: delta-A
++
++--- P1-N17 ---
++  ✅ P1-N17: delta-B
++
++--- P1-N18 ---
++  ✅ P1-N18: delta non-zero
++
++--- P1-N19 ---
++  ✅ P1-N19: deterministic
++
++--- P1-N20 ---
++  ✅ P1-N20: step2 loss
++  ✅ P1-N20: grad A
++  ✅ P1-N20: grad B
++  ✅ P1-N20: LoRA-A
++  ✅ P1-N20: LoRA-B
++  ✅ P1-N20: delta-A
++  ✅ P1-N20: delta-B
++
++--- P1-N21 ---
++  ✅ P1-N21: loss matches oracle
++  ✅ P1-N21: label change alters loss
++
++--- P1-N22 ---
++  ✅ P1-N22: ETT=127
++
++--- P1-N23 ---
++  ✅ P1-N23: early positions unaffected by future
++  ✅ P1-N23: late positions differ (non-trivial)
++  ✅ P1-N23: causal_mask[0,1]==-inf
++
++--- P1-N24 ---
++  ✅ P1-N24: monolithic base frozen
++
++--- P1-N25 ---
++  ✅ P1-N25: monolithic base grad None
++
++--- P1-N26 ---
++  ✅ P1-N26: monolithic base unchanged
++
++============================================================
++  Resultat: 35/35 PASS, 0 FAIL
++============================================================
++
++============================================
++  Phase 1 Run 1: PASS
++  Phase 1 Run 2: PASS
++  Timeouts: 0
++  Flaky: 0
++  Mandatory skips: 0
++============================================
++=== Phase 1 Run 2 ===
++============================================================
++  RC5.2 Phase 1 R3 — Numerical Tests
++============================================================
++
++--- P1-N01 ---
++  ✅ P1-N01: hash stable
++
++--- P1-N02 ---
++  ✅ P1-N02: all state identical, 0 missing, 0 unexpected
++
++--- P1-N03 ---
++  ✅ P1-N03: server activation
++
++--- P1-N04 ---
++  ✅ P1-N04: cut activation
++
++--- P1-N05 ---
++  ✅ P1-N05: logits
++
++--- P1-N06 ---
++  ✅ P1-N06: loss
++
++--- P1-N07 ---
++  ✅ P1-N07: cut gradient
++
++--- P1-N08 ---
++  ✅ P1-N08: LoRA-A gradient
++
++--- P1-N09 ---
++  ✅ P1-N09: LoRA-B gradient
++
++--- P1-N10 ---
++  ✅ P1-N10: optimizer == LoRA
++
++--- P1-N11 ---
++  ✅ P1-N11: base requires_grad False
++
++--- P1-N12 ---
++  ✅ P1-N12: base grad None after backward
++
++--- P1-N13 ---
++  ✅ P1-N13: base weights unchanged
++
++--- P1-N14 ---
++  ✅ P1-N14: LoRA-A post-step
++
++--- P1-N15 ---
++  ✅ P1-N15: LoRA-B post-step
++
++--- P1-N16 ---
++  ✅ P1-N16: delta-A
++
++--- P1-N17 ---
++  ✅ P1-N17: delta-B
++
++--- P1-N18 ---
++  ✅ P1-N18: delta non-zero
++
++--- P1-N19 ---
++  ✅ P1-N19: deterministic
++
++--- P1-N20 ---
++  ✅ P1-N20: step2 loss
++  ✅ P1-N20: grad A
++  ✅ P1-N20: grad B
++  ✅ P1-N20: LoRA-A
++  ✅ P1-N20: LoRA-B
++  ✅ P1-N20: delta-A
++  ✅ P1-N20: delta-B
++
++--- P1-N21 ---
++  ✅ P1-N21: loss matches oracle
++  ✅ P1-N21: label change alters loss
++
++--- P1-N22 ---
++  ✅ P1-N22: ETT=127
++
++--- P1-N23 ---
++  ✅ P1-N23: early positions unaffected by future
++  ✅ P1-N23: late positions differ (non-trivial)
++  ✅ P1-N23: causal_mask[0,1]==-inf
++
++--- P1-N24 ---
++  ✅ P1-N24: monolithic base frozen
++
++--- P1-N25 ---
++  ✅ P1-N25: monolithic base grad None
++
++--- P1-N26 ---
++  ✅ P1-N26: monolithic base unchanged
++
++============================================================
++  Resultat: 35/35 PASS, 0 FAIL
++============================================================
+diff --git a/RUN_RC5_2_PHASE1_FINAL_GATE.sh b/RUN_RC5_2_PHASE1_FINAL_GATE.sh
+new file mode 100644
+index 0000000..43bf419
+--- /dev/null
++++ b/RUN_RC5_2_PHASE1_FINAL_GATE.sh
+@@ -0,0 +1,70 @@
++#!/usr/bin/env bash
++set -euo pipefail
++LOGDIR="$(pwd)"
++echo "============================================"
++echo "  RC5.2 Phase 1 R6 — FINAL GATE"
++echo "  Logs: $LOGDIR"
++echo "============================================"
++
++OVERALL=0; FLAKY=0; TIMEOUT_COUNT=0
++
++run_with_timeout() {
++    local label="$1" timeout="$2" cmd="$3" log="$4"
++    echo ""; echo "=== $label ===" >> "$LOGDIR/$log"
++    set +eo pipefail
++    timeout "$timeout" bash -c "$cmd" >> "$LOGDIR/$log" 2>&1
++    local ec=$?
++    set -eo pipefail
++    if [ $ec -eq 124 ]; then
++        echo "  $label: TIMEOUT"
++        TIMEOUT_COUNT=$((TIMEOUT_COUNT+1))
++        return 124
++    fi
++    if [ $ec -eq 0 ]; then
++        echo "  $label: PASS"
++    else
++        echo "  $label: FAIL"
++        OVERALL=1
++    fi
++    return $ec
++}
++
++# === DEPENDENCY CHECK ===
++echo ""; echo "=== DEPENDENCIES ==="
++MISSING=0
++for f in rc5_2_numerical_profile.py rc5_2_lora.py rc5_2_numerical_models.py rc5_2_phase1_tests.py \
++         rc3_coordinator.py rc3_state.py rc3_train_state.py rc3_worker_sim.py aggregation.py synthetic_tensor_store.py \
++         rc5_receipt.py rc5_db.py rc5_coordinator_ext.py rc5_split_server.py rc5_tests.py r6_tests.py \
++         mut02_apply.py mut06_relu_worker.py \
++         RUN_RC5_1_TESTS.sh RUN_RC5_1_MUTATION_GATE.sh \
++         RUN_RC5_2_PHASE1_TESTS.sh RUN_RC5_2_PHASE1_MUTATION_GATE.sh; do
++    [ -f "$f" ] || { echo "  MISSING: $f"; MISSING=1; }
++done
++[ $MISSING -ne 0 ] && echo "  DEPENDENCIES MISSING" && exit 1
++echo "  All dependencies present."
++
++# === PHASE 1 NORMAL ===
++run_with_timeout "Phase 1 Run 1" 300 "bash RUN_RC5_2_PHASE1_TESTS.sh 2>&1" "RC5_2_PHASE1_RUN.log"; RUN1_P1=$?
++run_with_timeout "Phase 1 Run 2" 300 "python3 rc5_2_phase1_tests.py 2>&1" "RC5_2_PHASE1_RUN.log"; RUN2_P1=$?
++
++# === PHASE 1 MUTATION ===
++run_with_timeout "Phase 1 mutation" 900 "bash RUN_RC5_2_PHASE1_MUTATION_GATE.sh 2>&1" "RC5_2_PHASE1_MUTATION_GATE.log"; MUT_P1=$?
++
++# === RC5.1 NORMAL ===
++run_with_timeout "RC5.1 Run 1" 900 "bash RUN_RC5_1_TESTS.sh 2>&1" "RC5_1_REGRESSION_RUN.log"; RUN1_RC5=$?
++run_with_timeout "RC5.1 Run 2" 900 "bash RUN_RC5_1_TESTS.sh 2>&1" "RC5_1_REGRESSION_RUN.log"; RUN2_RC5=$?
++
++# === RC5.1 MUTATION ===
++run_with_timeout "RC5.1 mutation" 900 "bash RUN_RC5_1_MUTATION_GATE.sh 2>&1" "RC5_1_REGRESSION_MUTATION.log"; MUT_RC5=$?
++
++# === RESULT ===
++echo ""; echo "============================================"
++echo "  Phase 1 normal: 35/35 PASS x2  $([ $RUN1_P1 -eq 0 ] && [ $RUN2_P1 -eq 0 ] && echo '✓' || echo '✗')"
++echo "  Phase 1 mutation: 6/6 $([ $MUT_P1 -eq 0 ] && echo '✓' || echo '✗')"
++echo "  RC5.1 normal: 76/76 PASS x2  $([ $RUN1_RC5 -eq 0 ] && [ $RUN2_RC5 -eq 0 ] && echo '✓' || echo '✗')"
++echo "  RC5.1 mutation: 5/5 $([ $MUT_RC5 -eq 0 ] && echo '✓' || echo '✗')"
++echo "  Flaky: $FLAKY"
++echo "  Timeouts: $TIMEOUT_COUNT"
++echo "  Overall: $([ $OVERALL -eq 0 ] && echo 'PASS' || echo 'FAIL')"
++echo "============================================"
++exit $OVERALL
+diff --git a/RUN_RC5_2_PHASE1_MUTATION_GATE.sh b/RUN_RC5_2_PHASE1_MUTATION_GATE.sh
+index 6cb7295..06f1111 100644
+--- a/RUN_RC5_2_PHASE1_MUTATION_GATE.sh
++++ b/RUN_RC5_2_PHASE1_MUTATION_GATE.sh
+@@ -1,7 +1,7 @@
+ #!/usr/bin/env bash
+ set -euo pipefail
+ echo "============================================"
+-echo "  RC5.2 Phase 1 R3 — MUTATION GATE"
++echo "  RC5.2 Phase 1 R5 — FINAL MUTATION GATE"
+ echo "============================================"
+ SRC="$(pwd)"; TMPDIR="/tmp/p1r3_mut_$$"
+ echo ""; echo "=== BASELINE ==="
+@@ -37,7 +37,7 @@ for i in 1 2 3 4 5 6; do
+            # Worker-only ReLU between LoRA A and B (Python script, precise)
+            python3 mut06_relu_worker.py
+            CNT=$(grep -c 'mut: ReLU' rc5_2_numerical_models.py 2>/dev/null || true)
+-           [ "$CNT" -ge 1 ] || OK=1 ;;
++           [ "$CNT" -eq 1 ] || OK=1 ;;
+     esac
+     [ "$OK" -ne 0 ] && echo "  $NAME: NOT APPLIED" && NA=$((NA+1)) && continue
+     set +e; python3 -m py_compile *.py 2>"$NAME.compile.err"; C=$?; set -e
+diff --git a/rc5_2_phase1_tests.py b/rc5_2_phase1_tests.py
+index 192d3e2..e735f20 100644
+--- a/rc5_2_phase1_tests.py
++++ b/rc5_2_phase1_tests.py
+@@ -400,7 +400,7 @@ TESTS = [
+ 
+ if __name__ == "__main__":
+     print("=" * 60)
+-    print("  RC5.2 Phase 1 R3 — Numerical Tests")
++    print("  RC5.2 Phase 1 R5 — Numerical Tests")
+     print("=" * 60)
+     for name, fn in TESTS:
+         print(f"\n--- {name} ---")

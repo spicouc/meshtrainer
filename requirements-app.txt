@@ -1,0 +1,9 @@
+# requirements-app.txt — dependències CERTIFICADES del PRODUCT/APP MVP
+# (Phase 1 CLOSEOUT R1). Versions verificades al venv de certificació
+# (CT112 /opt/qwen3-venv) durant el FINAL GATE 2026-08-17.
+# Instal·lació: pip install -r requirements-app.txt
+
+fastapi==0.141.1
+pydantic==2.13.4
+uvicorn==0.51.0
+python-multipart==0.0.32

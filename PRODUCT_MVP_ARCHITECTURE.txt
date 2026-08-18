@@ -1,0 +1,134 @@
+PRODUCT / APP MVP — ARCHITECTURE (ASCII)
+========================================
+
+Base: core certificat b146723 (inalterat) · multi-model autoritatiu a52580c
+Fase: 0 DISSENY (cap codi funcional d'app encara)
+
+
++-------------------------------------------------------------------------------+
+|                                 USUARI                                        |
++-------------------------------------------------------------------------------+
+        |                                                        |
+        v                                                        v
++------------------+                                +----------------------+
+|    WEB UI        |                                |   CLI (mínima)       |
+|  HTML/CSS/JS     |                                |  meshtrainer ...     |
+|  (SSE en viu)    |                                +----------------------+
++------------------+                                       |
+        |                                                   |
+        | HTTP/JSON (REST + SSE)                            | (mateixa layer)
+        v                                                   v
++-------------------------------------------------------------------------------+
+|                       APPLICATION API (FastAPI + Pydantic)                   |
+|  /api/health /api/backends /api/models /api/datasets /api/jobs               |
+|  /api/jobs/{id}/validate|start|cancel|rounds|workers|metrics|logs|artifacts  |
+|  /api/jobs/{id}/events (SSE)                                                  |
++-------------------------------------------------------------------------------+
+                                   |
+                                   v
++-------------------------------------------------------------------------------+
+|                   APPLICATION SERVICE (MeshTrainerService)                   |
+|  discover_backends · validate_model · validate_dataset · create_training_job  |
+|  start_job · cancel_job · get_job · list_jobs · get_workers · get_rounds      |
+|  get_metrics · get_logs · list_artifacts                                      |
++---------------------------------------+---------------------------------------+
+                                        |
+                    orquestra subprocessos (un JobRunner per job)
+                                        |
+                                        v
++-------------------------------------------------------------------------------+
+|                     MESHTRAINER CERTIFIED CORE  (INALTERAT)                   |
+|                                                                               |
+|  +----------------------+     +----------------------------+                  |
+|  | ModelRoundCoordinator|     | TrainingHTTPServer         |                  |
+|  | rounds/assignments/  |<--->| JSON-RPC: register,calibr. |                  |
+|  | contributions/FedAvg |     | lease, step, commit,       |                  |
+|  | quorum, revision,    |     | checkpoint, contribution,  |                  |
+|  | validate 10 checks   |     | validate, activate, fedavg |                  |
+|  +----------------------+     | ADMIN_METHODS (token)      |                  |
+|          ^                    +------------+---------------+                  |
+|          |                                  |                                 |
+|          |                     +------------+---------------+                  |
+|          |                     |   LeaseManager (TTL)       |                  |
+|          |                     |   Recovery journal (SQLite)|                  |
+|          |                     +----------------------------+                  |
+|          |                                                                     |
+|          +--------------------------+------------------------------------+     |
+|                                     |                                    |     |
+|                          +----------v----------+             +----------v-----+
+|                          | model_worker (A/B)  |             | model_worker   |
+|                          | subprocess real     |             | (B, stagger    |
+|                          | PID, session, lease |             |  LOAD segons   |
+|                          |                    |             |  memòria)      |
+|                          +----------+----------+             +----------+-----+
+|                                     |                                    |
+|                          +----------v----------+             +----------v-----+
+|                          | backends/           |             | backends/      |
+|                          | qwen3_backend.py    |             | minicpm5_back- |
+|                          | (CERTIFIED)         |             | end.py (CERT)  |
+|                          | dummy (test només)  |             |                |
+|                          +----------+----------+             +----------------+
++-------------------------------------------------------------------------------+
+                                     |
+                                     v
+      +---------------------------------------------------------------+
+      |  SQLite core per run (estat distribuït: rounds, assignments,  |
+      |  contributions, leases) — NOMÉS el servei hi accedeix via API |
+      +---------------------------------------------------------------+
+      |  SQLite app (meshtrainer_app.db): jobs, datasets,             |
+      |  worker_definitions, job_events, job_artifacts, job_metrics   |
+      +---------------------------------------------------------------+
+
+
+FLUXOS CLAU
+===========
+
+1. CREAR + VALIDAR JOB
+   UI/CLI -> API POST /api/jobs -> MeshTrainerService
+     -> valida backend (registry lazy), model (snapshot), dataset (JSONL)
+     -> status DRAFT -> VALIDATING -> READY | FAILED(errors)
+
+2. START JOB (només si validation == PASS)
+   API POST /api/jobs/{id}/start -> JobRunner (procés separat)
+     a. prepare: 1 càrrega backend (seed fixa)
+        -> adapter_0 autoritatiu + base_model_hash + ETTs per shard
+        -> close/del/gc/malloc_trim  (RSS 4GB -> 390MB, lliçó R1.2)
+     b. round.create (ADMIN) -> assignment.create (ADMIN)
+     c. spawn worker A (real) -> [stagger LOAD] -> spawn worker B (real)
+        (PID A != PID B; mateix base_model_hash; shards/leases diferents)
+     d. workers: register -> calibrate -> lease -> step -> commit
+        -> checkpoint -> contribution.register
+     e. ADMIN: contribution.validate -> contribution.activate (quòrum)
+     f. round.fedavg -> adapter del round -> següent round
+     g. complete: adapter final + metrics JSON + manifest + summary
+
+3. MONITOR (SSE)
+   GET /api/jobs/{id}/events -> events reals del core:
+   round.create, assignment.create, worker.lease, contribution.submit,
+   contribution.validate, contribution.activate, round.fedavg,
+   recovery.event, job.complete/failed/cancelled
+
+4. CANCEL (mai kill -9 immediat)
+   RUNNING -> CANCELLING
+     -> SIGTERM cooperatiu als workers
+     -> expirar/invalidar leases (LeaseManager existent)
+     -> cap nova assignment; contribucions en vol no s'activen
+     -> persistir estat -> esperar sortida neta (timeout)
+     -> SIGKILL només com a últim recurs (registrat) -> CANCELLED
+
+5. ARTEFACTES
+   GET /api/jobs/{id}/artifacts -> adapter final + intermedis + metrics
+   + config + manifest + summary; sha256 verificable per artefacte
+
+
+REGLES (no negociables)
+=======================
+
+1. UI/CLI/API MAI criden directament:
+     model_round_coordinator.py · generic_distributed_run.py
+     · generic_recovery_tests.py
+2. Tot el que toca el core passa per MeshTrainerService (façana).
+3. Drivers de test = evidència de certificació, NO API de producte.
+4. Core b146723: cap modificació. Incompatibilitat real -> STOP + documentar.
+5. Dummy: només mode development/test; amagat en producció.
+6. Oracle: mètrica de test/certificació, NO s'exposa a la UI.

@@ -1,0 +1,1 @@
+"""Persistència de l'app."""

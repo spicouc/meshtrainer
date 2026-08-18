@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MeshTrainer — Distributed Model Training</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">MT</span>
+      <div class="brand-text">
+        <strong>MeshTrainer</strong>
+        <small>Distributed Model Training</small>
+      </div>
+    </div>
+    <nav class="main-nav" aria-label="Navegació principal">
+      <a href="#/" data-nav="dashboard" class="nav-link">Dashboard</a>
+      <a href="#/jobs/new" data-nav="new" class="nav-link">New Job</a>
+      <a href="#/datasets" data-nav="datasets" class="nav-link">Datasets</a>
+      <a href="#/settings" data-nav="settings" class="nav-link">Settings</a>
+    </nav>
+    <div class="topbar-status" id="api-status" role="status" aria-live="polite">
+      <span class="dot dot-warn"></span> connecting…
+    </div>
+  </header>
+
+  <main id="app" class="app-main" tabindex="-1">
+    <div class="loading-state">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Loading MeshTrainer…</p>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <span>MeshTrainer MVP · <span id="footer-env">…</span></span>
+    <span id="footer-version">v0.1.0</span>
+  </footer>
+
+  <div id="toast-region" class="toast-region" aria-live="polite"></div>
+
+  <script type="module" src="/static/js/main.js"></script>
+</body>
+</html>

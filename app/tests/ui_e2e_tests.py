@@ -295,13 +295,15 @@ def main():
             cok = False
             while time.time() < deadline:
                 txt = page.inner_text("body")
-                if "CANCELLED" in txt:
+                # Phase 3 (punt 15): la UI mostra estats human-readable
+                if "CANCELLED" in txt or "Cancelled" in txt:
                     cok = True
                     break
                 time.sleep(2)
             check("UI-14 cancel workflow", cok, "botó cancel + confirmació")
             check("UI-15 CANCELLED displayed correctly",
-                  "CANCELLED" in page.inner_text("body"),
+                  "CANCELLED" in page.inner_text("body") or
+                  "Cancelled" in page.inner_text("body"),
                   page.inner_text("body")[:60])
             if not cok:
                 print("  --- log servidor cancel (darrer 500/error) ---")

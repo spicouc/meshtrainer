@@ -73,12 +73,21 @@ def main():
     if os.path.exists(tmp):
         shutil.rmtree(tmp)
     os.makedirs(tmp)
-    # simula un clone: clona la branca de treball actual (Phase 3)
-    branch = subprocess.run(["git", "branch", "--show-current"], cwd=REPO,
-                            capture_output=True, text=True).stdout.strip() or "main"
-    subprocess.run(["git", "clone", "--depth", "1", "-b", branch,
-                    REPO, tmp + "/mt"],
-                   capture_output=True, timeout=120)
+    # simula un clone: clona la branca de treball actual (Phase 3);
+    # si el repo no té .git, o el .git és mínim (sense arbre), copia fitxers
+    import shutil as _sh
+    if os.path.isdir(os.path.join(REPO, ".git")):
+        subprocess.run(["git", "clone", "--depth", "1", "-b",
+                        subprocess.run(["git", "branch", "--show-current"], cwd=REPO,
+                                       capture_output=True, text=True).stdout.strip() or "main",
+                        REPO, tmp + "/mt"],
+                       capture_output=True, timeout=120)
+    if not os.path.exists(f"{tmp}/mt/install.sh"):
+        if os.path.exists(f"{tmp}/mt"):
+            _sh.rmtree(f"{tmp}/mt")
+        _sh.copytree(REPO, tmp + "/mt",
+                     ignore=_sh.ignore_patterns("app_storage", "__pycache__",
+                                                "*.pyc", ".venv"))
     clone_ok = os.path.exists(f"{tmp}/mt/install.sh")
     check("P3-01 fresh install (clone + install.sh present)", clone_ok,
           "clone OK" if clone_ok else "clone fallat")

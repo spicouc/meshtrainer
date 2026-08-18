@@ -92,9 +92,21 @@ else
     ko "imports FastAPI/Pydantic/Uvicorn/multipart"
 fi
 
+# ── Phase 2: UI-01..25 (Playwright) al CT112 ─────────────────────────────
+step "UI-01..25 (Playwright, CT112)"
+RES=$(lxc-attach -n 112 -- bash -c \
+    'echo +800 > /proc/self/oom_score_adj; cd /root/meshtrainer && bash RUN_UI_E2E.sh 2>&1')
+UI_EXIT=$?
+echo "$RES" | tail -30
+if [ "$UI_EXIT" = "0" ]; then
+    ok "UI-01..25 (Playwright)"
+else
+    ko "UI-01..25 (Playwright, exit=$UI_EXIT)"
+fi
+
 # ── resum ────────────────────────────────────────────────────────────────
 echo ""
 echo "============================================"
-echo "  APP ACCEPTANCE (Fase 1): ${PASS}/${PASS} PASS, ${FAIL} FAIL"
+echo "  APP ACCEPTANCE (Fase 1+2): ${PASS}/${PASS} PASS, ${FAIL} FAIL"
 echo "============================================"
 [ "$FAIL" = "0" ]

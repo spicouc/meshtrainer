@@ -1,0 +1,15 @@
+=== REAL-QWEN-UI (qwen3 real des del navegador) ===
+dataset: ds-81db0e494308 validat PASS
+Browser → wizard /jobs/new
+Browser → Review (VALIDATE JOB)
+Browser → validate: PASS
+Browser → start → monitor job-fb3baed56924
+final status: COMPLETED
+runner_pid: 1000
+events: submit=True validate=True activate=True fedavg=True
+ETT per worker: [16, 20]
+worker_pids: [1065, 1099]
+adapter_0: {'sha256': '5c05f9726c26dceb116387baa283bb1ee5e087c8929d01f68ec2b56a02765b0d', 'size': 9209691}
+adapter_1: {'sha256': 'd1fb41e4ee7f5b698fab0e30a9a15c64f70eb9a7c81d6dd9720e6e2c758fd91d', 'size': 9209694}
+UI mostra artifact final: True → PASS
+=== REAL-QWEN-UI: PASS ===

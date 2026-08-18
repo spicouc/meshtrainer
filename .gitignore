@@ -91,3 +91,20 @@ evidence_phase2/
 *.log
 *.out
 ENVIRONMENT.txt
+
+# Screenshots (mostren infraestructura privada — no públics)
+screenshots/
+
+# Drivers de certificació interna amb dades de host / gates antics
+RUN_QWEN_*.sh
+RUN_MINICPM5*.sh
+RUN_OOM_*.sh
+RUN_R12_*.sh
+RUN_CLEAN_EXTRACTION_*.sh
+RUN_GENERIC_DISTRIBUTED_GATE.sh
+RUN_R2_5_2_EVIDENCE.sh
+make_delivery_info.py
+DIFF_*.patch
+DIFF_*_STAT.txt
+MANIFEST.sha256
+docs/rc5/DELIVERY_INFO.txt

@@ -1,12 +1,12 @@
 {
-  "commit": "60ebd29",
+  "commit": "fcf7563",
   "backend": "qwen3",
   "model": "",
-  "job_id": "job-fb3baed56924",
-  "runner_pid": 1000,
+  "job_id": "job-bdad0f5f2f4a",
+  "runner_pid": 1251,
   "worker_pids": [
-    1065,
-    1099
+    1316,
+    1350
   ],
   "etts": [
     16,

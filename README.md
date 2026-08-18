@@ -116,15 +116,15 @@ python -m app.cli.main job artifacts <job_id>
 
 | Suite | Contingut | Estat |
 |---|---|---|
+| `app/tests/p3_gate_tests.py` | P3-01..30 (incl. fresh product install + launch reals) | 39/39 PASS |
 | `app/tests/app_acceptance_tests.py` | APP-01..15 (application layer, dummy) | 17/17 PASS |
 | `app/tests/e0_gate_tests.py` | E0-01..04 (cancel sense core state, upload, reconciliation, SSE contract) | 31/31 PASS |
 | `app/tests/ui_e2e_tests.py` | UI-01..25 (Playwright, navegador real) | 27/27 PASS |
-| `app/tests/real_qwen_app_test.py` | REAL-QWEN-APP (qwen3 real E2E) | 16/16 PASS |
 | `app/tests/real_qwen_ui_test.py` | REAL-QWEN-UI (qwen3 real des del navegador) | PASS |
 
 ```bash
-bash RUN_APP_ACCEPTANCE.sh   # gate complet (requereix el CT112/venv amb deps)
-bash RUN_UI_E2E.sh           # suite Playwright (requereix Playwright + chromium)
+bash RUN_P3_GATE_PORTABLE.sh   # gate P3 + APP + E0 (requereix venv amb deps)
+bash RUN_UI_E2E.sh             # suite Playwright (requereix Playwright + chromium)
 ```
 
 ## Estat del projecte

@@ -1,6 +1,6 @@
 # PROJECT STATUS — MeshTrainer
 
-**Última actualització**: 2026-08-18 (Product MVP Phase 2 CLOSED)
+**Última actualització**: 2026-08-18 (Product MVP Phase 3 R1 CLOSED)
 
 ---
 
@@ -16,12 +16,14 @@
 | Product MVP Phase 0 (disseny) | **CLOSED** |
 | Product MVP Phase 1 (application layer) | **CLOSED** (4696d35) |
 | Product MVP Phase 2 (Web UI) | **CLOSED** (430cbdc) |
+| Product MVP Phase 3 (hardening + install/launch) | **CLOSED** (7960e61) |
 | Application Layer | **CERTIFIED MVP** |
 | Web UI | **CERTIFIED MVP** |
+| Installer + Launcher | **CERTIFIED** (`install.sh` / `./meshtrainer`) |
 | Real Qwen App E2E | **PASS** |
 | Real Qwen via Web UI | **PASS** |
 
-**NEXT: Product MVP Phase 3 (R1 corrective) + auditoria** — en curs 2026-08-18.
+**NEXT: cap Phase 4 autoritzada — awaiting supervisor release decision.**
 
 ---
 

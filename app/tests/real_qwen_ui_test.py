@@ -58,12 +58,7 @@ def main():
     srv = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "app.api.main:app",
          "--host", "127.0.0.1", "--port", "8022"],
-        cwd=REPO,
-        env=dict(os.environ, APP_ENV="test",
-                 # Phase 3 R1-07: el model es resol per env (com un usuari
-                 # real amb el model local en una ubicació pròpia)
-                 QWEN3_MODEL=os.environ.get("QWEN3_MODEL",
-                                            "/root/qwen3_0_6b_snapshot")),
+        cwd=REPO, env=dict(os.environ, APP_ENV="test"),
         stdout=srv_log, stderr=subprocess.STDOUT)
     up = False
     for _ in range(90):

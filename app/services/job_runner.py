@@ -399,7 +399,7 @@ class JobRunner:
         mets = self.db.list_metrics(self.job_id)
         final_adapter = None
         for a in arts:
-            if a["artifact_type"].startswith("adapter_"):
+            if a["type"].startswith("adapter_"):
                 final_adapter = a
         losses = [m.get("loss") for m in mets if m.get("loss") is not None]
         etts = [m.get("ett") for m in mets if m.get("ett") is not None]

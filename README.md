@@ -44,6 +44,9 @@ La Web UI **només parla amb l'Application API + SSE** — mai importa el core P
 
 ## Quick Start (instal·lació i arrencada)
 
+> 🚀 Nou? Comença per **[QUICKSTART.md](QUICKSTART.md)** (5 minuts) i consulta
+> **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** si alguna cosa falla.
+
 ```bash
 # 1. Instal·la (crea .venv, instal·la requirements, valida imports)
 ./install.sh

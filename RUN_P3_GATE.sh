@@ -13,8 +13,11 @@ step "1. pycompile app/"
 if python3 -m compileall -q app; then ok "pycompile"; else ko "pycompile" "rc=$?"; fi
 
 step "2. P3-01..30 (Phase 3 gate, CT112)"
+# R1-06: P3-01 fa un git clone REAL. El .git del CT112 és mínim (Phase 1,
+# sense arbre) → el creem amb un commit d'arbre perquè el clone funcioni.
+lxc-attach -n 112 -- bash -c 'cd /root/meshtrainer && git config user.email test@test 2>/dev/null; git config user.name test 2>/dev/null; git add -A 2>/dev/null; git commit -q -m "snapshot per clone" --allow-empty 2>/dev/null || true'
 RES=$(lxc-attach -n 112 -- bash -c \
-    'echo +800 > /proc/self/oom_score_adj; cd /root/meshtrainer && /opt/qwen3-venv/bin/python app/tests/p3_gate_tests.py 2>&1')
+    'echo +800 > /proc/self/oom_score_adj; cd /root/meshtrainer && P3_PACKAGE=/tmp/meshtrainer_p3r1.tar.gz /opt/qwen3-venv/bin/python app/tests/p3_gate_tests.py 2>&1')
 P3_EXIT=$?
 echo "$RES" | tail -4
 if [ "$P3_EXIT" = "0" ]; then ok "P3-01..30"; else ko "P3-01..30" "exit=$P3_EXIT"; fi

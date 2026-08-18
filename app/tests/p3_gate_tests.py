@@ -90,14 +90,17 @@ def main():
     check("P3-01 CLONE real (git clone, sense copytree)", clone_ok,
           "clone OK" if clone_ok else "clone FALLAT (repo sense arbre)")
     if clone_ok:
+        env_cl = dict(os.environ, PYTHON_BIN=sys.executable)
         r = subprocess.run(["bash", "install.sh"], cwd=f"{tmp}/mt",
-                           capture_output=True, text=True, timeout=600)
+                           capture_output=True, text=True, timeout=600,
+                           env=env_cl)
         ok_inst = r.returncode == 0 and "installed successfully" in r.stdout
         check("P3-01 fresh install (install.sh executa)", ok_inst,
               f"rc={r.returncode}")
         # P3-02 idempotent
         r2 = subprocess.run(["bash", "install.sh"], cwd=f"{tmp}/mt",
-                            capture_output=True, text=True, timeout=600)
+                            capture_output=True, text=True, timeout=600,
+                            env=env_cl)
         check("P3-02 idempotent install", r2.returncode == 0,
               f"rc={r2.returncode} (2a execució)")
         shutil.rmtree(tmp, ignore_errors=True)

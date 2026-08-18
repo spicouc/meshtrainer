@@ -1,9 +1,0 @@
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:00<01:13,  2.98it/s]Loading weights:  47%|████▋     | 103/219 [00:00<00:00, 302.77it/s]Loading weights:  74%|███████▎  | 161/219 [00:00<00:00, 319.16it/s]Loading weights:  95%|█████████▍| 208/219 [00:00<00:00, 344.06it/s]Loading weights: 100%|██████████| 219/219 [00:00<00:00, 296.32it/s]
-exemples: 3
-loss_before=5.3892 ppl_before=219.02
-  train 0: loss=5.4891
-  train 1: loss=5.8784
-  train 2: loss=3.9875
-loss_after=4.1022 ppl_after=60.48
-holdout: 2/5
-QUALITY_COMPLETE loss 5.3892 -> 4.1022 holdout 2/5

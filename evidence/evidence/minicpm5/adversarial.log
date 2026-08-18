@@ -1,61 +1,0 @@
-============================================================
- MINICPM5 ADVERSARIALS — MADV-01..16
-============================================================
-
---- Part 1: backend real (model) ---
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:00<01:47,  2.04it/s]Loading weights:  41%|████      | 89/219 [00:00<00:00, 183.15it/s]Loading weights:  58%|█████▊    | 126/219 [00:00<00:00, 220.55it/s]Loading weights:  74%|███████▍  | 162/219 [00:00<00:00, 243.59it/s]Loading weights:  89%|████████▉ | 196/219 [00:01<00:00, 225.99it/s]Loading weights: 100%|██████████| 219/219 [00:01<00:00, 185.49it/s]
-
-=== MADV-01: wrong base model ===
-  PASS MADV-01 wrong base model (adapter d'un altre backend) → REJECTED — ValueError: adapter schema mismatch: missing=['base_model.model.model.la
-
-=== MADV-02: wrong model revision ===
-  PASS MADV-02 identity conté revision pinnejada — revision=4e9de7a0...
-  PASS MADV-02 revision canviada → identitat diferent
-
-=== MADV-03: wrong adapter SHA ===
-  PASS MADV-03 wrong SHA → REJECTED — ValueError: adapter SHA mismatch: 5df80ee69db1 != ffffffffffff — REJECTE
-
-=== MADV-04: partial adapter ===
-  PASS MADV-04 partial → REJECTED — ValueError: adapter schema mismatch: missing=['base_model.model.model.la
-
-=== MADV-05: extra tensor ===
-  PASS MADV-05 extra tensor → REJECTED — ValueError: adapter schema mismatch: missing=[] extra=['phantom'] — REJE
-
-=== MADV-06: wrong shape ===
-  PASS MADV-06 wrong shape → REJECTED — ValueError: shape mismatch base_model.model.model.layers.0.mlp.down_proj
-
-=== MADV-07: wrong dtype ===
-  PASS MADV-07 wrong dtype → REJECTED — ValueError: dtype mismatch base_model.model.model.layers.0.mlp.down_proj
-
-=== MADV-12: same update_id / different payload ===
-  PASS MADV-12 mateix update_id + payload diferent → REJECTED — ValueError: request_sha mismatch — REJECTED
-
-=== MADV-15: stale adapter baseline ===
-  PASS MADV-15 (stale baseline) → delegat al Coordinator (Part 2)
-
---- Part 2: Coordinator (protocol) ---
-
-=== MADV-08: wrong shard ===
-  PASS MADV-08 assignment shard A creat
-  PASS MADV-08 worker amb shard incorrecte → REJECTED — ModelRecoveryError: shard_mismatch
-
-=== MADV-09: wrong shard manifest ===
-  PASS MADV-09 shard manifest incorrecte → REJECTED — ModelRecoveryError: shard_manifest_mismatch
-
-=== MADV-10: fake ETT ===
-  PASS MADV-10 ETT fals (999999 vs expected 90) → REJECTED — ModelRecoveryError: ett_mismatch
-
-=== MADV-11: stale revision ===
-  PASS MADV-11 stale revision detectada al validate → REJECTED — ModelRecoveryError: stale_revision
-  PASS MADV-11 ready_to_close (validate ja el va rebutjar) — validate ho va bloquejar abans
-
-=== MADV-13: expired lease ===
-  PASS MADV-13 activate sense lease (worker antic) → REJECTED — ModelRecoveryError: cannot_activate
-
-=== MADV-14: wrong session ===
-  PASS MADV-14 sessió/worker no registrat → REJECTED — ModelRecoveryError: unknown_assignment
-
-=== MADV-16: duplicate contribution ===
-  PASS MADV-16 duplicate: una SUPERSEDED i una ACTIVE — cid-dup=SUPERSEDED cid-dup2=ACTIVE
-
-=== MINICPM5 ADVERSARIALS (MADV): 19/19 PASS ===

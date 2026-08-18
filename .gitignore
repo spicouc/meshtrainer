@@ -82,3 +82,12 @@ qwen3_pilot_logs/
 minicpm5_output/
 *_output/
 *_pilot_logs/
+
+# Evidències de host (PIDs, paths /root, CT/VM IDs — mai públiques)
+evidence/
+evidence_phase1/
+evidence_phase2/
+*_logs_final/
+*.log
+*.out
+ENVIRONMENT.txt

@@ -1,36 +1,0 @@
-============================================================
- MINICPM5 ADAPTER ADVERSARIALS
-============================================================
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:00<01:24,  2.59it/s]Loading weights:  43%|████▎     | 94/219 [00:00<00:00, 252.40it/s]Loading weights:  68%|██████▊   | 149/219 [00:00<00:00, 310.47it/s]Loading weights:  91%|█████████ | 199/219 [00:00<00:00, 340.21it/s]Loading weights: 100%|██████████| 219/219 [00:00<00:00, 284.78it/s]
-  base_model_hash: 63d736ad11ad8f7e
-  adapter vàlid: 44878741 B, 336 tensors, sha=5df80ee69db1
-
-=== ADV-A01: wrong SHA ===
-  PASS ADV-A01 wrong SHA → REJECTED — ValueError: adapter SHA mismatch: 5df80ee69db1 != ffffffffffff — REJECTED
-
-=== ADV-A02: partial adapter ===
-  PASS ADV-A02 partial (missing tensor) → REJECTED — ValueError: adapter schema mismatch: missing=['base_model.model.model.layers.0.mlp
-
-=== ADV-A03: extra tensor ===
-  PASS ADV-A03 extra tensor → REJECTED — ValueError: adapter schema mismatch: missing=[] extra=['base_model.model.extra_pha
-
-=== ADV-A04: wrong shape ===
-  PASS ADV-A04 wrong shape → REJECTED — ValueError: shape mismatch base_model.model.model.layers.0.mlp.down_proj.lora_A.de
-
-=== ADV-A05: wrong dtype ===
-  PASS ADV-A05 wrong dtype → REJECTED — ValueError: dtype mismatch base_model.model.model.layers.0.mlp.down_proj
-
-=== ADV-A06: stale adapter ===
-  PASS ADV-A06 stale/alien adapter (dummy) → REJECTED — ValueError: adapter schema mismatch: missing=['base_model.model.model.layers.0.mlp
-
-=== ADV-A07: adapter d'un altre model ===
-  PASS ADV-A07 adapter altre model → REJECTED — ValueError: adapter schema mismatch: missing=['base_model.model.model.layers.0.mlp
-
-=== control positiu ===
-  PASS control: bundle vàlid carrega OK
-
-=== validate_adapter_schema (no muta el model) ===
-  PASS schema partial → REJECTED
-  PASS schema: model no mutat
-
-=== MINICPM5 ADAPTER ADVERSARIALS: 10/10 PASS ===

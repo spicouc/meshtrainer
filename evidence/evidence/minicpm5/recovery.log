@@ -1,101 +1,0 @@
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:05<19:38,  5.41s/it]Loading weights:   1%|          | 2/219 [00:05<08:20,  2.30s/it]Loading weights:  43%|████▎     | 95/219 [00:05<00:03, 32.67it/s]Loading weights:  58%|█████▊    | 126/219 [00:06<00:02, 34.89it/s]Loading weights:  67%|██████▋   | 147/219 [00:07<00:02, 34.42it/s]Loading weights:  74%|███████▍  | 162/219 [00:07<00:01, 34.89it/s]Loading weights:  79%|███████▉  | 173/219 [00:07<00:01, 34.32it/s]Loading weights:  83%|████████▎ | 182/219 [00:08<00:01, 35.02it/s]Loading weights:  86%|████████▋ | 189/219 [00:08<00:00, 36.07it/s]Loading weights:  89%|████████▉ | 196/219 [00:08<00:00, 34.82it/s]Loading weights:  92%|█████████▏| 202/219 [00:08<00:00, 33.07it/s]Loading weights:  96%|█████████▋| 211/219 [00:08<00:00, 34.34it/s]Loading weights: 100%|██████████| 219/219 [00:08<00:00, 24.48it/s]
-============================================================
-PART A: idempotència persistent (servidor mor -> mateixa resposta)
-============================================================
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]Loading weights:   0%|          | 1/219 [00:00<02:00,  1.81it/s]Loading weights:  72%|███████▏  | 157/219 [00:00<00:00, 315.07it/s]Loading weights: 100%|██████████| 219/219 [00:00<00:00, 276.41it/s]
-
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]
-Loading weights:   0%|          | 1/219 [00:00<01:30,  2.40it/s]
-Loading weights:  50%|█████     | 110/219 [00:00<00:00, 277.76it/s]
-Loading weights:  79%|███████▊  | 172/219 [00:00<00:00, 312.19it/s]
-Loading weights: 100%|██████████| 219/219 [00:01<00:00, 215.73it/s]
-[w-ida] 36491 REGISTERED base=63d736ad11ad8f7e
-[w-ida] CALIBRATED ett=45 expected=45
-[w-ida] ASSIGNMENT shard=shard-A
-[w-ida] LEASE ls_6c0fac4ea ttl=1786738264.489596
-[w-ida] step.open OK
-[w-ida] TRAINED 1 exemples ett=45 delta=95c3f0ac772ff0b0 7s
-[w-ida] APPLIED receipt=tr_2b7f844006134
-[w-ida] COMMITTED
-[w-ida] CHECKPOINT cid=tr_2b7f844006134
-[w-ida] CONTRIBUTION SUBMITTED tr_2b7f844006134 (validate+activate = ADMIN)
-[w-ida] RELEASED
-[w-ida] EVIDENCE /tmp/generic_recovery_out_minicpm5/evidence_w-ida.json
-WORKER_DONE w-ida
-worker w-ida exit=0 killed_by_sigkill=False
-  PASS worker S1 complet
-  PASS mini-flux S1 complet (open->submit->commit->upload->register) — cid=tr_6996e6c75 | open={'unit_id': 'unit-ida2', 'state': 'OPEN'} sub={'unit_id': 'unit-ida2', 'state': 'APPLIED', 'receipt': {'receipt_id': 'tr_6996e6c75eb744b8', 'receipt_nonce': 'fd59ae166a1373b11e3d061bdbb9b753', 'update_id': 'ida2-all', 'delta_id': '95c3f0ac772ff0b05712649d7de8bff0', 'run_id': 'run1', 'round_id': 'r1', 'assignment_id': 'asg-ida2', 'micro_unit_id': 'unit-ida2', 'worker_id': 'w-ida2', 'session_id': 'IDA2', 'delta_bundle_sha256': '95c3f0ac772ff0b05712649d7de8bff04155a7d2d301190a13cf5b5966d703ce', 'delta_bundle_byte_length': 44878741, 'effective_trainable_tokens': 45, 'loss': 1.0, 'base_model_hash': '63d736ad11ad8f7e5f2578bf7d50f1c74853b5814551fdc62249c12abeb19813', 'adapter_pre_hash': '1bd9e79dba870b05e18ef60e4537e6965a98c2c8ed3bd9391901eedffe789243', 'shard_manifest_sha': '6e0921f45ad173b7400d3896b115cc1a4b8a4869c828b68349a2c780f5465018', 'request_sha': '0000000000000000000000000000000000000000000000000000000000000000'}} com={'unit_id': 'unit-ida2', 'state': 'COMMITTED'} up={'contribution_id': 'tr_6996e6c75eb744b8', 'status': 'RECEIVED'} reg={'contribution_id': 'tr_6996e6c75eb744b8', 'status': 'RECEIVED'} estat_final=ACTIVE
-  [servidor S1 MOR — procés acabat]
-  [servidor S2 NOU — mateixa BD /tmp/generic_recovery_server_minicpm5.db]
-  PASS servidor reiniciat: retry exacte -> mateixa resposta byte-for-byte (open/submit/commit/upload/register)
-  PASS mateix lk + payload diferent -> REJECTED — idempotency_sha_mismatch
-============================================================
-PART B: crash real (SIGKILL després d'APPLIED) -> recovery
-============================================================
-
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]
-Loading weights:   0%|          | 1/219 [00:03<13:21,  3.68s/it]
-Loading weights:  68%|██████▊   | 148/219 [00:03<00:01, 55.23it/s]
-Loading weights: 100%|██████████| 219/219 [00:03<00:00, 55.66it/s]
-[w-nc] 36551 REGISTERED base=63d736ad11ad8f7e
-[w-nc] CALIBRATED ett=45 expected=45
-[w-nc] ASSIGNMENT shard=shard-A
-[w-nc] LEASE ls_bcd4ca3a7 ttl=1786738303.3248398
-[w-nc] step.open OK
-[w-nc] TRAINED 1 exemples ett=45 delta=95c3f0ac772ff0b0 6s
-[w-nc] APPLIED receipt=tr_daa90dadf5434
-[w-nc] COMMITTED
-[w-nc] CHECKPOINT cid=tr_daa90dadf5434
-[w-nc] CONTRIBUTION SUBMITTED tr_daa90dadf5434 (validate+activate = ADMIN)
-[w-nc] RELEASED
-[w-nc] EVIDENCE /tmp/generic_recovery_out_minicpm5/nocrash/evidence_w-nc.json
-WORKER_DONE w-nc
-worker w-nc exit=0 killed_by_sigkill=False
-  PASS no-crash: worker complet
-  no-crash adapter_post_hash=5d7f4299b6b04836
-
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]
-Loading weights:   0%|          | 1/219 [00:03<13:33,  3.73s/it]
-Loading weights:  89%|████████▉ | 195/219 [00:03<00:00, 71.07it/s]
-Loading weights: 100%|██████████| 219/219 [00:04<00:00, 52.60it/s]
-[w-cr] 36590 REGISTERED base=63d736ad11ad8f7e
-[w-cr] CALIBRATED ett=45 expected=45
-[w-cr] ASSIGNMENT shard=shard-A
-[w-cr] LEASE ls_db8965e81 ttl=1786738335.016417
-[w-cr] step.open OK
-[w-cr] TRAINED 1 exemples ett=45 delta=95c3f0ac772ff0b0 6s
-[w-cr] CRASH SIMULAT (train-only, sense HTTP)
-WORKER_DONE train-only
-worker w-cr exit=-9 killed_by_sigkill=True
-  PASS crash: procés MATAT amb SIGKILL (exit no-zero, no sys.exit(0)) — exit=-9
-  PASS journal persistent després del SIGKILL
-
-Loading weights:   0%|          | 0/219 [00:00<?, ?it/s]
-Loading weights:   0%|          | 1/219 [00:03<12:31,  3.45s/it]
-Loading weights:  59%|█████▉    | 130/219 [00:03<00:01, 49.08it/s]
-Loading weights:  74%|███████▍  | 163/219 [00:04<00:01, 45.88it/s]
-Loading weights:  84%|████████▎ | 183/219 [00:05<00:00, 44.59it/s]
-Loading weights:  90%|████████▉ | 197/219 [00:05<00:00, 45.80it/s]
-Loading weights:  96%|█████████▋| 211/219 [00:05<00:00, 49.98it/s]
-Loading weights: 100%|██████████| 219/219 [00:05<00:00, 40.01it/s]
-[w-cr] 36625 REGISTERED base=63d736ad11ad8f7e
-[w-cr] CALIBRATED ett=45 expected=45
-[w-cr] ASSIGNMENT shard=shard-A
-[w-cr] LEASE RENEWED ls_db8965e81
-[w-cr] LEASE ls_db8965e81 ttl=1786738362.2096112
-[w-cr] step.open OK
-[w-cr] pas 0: RECOVERED w-cr-0
-[w-cr] TRAINED 1 exemples ett=45 delta=95c3f0ac772ff0b0 1s
-[w-cr] APPLIED receipt=tr_4f046bf7c0c34
-[w-cr] COMMITTED
-[w-cr] CHECKPOINT cid=tr_4f046bf7c0c34
-[w-cr] CONTRIBUTION SUBMITTED tr_4f046bf7c0c34 (validate+activate = ADMIN)
-[w-cr] RELEASED
-[w-cr] EVIDENCE /tmp/generic_recovery_out_minicpm5/crash/evidence_w-cr.json
-WORKER_DONE w-cr
-worker w-cr exit=0 killed_by_sigkill=False
-  PASS recovery: worker nou (PID diferent) completa el flux
-  PASS recovery: crash_pid != recovery_pid — 36590 -> 36625
-  PASS adapter_post_no_crash == adapter_post_recovered (hash exacte) — nc=5d7f4299b6b04836 rec=5d7f4299b6b04836
-  PASS recovery: tots els passos APPLIED (cap COMMITTED perdut) — applied=1
-=== GENERIC RECOVERY TESTS (minicpm5): 11/11 PASS ===

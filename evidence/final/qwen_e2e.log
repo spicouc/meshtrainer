@@ -1,123 +1,0 @@
-[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<01:13,  4.23it/s]Loading weights:  43%|████▎     | 133/311 [00:00<00:00, 480.61it/s]Loading weights:  72%|███████▏  | 224/311 [00:00<00:00, 611.47it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 570.15it/s]
-adapter_0 e0877337c987bb87 base=0e7b2917757b5bb1 backend=qwen3
-Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<00:59,  5.20it/s]Loading weights:  44%|████▍     | 137/311 [00:00<00:00, 569.06it/s]Loading weights:  74%|███████▍  | 230/311 [00:00<00:00, 691.47it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 639.45it/s]
-Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<01:26,  3.57it/s]Loading weights:  55%|█████▍    | 170/311 [00:00<00:00, 572.46it/s]Loading weights:  86%|████████▋ | 269/311 [00:00<00:00, 661.28it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 572.38it/s]
-  [coord] assignment asg-A -> shard-A expected_ett=171
-Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<01:36,  3.23it/s]Loading weights:  49%|████▉     | 153/311 [00:00<00:00, 471.73it/s]Loading weights:  76%|███████▌  | 237/311 [00:00<00:00, 584.03it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 520.89it/s]
-  [coord] assignment asg-B -> shard-B expected_ett=156
-  PASS coordinator: round r1 creada (model_rounds)
-  PASS coordinator: assignments A/B creades
-[worker:w-A] [w-A] 30081 REGISTERED base=0e7b2917757b5bb1
-[worker:w-A] [w-A] CALIBRATED ett=171 expected=171
-[worker:w-A] [w-A] ASSIGNMENT shard=shard-A
-[worker:w-A] [w-A] LEASE ls_2c5d7f28e ttl=1786703138.316627
-[worker:w-A] [w-A] step.open OK
-[worker:w-A] [w-A] TRAINED 4 exemples ett=171 delta=94a5fd7256d8ffa1 30s
-[worker:w-A] [w-A] APPLIED receipt=tr_e8ac2369accd4
-[worker:w-A] [w-A] COMMITTED
-[worker:w-A] [w-A] CHECKPOINT cid=tr_e8ac2369accd4
-[worker:w-A] [w-A] CONTRIBUTION SUBMITTED tr_e8ac2369accd4 (validate+activate = ADMIN)
-[worker:w-A] [w-A] RELEASED
-[worker:w-A] [w-A] EVIDENCE /root/meshtrainer/qwen_distributed_output/evidence_w-A.json
-[worker:w-A] WORKER_DONE w-A
-[worker:w-A] [transformers] `torch_dtype` is deprecated! Use `dtype` instead!
-[worker:w-A] Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]
-[worker:w-A] Loading weights:   0%|          | 1/311 [00:00<01:03,  4.87it/s]
-[worker:w-A] Loading weights:  53%|█████▎    | 164/311 [00:00<00:00, 667.58it/s]
-[worker:w-A] Loading weights:  83%|████████▎ | 259/311 [00:00<00:00, 769.58it/s]
-[worker:w-A] Loading weights: 100%|██████████| 311/311 [00:00<00:00, 682.39it/s]
-  PASS worker A (subprocess, shard A)
-[worker:w-B] [w-B] 30122 REGISTERED base=0e7b2917757b5bb1
-[worker:w-B] [w-B] CALIBRATED ett=156 expected=156
-[worker:w-B] [w-B] ASSIGNMENT shard=shard-B
-[worker:w-B] [w-B] LEASE ls_35d6243a8 ttl=1786703177.106191
-[worker:w-B] [w-B] step.open OK
-[worker:w-B] [w-B] TRAINED 4 exemples ett=156 delta=943a5bb999eea3e8 87s
-[worker:w-B] [w-B] APPLIED receipt=tr_6ebcf35c06f24
-[worker:w-B] [w-B] COMMITTED
-[worker:w-B] [w-B] CHECKPOINT cid=tr_6ebcf35c06f24
-[worker:w-B] [w-B] CONTRIBUTION SUBMITTED tr_6ebcf35c06f24 (validate+activate = ADMIN)
-[worker:w-B] [w-B] RELEASED
-[worker:w-B] [w-B] EVIDENCE /root/meshtrainer/qwen_distributed_output/evidence_w-B.json
-[worker:w-B] WORKER_DONE w-B
-[worker:w-B] [transformers] `torch_dtype` is deprecated! Use `dtype` instead!
-[worker:w-B] Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]
-[worker:w-B] Loading weights:   0%|          | 1/311 [00:00<01:01,  5.03it/s]
-[worker:w-B] Loading weights:  42%|████▏     | 131/311 [00:00<00:00, 543.18it/s]
-[worker:w-B] Loading weights:  70%|███████   | 219/311 [00:00<00:00, 668.62it/s]
-[worker:w-B] Loading weights: 100%|██████████| 311/311 [00:00<00:00, 624.58it/s]
-  PASS worker B (subprocess, shard B)
-  PASS mateix base_model_hash (A==B)
-  PASS shard manifests diferents
-  PASS worker_ids diferents
-  PASS sessions diferents
-  PASS leases diferents
-  PASS ETT_A != ETT_B — 171 vs 156
-  [admin] contribution validate+activate tr_e8ac2369accd4
-  [admin] contribution validate+activate tr_6ebcf35c06f24
-  PASS ready_to_close: quòrum exacte 2/2 (r1)
-  PASS FedAvg Coordinator: adapter_1 (r1) — sha=c5263edb34b75d53 ett=327
-  PASS oracle == FedAvg Coordinator (r1, tensor per tensor) — maxdiff=0.00e+00
-Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<04:35,  1.12it/s]Loading weights:  88%|████████▊ | 274/311 [00:00<00:00, 375.49it/s]Loading weights: 100%|██████████| 311/311 [00:01<00:00, 300.26it/s]
-Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<02:20,  2.21it/s]Loading weights:   1%|          | 2/311 [00:00<01:15,  4.08it/s]Loading weights:  79%|███████▉  | 246/311 [00:00<00:00, 622.11it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 414.00it/s]
-  [coord] assignment asg-A2 -> shard-A expected_ett=93
-Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<02:23,  2.15it/s]Loading weights:  62%|██████▏   | 193/311 [00:00<00:00, 447.66it/s]Loading weights:  97%|█████████▋| 301/311 [00:00<00:00, 537.49it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 423.78it/s]
-  [coord] assignment asg-B2 -> shard-B expected_ett=75
-[worker:w-A2] [w-A2] 30210 REGISTERED base=0e7b2917757b5bb1
-[worker:w-A2] [w-A2] CALIBRATED ett=93 expected=93
-[worker:w-A2] [w-A2] ASSIGNMENT shard=shard-A
-[worker:w-A2] [w-A2] LEASE ls_30506ded5 ttl=1786703287.704216
-[worker:w-A2] [w-A2] step.open OK
-[worker:w-A2] [w-A2] TRAINED 2 exemples ett=93 delta=376307f4c811a9f1 16s
-[worker:w-A2] [w-A2] APPLIED receipt=tr_003ca8e851434
-[worker:w-A2] [w-A2] COMMITTED
-[worker:w-A2] [w-A2] CHECKPOINT cid=tr_003ca8e851434
-[worker:w-A2] [w-A2] CONTRIBUTION SUBMITTED tr_003ca8e851434 (validate+activate = ADMIN)
-[worker:w-A2] [w-A2] RELEASED
-[worker:w-A2] [w-A2] EVIDENCE /root/meshtrainer/qwen_distributed_output/evidence_w-A2.json
-[worker:w-A2] WORKER_DONE w-A2
-[worker:w-A2] [transformers] `torch_dtype` is deprecated! Use `dtype` instead!
-[worker:w-A2] Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]
-[worker:w-A2] Loading weights:   0%|          | 1/311 [00:00<01:56,  2.67it/s]
-[worker:w-A2] Loading weights:  55%|█████▍    | 170/311 [00:00<00:00, 458.67it/s]
-[worker:w-A2] Loading weights:  85%|████████▍ | 263/311 [00:00<00:00, 567.63it/s]
-[worker:w-A2] Loading weights: 100%|██████████| 311/311 [00:00<00:00, 472.66it/s]
-  PASS worker A2 (round 2)
-[worker:w-B2] [w-B2] 30250 REGISTERED base=0e7b2917757b5bb1
-[worker:w-B2] [w-B2] CALIBRATED ett=75 expected=75
-[worker:w-B2] [w-B2] ASSIGNMENT shard=shard-B
-[worker:w-B2] [w-B2] LEASE ls_7677999c3 ttl=1786703313.0492568
-[worker:w-B2] [w-B2] step.open OK
-[worker:w-B2] [w-B2] TRAINED 2 exemples ett=75 delta=aa6acb4e28c633bd 14s
-[worker:w-B2] [w-B2] APPLIED receipt=tr_7aa3b0e6e4e34
-[worker:w-B2] [w-B2] COMMITTED
-[worker:w-B2] [w-B2] CHECKPOINT cid=tr_7aa3b0e6e4e34
-[worker:w-B2] [w-B2] CONTRIBUTION SUBMITTED tr_7aa3b0e6e4e34 (validate+activate = ADMIN)
-[worker:w-B2] [w-B2] RELEASED
-[worker:w-B2] [w-B2] EVIDENCE /root/meshtrainer/qwen_distributed_output/evidence_w-B2.json
-[worker:w-B2] WORKER_DONE w-B2
-[worker:w-B2] [transformers] `torch_dtype` is deprecated! Use `dtype` instead!
-[worker:w-B2] Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]
-[worker:w-B2] Loading weights:   0%|          | 1/311 [00:00<01:26,  3.56it/s]
-[worker:w-B2] Loading weights:  62%|██████▏   | 193/311 [00:00<00:00, 645.31it/s]
-[worker:w-B2] Loading weights:  98%|█████████▊| 304/311 [00:00<00:00, 750.36it/s]
-[worker:w-B2] Loading weights: 100%|██████████| 311/311 [00:00<00:00, 617.66it/s]
-  PASS worker B2 (round 2)
-  PASS round 2: adapter_pre_hash_A == adapter_pre_hash_B (adapter_1) — 20891fb37f760c81
-  [admin] contribution validate+activate tr_003ca8e851434
-  [admin] contribution validate+activate tr_7aa3b0e6e4e34
-  PASS ready_to_close: quòrum exacte 2/2 (r2)
-  PASS FedAvg Coordinator: adapter_2 (r2) — sha=103b7144ee07a46f
-  PASS oracle == FedAvg Coordinator (r2, tensor per tensor) — maxdiff=0.00e+00
-{
-  "backend": "qwen3",
-  "adapter_0_sha": "e0877337c987bb873653b22f0016bc8b1360152956f0a28b09fcdbb26ef1ff5e",
-  "adapter_1_sha": "c5263edb34b75d533be51207f93376dbf782b437e867e76caf64e53443d8d770",
-  "adapter_2_sha": "103b7144ee07a46f25a49d9aa122ddca46f683a86edcd4c5883246dea0e24493",
-  "ett_a": 171,
-  "ett_b": 156,
-  "maxdiff_oracle_r1": 0.0,
-  "maxdiff_oracle_r2": 0.0
-}
-=== GENERIC DISTRIBUTED RUN (qwen3): 19/19 PASS ===

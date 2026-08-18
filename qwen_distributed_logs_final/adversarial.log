@@ -1,33 +1,0 @@
-[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:   0%|          | 1/311 [00:00<01:05,  4.77it/s]Loading weights:  41%|████      | 126/311 [00:00<00:00, 508.22it/s]Loading weights:  68%|██████▊   | 211/311 [00:00<00:00, 629.63it/s]Loading weights:  93%|█████████▎| 290/311 [00:00<00:00, 678.03it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 583.50it/s]
-adapter_0 e0877337c987bb87 base=0e7b2917757b5bb1 backend=qwen3
-worker w-A exit=0 (75s)
-  PASS worker A (subprocess, shard A)
-worker w-B exit=0 (75s)
-  PASS worker B (subprocess, shard B)
-  PASS mateix base_model_hash (A==B)
-  PASS shard manifests diferents
-  PASS worker_ids diferents
-  PASS sessions diferents
-  PASS leases diferents
-  PASS ETT_A != ETT_B — 441 vs 395
-  PASS FedAvg Coordinator: adapter_1 (r1) — sha=e5f6bc7ce9a3c755 ett=836
-  PASS oracle == FedAvg Coordinator (r1, tensor per tensor) — maxdiff=0.00e+00
-worker w-A2 exit=0 (202s)
-  PASS worker A2 (round 2)
-worker w-B2 exit=0 (197s)
-  PASS worker B2 (round 2)
-  PASS round 2: adapter_pre_hash_A == adapter_pre_hash_B (adapter_1) — 543022bca1bd8206
-  PASS FedAvg Coordinator: adapter_2 (r2) — sha=e4a36bbd017a7b06
-  PASS oracle == FedAvg Coordinator (r2, tensor per tensor) — maxdiff=0.00e+00
-{
-  "backend": "qwen3",
-  "adapter_0_sha": "e0877337c987bb873653b22f0016bc8b1360152956f0a28b09fcdbb26ef1ff5e",
-  "adapter_1_sha": "e5f6bc7ce9a3c7553fd64d61faf0277fa7b33f3e61de29cef8fd8e6d4fa8224d",
-  "adapter_2_sha": "e4a36bbd017a7b064201de715c34a641ea52d6376eb374d16c239d246278afa4",
-  "ett_a": 441,
-  "ett_b": 395,
-  "maxdiff_oracle_r1": 0.0,
-  "maxdiff_oracle_r2": 0.0
-}
-=== GENERIC DISTRIBUTED RUN (qwen3): 15/15 PASS ===

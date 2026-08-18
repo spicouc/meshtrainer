@@ -146,13 +146,18 @@ class AppDB:
 
     # ── helpers ──────────────────────────────────────────────────────────
     def _rows(self, sql: str, params: tuple = ()) -> list[dict]:
-        cur = self._conn.execute(sql, params)
-        return [dict(r) for r in cur.fetchall()]
+        # lock OBLIGATORI: la mateixa connexió és compartida entre threads
+        # (SSE long-poll + REST + JobRunner procés) — sense lock, sqlite3
+        # llança "bad parameter or other API misuse" en accés concurrent.
+        with self._lock:
+            cur = self._conn.execute(sql, params)
+            return [dict(r) for r in cur.fetchall()]
 
     def _one(self, sql: str, params: tuple = ()) -> Optional[dict]:
-        cur = self._conn.execute(sql, params)
-        r = cur.fetchone()
-        return dict(r) if r else None
+        with self._lock:
+            cur = self._conn.execute(sql, params)
+            r = cur.fetchone()
+            return dict(r) if r else None
 
     def _exec(self, sql: str, params: tuple = ()) -> None:
         with self._lock:

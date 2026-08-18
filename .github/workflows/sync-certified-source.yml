@@ -1,0 +1,41 @@
+name: Sync certified MeshTrainer source
+
+on:
+  push:
+    branches:
+      - agent/update-project-status-phase1
+    paths:
+      - '_sync/meshtrainer_certified_source_sync.tar.gz'
+      - '.github/workflows/sync-certified-source.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/update-project-status-phase1
+          fetch-depth: 0
+      - name: Verify and extract certified source bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'e3274b2840253adef11715e7a8a8dadc02d983285feae376d9fd4393dbc070d1  _sync/meshtrainer_certified_source_sync.tar.gz' | sha256sum -c -
+          tar -xzf _sync/meshtrainer_certified_source_sync.tar.gz -C .
+          rm -f _sync/meshtrainer_certified_source_sync.tar.gz
+          rmdir _sync 2>/dev/null || true
+          mv SOURCE_SHA256.txt CERTIFIED_SOURCE_MANIFEST.sha256
+          rm -f SOURCE_FILES.txt
+          rm -f .github/workflows/sync-certified-source.yml
+      - name: Commit exact certified source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Sync certified MeshTrainer source through Product MVP Phase 1'
+          git push origin HEAD:agent/update-project-status-phase1

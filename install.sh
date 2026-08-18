@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
-# MeshTrainer installer — Phase 3 (v1.4.0)
+# MeshTrainer installer — Phase 3 R1 (v1.4.0)
 # Simple, auditable, idempotent. No root required, no silent system changes.
+# PREPARA TOT EL NECESSARI PER ENTRENAR (R1-03):
+#   - Python compatible
+#   - .venv (o reutilitza PYTHON_BIN si es passa explícit)
+#   - requirements-app.txt (FastAPI/API)
+#   - requirements-training.txt (torch/transformers/peft — backends)
+# NO descarrega models sense consentiment.
 set -euo pipefail
 
 # ── helpers ────────────────────────────────────────────────────────────────
@@ -24,34 +30,47 @@ case "$PY_VER" in
     *) die "Python $PY_VER no compatible — cal 3.11+." ;;
 esac
 
-# ── 2. crea .venv (idempotent) ──────────────────────────────────────────────
+# ── 2. venv: crea .venv, o reutilitza PYTHON_BIN si és explícit ────────────
 VENV_DIR="$SCRIPT_DIR/.venv"
-if [ ! -x "$VENV_DIR/bin/python" ]; then
+if [ "${PYTHON_BIN}" != "python3" ]; then
+    # PYTHON_BIN explícit (ex: entorn ja preparat): no creem .venv nou
+    VENV_PY="$PYTHON_BIN"
+    ok "Reutilitzant Python explícit: $VENV_PY"
+elif [ ! -x "$VENV_DIR/bin/python" ]; then
     info "Creant entorn virtual a .venv …"
     "$PYTHON_BIN" -m venv "$VENV_DIR"
+    VENV_PY="$VENV_DIR/bin/python"
     ok "Entorn virtual creat"
 else
+    VENV_PY="$VENV_DIR/bin/python"
     ok "Entorn virtual ja existeix (idempotent)"
 fi
-VENV_PY="$VENV_DIR/bin/python"
 
-# ── 3. instal·la requirements (idempotent, offline-friendly si ja hi són) ──
-if [ -f requirements-app.txt ]; then
-    info "Instal·lant requirements-app.txt …"
-    "$VENV_PY" -m pip install --quiet --disable-pip-version-check -r requirements-app.txt
-    ok "Requirements instal·lats"
-elif [ -f requirements.txt ]; then
-    info "Instal·lant requirements.txt …"
-    "$VENV_PY" -m pip install --quiet --disable-pip-version-check -r requirements.txt
-    ok "Requirements instal·lats"
-else
-    die "No trobo requirements-app.txt ni requirements.txt."
+# ── 3. instal·la requirements (app + training, idempotent) ─────────────────
+REQS=()
+[ -f requirements-app.txt ] && REQS+=("requirements-app.txt")
+[ -f requirements-training.txt ] && REQS+=("requirements-training.txt")
+if [ "${#REQS[@]}" = "0" ] && [ -f requirements.txt ]; then
+    REQS+=("requirements.txt")
 fi
+if [ "${#REQS[@]}" = "0" ]; then
+    die "No trobo requirements-app.txt / requirements-training.txt / requirements.txt."
+fi
+for R in "${REQS[@]}"; do
+    info "Instal·lant $R …"
+    "$VENV_PY" -m pip install --quiet --disable-pip-version-check -r "$R"
+    ok "$R instal·lat"
+done
 
-# ── 4. valida imports crítics ───────────────────────────────────────────────
-info "Validant imports …"
-"$VENV_PY" -c "import fastapi, pydantic, uvicorn; print('imports OK:', 'fastapi', fastapi.__version__, '/ pydantic', pydantic.__version__)" \
-    || die "Validació d'imports fallada — reinstal·la requirements."
+# ── 4. valida imports crítics (app + training) ─────────────────────────────
+info "Validant imports (app + training) …"
+"$VENV_PY" -c "import fastapi, pydantic, uvicorn" \
+    || die "Validació d'imports de l'app fallada — revisa requirements-app.txt."
+if [ -f requirements-training.txt ]; then
+    "$VENV_PY" -c "import torch, transformers, peft" \
+        || die "Validació d'imports de training fallada — revisa requirements-training.txt (instal·la amb --skip-training si no vols entrenar encara)."
+    ok "Imports de training OK (torch/transformers/peft)"
+fi
 ok "Imports validats"
 
 # ── 5. crea directoris runtime (mai al repo, sota storage/) ────────────────

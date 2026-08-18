@@ -1,0 +1,7 @@
+# MeshTrainer — dependències de TRAINING (backends certificats).
+# Instal·lades per install.sh perquè Qwen3/MiniCPM5 estiguin AVAILABLE
+# quan el model local existeixi (Phase 3 R1-03).
+# Versions mínimes alineades amb la certificació del core (b146723/a52580c).
+torch>=2.2.0
+transformers>=4.40.0
+peft>=0.10.0

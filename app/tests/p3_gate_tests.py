@@ -51,46 +51,44 @@ def main():
     os.environ.pop("SSL_CERT_FILE", None)
     os.environ.pop("SSL_CERT_DIR", None)
 
-    # llança el servidor de tests (fixture) si no hi ha res a BASE
+    # llança el servidor de tests (fixture) si no hi ha res a BASE;
+    # espera fins a 120s (els imports de torch/transformers triguen)
     srv = None
-    try:
-        urllib.request.urlopen(BASE + "/api/health", timeout=2)
-    except Exception:
+    healthy = False
+    for _ in range(6):
+        try:
+            urllib.request.urlopen(BASE + "/api/health", timeout=2)
+            healthy = True
+            break
+        except Exception:
+            time.sleep(1)
+    if not healthy:
         env = dict(os.environ, APP_ENV="test")
         srv = subprocess.Popen(
             [sys.executable, "-m", "uvicorn", "app.api.main:app",
              "--host", "127.0.0.1", "--port", "8040"],
             cwd=REPO, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        for _ in range(60):
+        for _ in range(120):
             try:
-                urllib.request.urlopen(BASE + "/api/health", timeout=3)
+                urllib.request.urlopen(BASE + "/api/health", timeout=2)
                 break
             except Exception:
                 time.sleep(1)
 
-    # ── P3-01 fresh install ─────────────────────────────────────────────
+    # ── P3-01 fresh CLONE real (R1-06: mai copytree enganyós) ──────────
     tmp = "/tmp/p3_install_test"
     if os.path.exists(tmp):
         shutil.rmtree(tmp)
     os.makedirs(tmp)
-    # simula un clone: clona la branca de treball actual (Phase 3);
-    # si el repo no té .git, o el .git és mínim (sense arbre), copia fitxers
-    import shutil as _sh
+    branch = subprocess.run(["git", "branch", "--show-current"], cwd=REPO,
+                            capture_output=True, text=True).stdout.strip() or "main"
     if os.path.isdir(os.path.join(REPO, ".git")):
-        subprocess.run(["git", "clone", "--depth", "1", "-b",
-                        subprocess.run(["git", "branch", "--show-current"], cwd=REPO,
-                                       capture_output=True, text=True).stdout.strip() or "main",
+        subprocess.run(["git", "clone", "--depth", "1", "-b", branch,
                         REPO, tmp + "/mt"],
                        capture_output=True, timeout=120)
-    if not os.path.exists(f"{tmp}/mt/install.sh"):
-        if os.path.exists(f"{tmp}/mt"):
-            _sh.rmtree(f"{tmp}/mt")
-        _sh.copytree(REPO, tmp + "/mt",
-                     ignore=_sh.ignore_patterns("app_storage", "__pycache__",
-                                                "*.pyc", ".venv"))
     clone_ok = os.path.exists(f"{tmp}/mt/install.sh")
-    check("P3-01 fresh install (clone + install.sh present)", clone_ok,
-          "clone OK" if clone_ok else "clone fallat")
+    check("P3-01 CLONE real (git clone, sense copytree)", clone_ok,
+          "clone OK" if clone_ok else "clone FALLAT (repo sense arbre)")
     if clone_ok:
         r = subprocess.run(["bash", "install.sh"], cwd=f"{tmp}/mt",
                            capture_output=True, text=True, timeout=600)
@@ -103,6 +101,111 @@ def main():
         check("P3-02 idempotent install", r2.returncode == 0,
               f"rc={r2.returncode} (2a execució)")
         shutil.rmtree(tmp, ignore_errors=True)
+
+    # ── P3-01R FRESH PRODUCT INSTALL (R1-04): package pur → job COMPLET ─
+    pkg = os.environ.get("P3_PACKAGE", "")
+    if pkg and os.path.isfile(pkg):
+        box = "/tmp/p3_fresh_product"
+        if os.path.exists(box):
+            shutil.rmtree(box)
+        os.makedirs(box)
+        import tarfile
+        with tarfile.open(pkg) as tf:
+            tf.extractall(box)
+        # 1. core present al package
+        core_ok = all(os.path.exists(os.path.join(box, f))
+                      for f in ("model_round_coordinator.py", "model_worker.py",
+                                "training_http_server.py", "training_backend.py",
+                                "adapter_codec.py", "rc5_4_leases.py",
+                                "backends/qwen3_backend.py",
+                                "backends/minicpm5_backend.py",
+                                "backends/dummy_backend.py"))
+        check("P3-01R core present al package", core_ok, pkg)
+        if core_ok:
+            # 2. install (PYTHON_BIN reutilitzat — deps ja al venv)
+            env_inst = dict(os.environ, PYTHON_BIN=sys.executable)
+            ri = subprocess.run(["bash", "install.sh"], cwd=box,
+                                capture_output=True, text=True, timeout=600,
+                                env=env_inst)
+            check("P3-01R install.sh", ri.returncode == 0 and
+                  "installed successfully" in ri.stdout, f"rc={ri.returncode}")
+            # 3. start + health
+            env_l = dict(os.environ, PYTHON_BIN=sys.executable,
+                         APP_PORT="8043", APP_ENV="test")
+            rs = subprocess.run([os.path.join(box, "meshtrainer"), "start"],
+                                cwd=box, capture_output=True, text=True,
+                                timeout=180, env=env_l)
+            check("P3-01R launcher start", rs.returncode == 0 and
+                  "en marxa" in rs.stdout, f"rc={rs.returncode}")
+            # 4. /api/backends sense ModuleNotFoundError (R1-02)
+            try:
+                d = json.loads(urllib.request.urlopen(
+                    "http://127.0.0.1:8043/api/backends", timeout=30).read())
+                bks = d.get("data", [])
+                ids = [b.get("id") for b in bks]
+                ok_backends = ("qwen3" in ids or "minicpm5" in ids) and \
+                              "internal.error" not in str(d)
+                check("P3-01R backends descoberts", ok_backends,
+                      f"ids={ids}")
+            except Exception as e:
+                check("P3-01R backends descoberts", False, str(e)[:80])
+            # 5. dataset + job dummy COMPLET
+            try:
+                with open("/tmp/p3_fresh_ds.jsonl", "w") as f:
+                    for i in range(6):
+                        f.write(json.dumps(
+                            {"instruction": f"Q{i}", "response": "A"}) + "\n")
+                import httpx
+                with open("/tmp/p3_fresh_ds.jsonl", "rb") as f:
+                    rr = httpx.post("http://127.0.0.1:8043/api/datasets/upload",
+                                    files={"file": ("t.jsonl", f)}, timeout=60)
+                dsid = rr.json()["data"]["dataset_id"]
+                urllib.request.urlopen(urllib.request.Request(
+                    f"http://127.0.0.1:8043/api/datasets/{dsid}/validate",
+                    method="POST"), timeout=30)
+                job = json.loads(urllib.request.urlopen(urllib.request.Request(
+                    "http://127.0.0.1:8043/api/jobs", method="POST",
+                    data=json.dumps({"name": "p3-01r", "backend_id": "dummy",
+                                     "model_id": "dummy", "dataset_id": dsid,
+                                     "training": {"rounds": 1},
+                                     "workers_cfg": {"workers": 2,
+                                                     "concurrency": 1}}).encode(),
+                    headers={"Content-Type": "application/json"}), timeout=30).read())["data"]
+                jid = job["job_id"]
+                urllib.request.urlopen(urllib.request.Request(
+                    f"http://127.0.0.1:8043/api/jobs/{jid}/validate",
+                    method="POST"), timeout=30)
+                urllib.request.urlopen(urllib.request.Request(
+                    f"http://127.0.0.1:8043/api/jobs/{jid}/start",
+                    method="POST"), timeout=30)
+                st = ""
+                for _ in range(90):
+                    st = json.loads(urllib.request.urlopen(
+                        f"http://127.0.0.1:8043/api/jobs/{jid}",
+                        timeout=30).read())["data"]["status"]
+                    if st in ("COMPLETED", "FAILED", "CANCELLED"):
+                        break
+                    time.sleep(2)
+                arts = json.loads(urllib.request.urlopen(
+                    f"http://127.0.0.1:8043/api/jobs/{jid}/artifacts",
+                    timeout=30).read())["data"]
+                art_ok = st == "COMPLETED" and any(
+                    a["type"].startswith("adapter_") for a in arts) and any(
+                    a["type"] == "training_summary.json" for a in arts)
+                check("P3-01R job dummy COMPLET + artifacts", art_ok,
+                      f"status={st} arts={len(arts)}")
+            except Exception as e:
+                check("P3-01R job dummy COMPLET + artifacts", False,
+                      str(e)[:80])
+            # 6. stop
+            rp = subprocess.run([os.path.join(box, "meshtrainer"), "stop"],
+                                cwd=box, capture_output=True, text=True,
+                                timeout=60, env=env_l)
+            check("P3-01R launcher stop", rp.returncode == 0,
+                  f"rc={rp.returncode}")
+    else:
+        check("P3-01R fresh product install", False,
+              "P3_PACKAGE no definit (gate runner l'ha de passar)")
 
     # ── P3-03..05 launcher ──────────────────────────────────────────────
     # usa el repo local (que ja té .venv al CT112)
@@ -234,7 +337,7 @@ def main():
           'HIDDEN_BACKENDS = {"dummy"} if APP_ENV == "production"' in cfg,
           "config oculta dummy a production")
 
-    # ── P3-27 no host hardcodes (només codi de producte, no tests) ──────
+    # ── P3-27 no host hardcodes (R1-08: patrons ampliats, només producte) ─
     src_all = ""
     for root, _dirs, files in os.walk(os.path.join(REPO, "app")):
         if root.rstrip("/").endswith("app/tests"):
@@ -248,10 +351,20 @@ def main():
                     src_all += open(p, encoding="utf-8", errors="ignore").read()
                 except Exception:
                     pass
-
+    # patrons prohibits al source de producte (R1-08)
+    HARDCODES = [
+        r"/root/", r"CT11[0-9]", r"Mandalor", r"Dagobah", r"\bpve\b",
+        r"192\.168\.", r"10\.\d+\.\d+\.\d+", r"100\.\d+\.\d+\.\d+",
+    ]
+    hits = []
+    for pat in HARDCODES:
+        m = re.search(pat, src_all)
+        if m:
+            hits.append(pat)
     check("P3-27 no host hardcodes",
-          not re.search(r"Mandalor|Dagobah|CT11[0-9]|192\.168\.|/root/qwen|/root/minicpm|pve-1", src_all),
-          "cap motiu de laboratori al source")
+          not hits,
+          "cap motiu de laboratori al source" if not hits
+          else f"HARDCODES TROBATS: {hits}")
 
     check("P3-28 local bind default",
           'APP_HOST = str(_cfg_get(("host",), "127.0.0.1"))' in cfg,
@@ -264,11 +377,57 @@ def main():
     check("P3-29 secret scan", len(secrets) == 0,
           f"{len(secrets)} secrets al source" if secrets else "0 secrets")
 
-    # ── P3-30 fresh clone launch (README literal) ───────────────────────
-    readme = open(os.path.join(REPO, "README.md")).read()
-    check("P3-30 fresh clone launch (README amb Quick Start)",
-          "install.sh" in readme and "meshtrainer start" in readme,
-          "README documenta install + launcher")
+    # ── P3-30 FRESH LAUNCH REAL (R1-05): extracció → install → start →
+    #    health → UI → stop. No busca strings al README.
+    pkg30 = os.environ.get("P3_PACKAGE", "")
+    if pkg30 and os.path.isfile(pkg30):
+        box30 = "/tmp/p3_fresh_launch"
+        if os.path.exists(box30):
+            shutil.rmtree(box30)
+        os.makedirs(box30)
+        import tarfile
+        with tarfile.open(pkg30) as tf:
+            tf.extractall(box30)
+        env30 = dict(os.environ, PYTHON_BIN=sys.executable,
+                     APP_PORT="8044", APP_ENV="test")
+        # install
+        ri30 = subprocess.run(["bash", "install.sh"], cwd=box30,
+                              capture_output=True, text=True, timeout=600,
+                              env=env30)
+        inst_ok = ri30.returncode == 0 and "installed successfully" in ri30.stdout
+        # start
+        rs30 = subprocess.run([os.path.join(box30, "meshtrainer"), "start"],
+                              cwd=box30, capture_output=True, text=True,
+                              timeout=180, env=env30)
+        start_ok = rs30.returncode == 0 and "en marxa" in rs30.stdout
+        # health
+        health_ok = False
+        try:
+            r30 = json.loads(urllib.request.urlopen(
+                "http://127.0.0.1:8044/api/health", timeout=30).read())
+            health_ok = bool(r30.get("ok")) or "ok" in str(r30)
+        except Exception:
+            health_ok = False
+        # web UI
+        ui_ok = False
+        try:
+            code = urllib.request.urlopen(
+                "http://127.0.0.1:8044/", timeout=30).status
+            ui_ok = code == 200
+        except Exception:
+            ui_ok = False
+        # stop
+        rp30 = subprocess.run([os.path.join(box30, "meshtrainer"), "stop"],
+                              cwd=box30, capture_output=True, text=True,
+                              timeout=60, env=env30)
+        stop_ok = rp30.returncode == 0
+        ok30 = inst_ok and start_ok and health_ok and ui_ok and stop_ok
+        check("P3-30 fresh clone launch (execució real)",
+              ok30, f"install={inst_ok} start={start_ok} health={health_ok} "
+                    f"ui={ui_ok} stop={stop_ok}")
+    else:
+        check("P3-30 fresh clone launch (execució real)", False,
+              "P3_PACKAGE no definit")
 
     print("")
     print(f"=== P3-01..30: {PASSED}/{PASSED + FAILED} PASS, {FAILED} FAIL ===")

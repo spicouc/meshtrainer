@@ -21,7 +21,7 @@
 | Real Qwen App E2E | **PASS** |
 | Real Qwen via Web UI | **PASS** |
 
-**NEXT: Product MVP Phase 3** — Hardening + UX polish + install/launch + final MVP package.
+**NEXT: Product MVP Phase 3 (R1 corrective) + auditoria** — en curs 2026-08-18.
 
 ---
 

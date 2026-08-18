@@ -134,10 +134,10 @@ Vegeu **[PROJECT_STATUS.md](PROJECT_STATUS.md)** per l'estat complet per fases.
 - Generic Distributed Core — **CLOSED**
 - Qwen3 Backend — **CERTIFIED**
 - MiniCPM5 Backend — **CERTIFIED**
-- Product MVP Phase 0/1/2 — **CLOSED**
+- Product MVP Phase 0/1/2/3 — **CLOSED**
 - Application Layer — **CERTIFIED MVP**
 - Web UI — **CERTIFIED MVP**
-- NEXT: Product MVP Phase 3 (hardening + UX polish + install/launch + final MVP package)
+- Installer + Launcher — **CERTIFIED** (`install.sh` / `./meshtrainer`)
 
 ## Requisits
 

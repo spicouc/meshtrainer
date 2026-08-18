@@ -28,12 +28,15 @@ DEPENDENCIES = {
     "minicpm5": ["torch", "transformers", "peft"],
     "dummy": [],
 }
-# ── Phase 3 (punt 26): paths de models configurables, MAI hardcoded ──────
+# ── Phase 3 (punt 26 + R1-07): paths de models configurables, MAI hardcoded
 _SNAPSHOTS = {"qwen3": "qwen3_0_6b_snapshot", "minicpm5": "minicpm5_1b_snapshot"}
 
 
 def _model_default(backend: str) -> str:
-    """Path per defecte del model: env > MODELS_DIR > repo > pare del repo."""
+    """Path per defecte del model: env > MODELS_DIR > relatiu al repo.
+
+    MAI escaneja /root ni cap directori del laboratori (R1-07).
+    """
     import os
     from app.config import MODELS_DIR
     env_map = {"qwen3": "QWEN3_MODEL", "minicpm5": "MINICPM5_MODEL"}
@@ -46,7 +49,6 @@ def _model_default(backend: str) -> str:
     cands = [
         os.path.join(MODELS_DIR, name),
         os.path.join(repo, name),
-        os.path.join(os.path.dirname(repo), name),
     ]
     for c in cands:
         if os.path.isdir(c):
@@ -95,17 +97,27 @@ def backend_available(name: str) -> bool:
 
 
 def discover_models(backend_id: str) -> list[dict]:
-    """Llista snapshots locals (directoris amb config.json + weights)."""
+    """Llista snapshots locals (directoris amb config.json + weights).
+
+    Només cerca a: env (QWEN3_MODEL/MINICPM5_MODEL), MODELS_DIR i el
+    directori relatiu al repo. MAI /root (R1-07).
+    """
+    import os
+    from app.config import MODELS_DIR
     base = MODEL_DEFAULTS.get(backend_id, "")
     models = []
     candidates = []
     if base:
         candidates.append(base)
-    # snapshots sota /root amb patró conegut
-    for entry in sorted(os.listdir("/root")) if os.path.isdir("/root") else []:
-        if backend_id in entry and entry.endswith(("_snapshot", "_snapshot_host")):
-            candidates.append(os.path.join("/root", entry))
+    # snapshots al directori de models de l'usuari (configurable)
+    name = _SNAPSHOTS.get(backend_id, "")
+    if name:
+        candidates.append(os.path.join(MODELS_DIR, name))
+    seen = set()
     for path in candidates:
+        if path in seen:
+            continue
+        seen.add(path)
         cfg = os.path.join(path, "config.json")
         exists = os.path.isdir(path) and os.path.isfile(cfg)
         models.append({

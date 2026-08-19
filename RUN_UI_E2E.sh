@@ -7,6 +7,15 @@ cd /root/meshtrainer || exit 1
 # conegut que afecta httpx/requests). Es desactiva per a aquesta execució.
 unset SSL_CERT_FILE SSL_CERT_DIR 2>/dev/null || true
 
+# Phase 3: la suite UI testa el dashboard, no el First Run Setup (això és
+# P3-06). Amb HOME sense config.toml la UI mostraria el setup → el test
+# fallaria. Creem una config mínima perquè first_run=False.
+mkdir -p ~/.config/meshtrainer
+if [ ! -f ~/.config/meshtrainer/config.toml ]; then
+    printf 'host = "127.0.0.1"\nport = 8014\nenvironment = "test"\n' \
+        > ~/.config/meshtrainer/config.toml
+fi
+
 pkill -f "uvicorn app[.]api.main" 2>/dev/null || true
 sleep 1
 

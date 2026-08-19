@@ -70,6 +70,26 @@ async function renderStepModel(main, body) {
                                const res = await api(`/api/models?backend_id=${b.id}`).catch(() => null);
                                const m = res && res.model ? res.model : null;
                                wiz.model_id = m ? m.local_path || m.model_id : "";
+                               // ── Phase 3 (punt 13): auto-config segons hardware
+                               try {
+                                 const sys = await api("/api/system");
+                                 const rec = (sys.recommended || {})[b.id];
+                                 if (rec) {
+                                   if (rec.workers > 0) {
+                                     wiz.workers_cfg.workers = rec.workers;
+                                     wiz.workers_cfg.concurrency = rec.concurrency;
+                                     wiz.training.max_seq_len = rec.max_seq_len;
+                                     wiz.training.lora_rank = 8;
+                                     wiz.training.lora_alpha = 16;
+                                     wiz.training.lora_dropout = 0.05;
+                                     wiz.preset = "safe";
+                                     wiz.__memory_warning = rec.memory_warning || null;
+                                   } else {
+                                     wiz.__memory_warning = rec.memory_warning ||
+                                       "Not enough available memory for this model.";
+                                   }
+                                 }
+                               } catch (e) { /* sense recomanació: defaults */ }
                                setStep(main, body, 2);
                              } },
       [
@@ -271,6 +291,14 @@ async function renderStepReview(main, body) {
       [el("td", { class: "dim" }, [k]), el("td", {}, [escapeHtml(v)])]));
   }
   body.append(table);
+
+  // ── Phase 3 (punt 16/29): warning de recursos ─────────────────────────
+  if (wiz.__memory_warning) {
+    body.append(el("div", { class: "alert alert-warn", role: "alert" }, [
+      el("strong", {}, ["Resource warning: "]), escapeHtml(wiz.__memory_warning),
+      el("div", { class: "small" }, ["Try: concurrency 1 · smaller model · shorter sequence length"]),
+    ]));
+  }
 
   const statusLine = el("div", { id: "job-status-line", class: "mt" });
   body.append(statusLine);

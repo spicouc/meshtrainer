@@ -30,9 +30,21 @@ export function toast(msg, kind = "info") {
   setTimeout(() => t.remove(), 5000);
 }
 
+// ── Phase 3 (punt 15): estats human-readable ─────────────────────────────
+export const HUMAN_STATES = {
+  draft: "Draft", ready: "Ready", starting: "Starting",
+  running: "Training", cancelling: "Cancelling", cancelled: "Cancelled",
+  completed: "Completed", failed: "Failed", recovering: "Recovering",
+};
+
+export function humanState(status) {
+  return HUMAN_STATES[String(status || "").toLowerCase()] || String(status || "?");
+}
+
 export function statusBadge(status) {
   const s = String(status || "?").toLowerCase();
-  return `<span class="badge badge-${s}">${escapeHtml(status)}</span>`;
+  const label = humanState(status);
+  return `<span class="badge badge-${s}">${escapeHtml(label)}</span>`;
 }
 
 export function kpi(label, value, sub = "") {

@@ -21,6 +21,10 @@ export async function renderDatasets(main) {
         el("input", { id: "ds-file", type: "file", accept: ".jsonl,.json,.txt" }),
       ]),
     ]),
+    // ── Phase 3 (punt 11): zona de drag & drop ──────────────────────────
+    el("div", { id: "ds-drop", class: "drop-zone", role: "button", tabindex: "0",
+                "aria-label": "Arrossega un fitxer JSONL aquí o clica Upload" },
+      ["Drop a JSONL file here, or click Upload below"]),
     el("div", { class: "form-actions" }, [
       el("button", { id: "ds-add-path", class: "btn" }, ["Add local path"]),
       el("button", { id: "ds-upload", class: "btn btn-primary" }, ["Upload JSONL"]),
@@ -54,6 +58,28 @@ export async function renderDatasets(main) {
       toast(e.message, "error");
     }
   });
+
+  // ── Phase 3 (punt 11): drag & drop ────────────────────────────────────
+  const dropZone = form.querySelector("#ds-drop");
+  if (dropZone) {
+    const dz = dropZone;
+    ["dragenter", "dragover"].forEach((ev) =>
+      dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add("drag"); }));
+    ["dragleave", "drop"].forEach((ev) =>
+      dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("drag"); }));
+    dz.addEventListener("drop", async (e) => {
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file) return;
+      const input = form.querySelector("#ds-file");
+      // assigna el fitxer al <input> via DataTransfer (API moderna)
+      try {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+      } catch (err) { /* fallback: si no es pot assignar, es puja directament */ }
+      toast(`Arrossegat: ${file.name} (${fmtBytes(file.size)}) — clica Upload`, "ok");
+    });
+  }
 
   // ── llista ────────────────────────────────────────────────────────────
   const listCard = el("div", { class: "card" }, [el("h2", {}, ["All datasets"])]);

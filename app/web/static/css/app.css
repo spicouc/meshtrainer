@@ -159,6 +159,27 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 .form-field .hint { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
 .form-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
 
+/* Phase 3 (punt 11): zona de drag & drop */
+.drop-zone {
+  margin-top: 14px; padding: 22px 16px;
+  border: 2px dashed var(--border); border-radius: 10px;
+  text-align: center; color: var(--text-dim, #93a1bd);
+  background: var(--bg-panel); transition: border-color .15s, background .15s;
+}
+.drop-zone.drag, .drop-zone:focus-visible {
+  border-color: var(--accent, #4f8cff); background: var(--bg-hover);
+  outline: none;
+}
+
+/* Phase 3 (punt 21): pantalla de resultat del job */
+.result-card {
+  border: 1px solid var(--ok, #2ecc71); border-radius: 10px;
+  padding: 16px; margin-bottom: 16px; background: var(--bg-panel);
+}
+.result-title { color: var(--ok, #2ecc71); margin: 0 0 10px; }
+.result-adapter { margin-top: 8px; }
+.mono { font-family: ui-monospace, monospace; word-break: break-all; }
+
 /* ── wizard steps ───────────────────────────────────────────────────── */
 .wizard-steps { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 .wizard-step {

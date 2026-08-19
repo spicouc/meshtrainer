@@ -42,15 +42,29 @@ La Web UI **només parla amb l'Application API + SSE** — mai importa el core P
 | Qwen3 | `Qwen/Qwen3-0.6B` | **CERTIFICAT** |
 | MiniCPM5 | `openbmb/MiniCPM5-1B` | **CERTIFICAT** |
 
-## Quick Start (Web UI)
+## Quick Start (instal·lació i arrencada)
+
+> 🚀 Nou? Comença per **[QUICKSTART.md](QUICKSTART.md)** (5 minuts) i consulta
+> **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** si alguna cosa falla.
 
 ```bash
-pip install -r requirements-app.txt
+# 1. Instal·la (crea .venv, instal·la requirements, valida imports)
+./install.sh
 
-uvicorn app.api.main:app --host 0.0.0.0 --port 8000
+# 2. Arrenca el servei
+./meshtrainer start        # → http://localhost:8000
+
+# 3. Altres ordres
+./meshtrainer status       # estat del servei
+./meshtrainer logs         # últims logs
+./meshtrainer stop         # atura el servei
 ```
 
 Obre el navegador: **http://localhost:8000**
+
+La primera vegada veuràs el **First Run Setup** (System Check → Storage →
+Model availability → Recommended profile → Finish), basat en la detecció de
+hardware real del teu equip.
 
 Des del Dashboard pots:
 
@@ -102,15 +116,15 @@ python -m app.cli.main job artifacts <job_id>
 
 | Suite | Contingut | Estat |
 |---|---|---|
+| `app/tests/p3_gate_tests.py` | P3-01..30 (incl. fresh product install + launch reals) | 39/39 PASS |
 | `app/tests/app_acceptance_tests.py` | APP-01..15 (application layer, dummy) | 17/17 PASS |
 | `app/tests/e0_gate_tests.py` | E0-01..04 (cancel sense core state, upload, reconciliation, SSE contract) | 31/31 PASS |
 | `app/tests/ui_e2e_tests.py` | UI-01..25 (Playwright, navegador real) | 27/27 PASS |
-| `app/tests/real_qwen_app_test.py` | REAL-QWEN-APP (qwen3 real E2E) | 16/16 PASS |
 | `app/tests/real_qwen_ui_test.py` | REAL-QWEN-UI (qwen3 real des del navegador) | PASS |
 
 ```bash
-bash RUN_APP_ACCEPTANCE.sh   # gate complet (requereix el CT112/venv amb deps)
-bash RUN_UI_E2E.sh           # suite Playwright (requereix Playwright + chromium)
+bash RUN_P3_GATE_PORTABLE.sh   # gate P3 + APP + E0 (requereix venv amb deps)
+bash RUN_UI_E2E.sh             # suite Playwright (requereix Playwright + chromium)
 ```
 
 ## Estat del projecte
@@ -120,10 +134,10 @@ Vegeu **[PROJECT_STATUS.md](PROJECT_STATUS.md)** per l'estat complet per fases.
 - Generic Distributed Core — **CLOSED**
 - Qwen3 Backend — **CERTIFIED**
 - MiniCPM5 Backend — **CERTIFIED**
-- Product MVP Phase 0/1/2 — **CLOSED**
+- Product MVP Phase 0/1/2/3 — **CLOSED**
 - Application Layer — **CERTIFIED MVP**
 - Web UI — **CERTIFIED MVP**
-- NEXT: Product MVP Phase 3 (hardening + UX polish + install/launch + final MVP package)
+- Installer + Launcher — **CERTIFIED** (`install.sh` / `./meshtrainer`)
 
 ## Requisits
 

@@ -8,6 +8,7 @@ import { renderMonitor } from "./monitor.js";
 import { renderLogs } from "./logs.js";
 import { renderArtifacts } from "./artifacts.js";
 import { renderSettings } from "./settings.js";
+import { renderSetup } from "./setup.js";
 
 const app = document.getElementById("app");
 
@@ -31,7 +32,14 @@ async function route() {
   app.scrollTop = 0;
 
   try {
-    if (hash === "/" || hash === "") return renderDashboard(app);
+    if (hash === "/" || hash === "") {
+      // ── Phase 3 (punt 5): first-run setup ─────────────────────────────
+      try {
+        const st = await api("/api/setup/status");
+        if (st && st.first_run) return renderSetup(app);
+      } catch (e) { /* si l'API no respon, dashboard amb error visible */ }
+      return renderDashboard(app);
+    }
     if (hash.startsWith("/jobs/new")) return renderNewJob(app);
     if (hash.startsWith("/datasets")) return renderDatasets(app);
     if (hash.startsWith("/settings")) return renderSettings(app);

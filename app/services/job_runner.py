@@ -44,11 +44,11 @@ class CancelledError(Exception):
 
 
 def _model_path(backend: str, model: str) -> str:
-    if backend == "minicpm5":
-        return model or os.environ.get("MINICPM5_MODEL", "/root/minicpm5_1b_snapshot")
-    if backend == "qwen3":
-        return model or "/root/qwen3_0_6b_snapshot"
-    return model or "dummy"
+    """Path del model: explícit > env > default configurable (Phase 3)."""
+    from app.services.registry import MODEL_DEFAULTS
+    if model:
+        return model
+    return MODEL_DEFAULTS.get(backend, model or "dummy")
 
 
 def _release(backend) -> None:
@@ -391,6 +391,68 @@ class JobRunner:
                 except Exception:
                     pass
 
+    # ── Phase 3 (punt 22): training_summary.json ─────────────────────────
+    def _write_training_summary(self) -> None:
+        """Resum final machine-readable del job (es guarda com a artifact)."""
+        job = self.db.get_job(self.job_id) or {}
+        arts = self.db.list_artifacts(self.job_id)
+        mets = self.db.list_metrics(self.job_id)
+        final_adapter = None
+        for a in arts:
+            if a["type"].startswith("adapter_"):
+                final_adapter = a
+        losses = [m.get("loss") for m in mets if m.get("loss") is not None]
+        etts = [m.get("ett") for m in mets if m.get("ett") is not None]
+        summary = {
+            "job_id": self.job_id,
+            "model": self.model,
+            "backend": self.backend,
+            "dataset_sha": None,   # resolt si està disponible a la DB
+            "training_config": {
+                "rounds": self.rounds,
+                "seq_len": self.seq_len,
+                "lora": self._lora_cfg(),
+                "seed": self.seed,
+            },
+            "workers": self.workers_n,
+            "concurrency": 1,
+            "started_at": job.get("started_at"),
+            "finished_at": job.get("finished_at"),
+            "duration_s": None,
+            "final_status": job.get("status"),
+            "loss_initial": losses[0] if losses else None,
+            "loss_final": losses[-1] if losses else None,
+            "ett_per_round": etts,
+            "recoveries": 0,
+            "final_adapter_sha": (final_adapter["sha256"] if final_adapter else None),
+            "final_adapter_size": (final_adapter["size"] if final_adapter else None),
+            "artifacts": [{"type": a["type"], "sha256": a["sha256"],
+                           "size": a["size"], "round": a["round"]} for a in arts],
+        }
+        try:
+            start = job.get("started_at")
+            end = job.get("finished_at")
+            if start and end:
+                from datetime import datetime
+                f = "%Y-%m-%dT%H:%M:%S%z"
+                t0 = datetime.strptime(start, f)
+                t1 = datetime.strptime(end, f)
+                summary["duration_s"] = round((t1 - t0).total_seconds(), 1)
+        except Exception:
+            pass
+        out_dir = self.data_dir
+        os.makedirs(out_dir, exist_ok=True)
+        path = os.path.join(out_dir, "training_summary.json")
+        with open(path, "w") as f:
+            json.dump(summary, f, indent=2, ensure_ascii=False)
+        with open(path, "rb") as f:
+            data = f.read()
+        import hashlib
+        sha = hashlib.sha256(data).hexdigest()
+        self.db.add_artifact(self.job_id, "training_summary.json", path,
+                             sha, len(data), round_="")
+        self._log(f"training_summary generat ({len(data)} B, sha {sha[:12]})")
+
     def run(self):
         self._set_status("RUNNING")
         # E0-03 (R1): el runner confirma la seva identitat al job, però MAI
@@ -482,6 +544,11 @@ class JobRunner:
                 self._set_status("CANCELLED")
             else:
                 self._set_status("COMPLETED")
+                # ── Phase 3 (punt 22): training_summary.json ────────────
+                try:
+                    self._write_training_summary()
+                except Exception as e:
+                    self._log(f"avís: no s'ha pogut generar training_summary: {e}")
             if self._httpd:
                 self._httpd.shutdown()
             self.db.update_job(self.job_id, finished_at=_now())

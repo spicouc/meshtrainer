@@ -279,4 +279,9 @@ summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
   .form-row { grid-template-columns: 1fr; }
   table { display: block; overflow-x: auto; }
   .topbar-status { width: 100%; }
+  /* v1.4.1 (UI-23): les cadenes llargues (paths de models) no poden
+     forçar l'ample mínim del grid → overflow horitzontal en mòbil */
+  .grid { min-width: 0; }
+  .grid > * { min-width: 0; overflow-wrap: anywhere; }
+  .kpi .sub, .kpi .value { overflow-wrap: anywhere; }
 }

@@ -64,5 +64,6 @@ export async function renderLogs(main, jobId) {
   await load();
   // refresc lent (dades auxiliars; no substitut de SSE)
   const iv = setInterval(() => { if (follow) load(); }, 4000);
-  main.dataset.cleanup = () => clearInterval(iv);
+  // v1.4.1 (P1 route cleanup, FT-20): lifecycle explícit
+  window.__currentCleanup = () => { clearInterval(iv); window.__currentCleanup = null; };
 }

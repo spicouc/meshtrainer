@@ -243,6 +243,12 @@ class JobRunner:
         p = subprocess.Popen(cmd, stdout=logf, stderr=subprocess.STDOUT,
                              text=True)
         self._log(f"spawn {worker_id} pid={p.pid}")
+        # ── v1.4.1 (P0 worker semantics): persistir el worker REAL ─────
+        self._event("worker.spawn", {
+            "worker_id": worker_id, "pid": p.pid, "shard": shard,
+            "round": round_id, "device": self.device,
+            "execution_host": "local-server", "state": "starting",
+        })
         self._worker_procs.append(p)
         return p, logf
 
@@ -274,6 +280,12 @@ class JobRunner:
         for wid, p in procs.items():
             rc = p.wait(timeout=3600)
             logfs[wid].close()
+            # v1.4.1 (P0): estat final real del worker
+            self._event("worker.state", {
+                "worker_id": wid, "pid": p.pid,
+                "state": "done" if rc == 0 else f"exit-{rc}",
+                "round": round_id, "execution_host": "local-server",
+            })
             if rc != 0 and self._stop:
                 # cancel·lació en curs: no és un error de codi
                 raise CancelledError(f"worker {wid} aturat per cancel·lació")

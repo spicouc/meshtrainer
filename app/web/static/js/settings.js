@@ -62,9 +62,9 @@ export async function renderSettings(main) {
     for (const b of backends) {
       table.querySelector("tbody").append(el("tr", {}, [
         el("td", {}, [escapeHtml(b.display_name || b.id)]),
-        el("td", { html: b.available
-          ? '<span class="badge badge-pass">available</span>'
-          : '<span class="badge badge-fail">unavailable</span>' }),
+        el("td", {}, [b.available
+          ? el("span", { class: "badge badge-pass" }, ["available"])
+          : el("span", { class: "badge badge-fail" }, ["unavailable"])]),
         el("td", { class: "dim" }, [escapeHtml(b.model_constraints?.default_model || "")]),
       ]));
     }

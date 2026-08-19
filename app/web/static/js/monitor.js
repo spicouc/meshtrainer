@@ -2,7 +2,7 @@
 // Header + cards + worker cards + timeline + metrics + SSE (E0-04).
 
 import { api, connectSSE, escapeHtml, fmtDur, fmtTime, fmtBytes } from "./api.js";
-import { el, clear, statusBadge, kpi, toast, alertBox, progressBar } from "./ui.js";
+import { el, clear, statusBadge, kpi, toast, alertBox, progressBar, svgEl } from "./ui.js";
 
 const EVT_LABELS = {
   "job.status": "Job status → {status}",
@@ -33,7 +33,7 @@ export async function renderMonitor(main, jobId) {
     ? (new Date(job.finished_at || Date.now()) - new Date(job.started_at)) / 1000 : null;
   header.append(el("div", { class: "flex" }, [
     el("h1", { style: "margin:0" }, [escapeHtml(job.name)]),
-    el("span", { html: statusBadge(job.status) }),
+    statusBadge(job.status),
   ]));
   header.append(el("div", { class: "dim small mt" }, [
     `${escapeHtml(job.backend_id)} · ${escapeHtml(job.model_id)} · started ${fmtTime(job.started_at)} · elapsed ${fmtDur(elapsed)}`,
@@ -41,6 +41,19 @@ export async function renderMonitor(main, jobId) {
 
   const progress = job.rounds ? job.rounds_progress ?? 0 : 0;
   header.append(progressBar(progress, "job progress"));
+  // ── v1.4.1 (P1 total progress): barra gran + percentatge + stage ─────
+  const progCard = el("div", { class: "card mb", id: "monitor-total-progress" });
+  const progRow = el("div", { class: "flex" });
+  const progPct = el("span", { class: "prog-pct", id: "prog-pct" }, ["0%"]);
+  const progStage = el("span", { class: "badge badge-pending", id: "prog-stage" }, ["PREPARING"]);
+  const progRound = el("span", { class: "dim small", id: "prog-round" }, ["Round 0/0"]);
+  progRow.append(progPct, progRound, progStage);
+  const progBar = el("div", { class: "progress-bar progress-lg", role: "progressbar",
+                              "aria-valuemin": "0", "aria-valuemax": "100",
+                              "aria-valuenow": "0", id: "prog-bar" },
+                    [el("div", { class: "progress-fill", id: "prog-fill" })]);
+  progCard.append(progRow, progBar);
+  main.append(progCard);
   main.append(header);
 
   // ── controls ──────────────────────────────────────────────────────────
@@ -93,45 +106,133 @@ export async function renderMonitor(main, jobId) {
   artCard.append(artBox);
   main.append(artCard);
 
-  // ── SSE (contracte E0-04) ─────────────────────────────────────────────
+  // ── SSE (contracte E0-04 + v1.4.1 P1: incremental, sense full refresh) ──
   const sseBadge = el("span", { class: "badge badge-pending", id: "sse-badge" }, ["SSE: connecting…"]);
   header.append(el("div", { class: "flex mt" }, [sseBadge]));
   let es = null;
+  let highestSeq = 0;
+  let lastFull = 0;
+  const seenSeqs = new Set();
+  const timers = [];  // v1.4.1 FT-20: timers de throttle netejables
   const onSseStatus = (s) => {
     const b = document.getElementById("sse-badge");
     if (!b) return;
     if (s === "open") { b.textContent = "SSE: live"; b.className = "badge badge-pass"; }
     else { b.textContent = "Reconnecting…"; b.className = "badge badge-pending"; }
   };
+  // v1.4.1: cada event actualitza NOMÉS el component afectat (no full render)
   const onEvent = (ev) => {
+    const seq = Number(ev.seq || 0);
+    if (seq && (seenSeqs.has(seq) || seq <= highestSeq)) return; // dedup
+    if (seq) { seenSeqs.add(seq); highestSeq = Math.max(highestSeq, seq); }
     addTimeline(ev);
-    refresh(jobId); // resincronitza estat via REST (la UI no és font de veritat)
+    const t = ev.type || "";
+    if (t === "job.status" || t === "round.create") {
+      const pl = ev.payload || {};
+      if (pl.status) {
+        const badge = header.querySelector(".badge");
+        if (badge) badge.replaceWith(statusBadge(pl.status));
+      }
+      refreshOnce(500);
+    } else if (t === "round.fedavg" || t === "contribution.submit" ||
+               t === "contribution.activate") {
+      refreshOnce(400);            // progress/workers/loss
+    } else if (t === "job.progress") {
+      refreshOnce(300);
+    } else if (t === "artifact.add") {
+      refreshArtifactsOnce();
+    } else if (t === "worker.spawn" || t === "worker.state") {
+      refreshWorkersOnce();
+    } else {
+      refreshOnce(600);            // qualsevol altre event: refresc lleu
+    }
   };
-  es = connectSSE(jobId, { onEvent, onStatus: onSseStatus });
-  // guarda per netejar si es re-renderitza
-  if (window.__monitorES) window.__monitorES.close();
+  // throttling: màxim 1 sincronització REST/segon (P1)
+  let pending = false;
+  function refreshOnce(delay) {
+    if (pending) return;
+    pending = true;
+    const t = setTimeout(() => { pending = false; refresh(jobId); }, delay);
+    timers.push(t);
+  }
+  let artPending = false;
+  function refreshArtifactsOnce() {
+    if (artPending) return;
+    artPending = true;
+    const t = setTimeout(() => { artPending = false; renderArtifacts(lastJob || {}); }, 400);
+    timers.push(t);
+  }
+  let wkPending = false;
+  function refreshWorkersOnce() {
+    if (wkPending) return;
+    wkPending = true;
+    const t = setTimeout(() => { wkPending = false; refresh(jobId); }, 250);
+    timers.push(t);
+  }
+  // bootstrap REST → last_seq (P1)
+  api(`/api/jobs/${jobId}/events?format=json`).then((evs) => {
+    for (const ev of evs) {
+      addTimeline(ev);
+      if (ev.seq) highestSeq = Math.max(highestSeq, Number(ev.seq));
+    }
+  }).catch(() => {});
+  es = connectSSE(jobId, { onEvent, onStatus: onSseStatus, afterSeq: () => highestSeq });
+  // v1.4.1 (P1 route cleanup, FT-20): registra neteja explícita —
+  // tanca EventSource + cancel·la timers/throttle pendents de la vista
   window.__monitorES = es;
+  window.__currentCleanup = () => {
+    try { es && es.close(); } catch (e) {}
+    window.__monitorES = null;
+    for (const t of timers) { try { clearTimeout(t); } catch (e) {} }
+    timers.length = 0;
+    window.__currentCleanup = null;
+  };
 
+  let lastJob = null;
   async function refresh(jid) {
     try {
       const j = await api(`/api/jobs/${jid}`);
+      lastJob = j;
       renderHeader(j);
+      renderTotalProgress(j);
       renderKpis(j);
       renderWorkers(j);
       renderMetrics(j);
-      renderArtifacts(j);
       renderChart(j);
       if (["COMPLETED", "FAILED", "CANCELLED"].includes(j.status)) {
         if (es) { es.close(); }
+        renderArtifacts(j);
       }
     } catch (e) { /* API transitori — el polling de SSE el reintenta */ }
+  }
+
+  // ── v1.4.1 (P1): progrés total des del contracte de l'API ─────────────
+  function renderTotalProgress(j) {
+    const pctEl = document.getElementById("prog-pct");
+    const stageEl = document.getElementById("prog-stage");
+    const roundEl = document.getElementById("prog-round");
+    const barEl = document.getElementById("prog-bar");
+    const fillEl = document.getElementById("prog-fill");
+    if (!pctEl) return;
+    const p = j.progress || {};
+    const frac = Number(p.overall_fraction || 0);
+    const pct = Math.max(0, Math.min(100, Math.round(frac * 100)));
+    pctEl.textContent = `${pct}%`;
+    if (roundEl) roundEl.textContent = `Round ${p.round_current ?? 0}/${p.round_total ?? 0}`;
+    if (stageEl) {
+      stageEl.textContent = String(p.stage || "PREPARING");
+      const done = p.stage === "COMPLETED";
+      stageEl.className = "badge " + (done ? "badge-pass" : "badge-pending");
+    }
+    if (barEl) barEl.setAttribute("aria-valuenow", String(pct));
+    if (fillEl) fillEl.style.width = `${pct}%`;
   }
 
   function renderHeader(j) {
     const h = header.querySelector("h1");
     if (h) h.textContent = j.name || "";
     const badge = header.querySelector(".badge");
-    if (badge) badge.outerHTML = statusBadge(j.status);
+    if (badge) badge.replaceWith(statusBadge(j.status));
     const dim = header.querySelector(".dim.small");
     if (dim) dim.textContent = `${j.backend_id} · ${j.model_id} · started ${fmtTime(j.started_at)}`;
     const pb = header.querySelector(".progress-bar");
@@ -157,21 +258,35 @@ export async function renderMonitor(main, jobId) {
   }
 
   function renderWorkers(j) {
-    const box = document.querySelector("#monitor-kpis") && workersBox;
+    const box = workersBox;
     if (!box) return;
     clear(box);
-    // worker info des de logs (si n'hi ha) o placeholder
-    const ws = j.workers_cfg_workers ?? j.workers ?? 2;
-    for (let i = 0; i < ws; i++) {
-      const wid = i === 0 ? "w-A" : `w-${String.fromCharCode(66 + (i - 1))}`;
+    // v1.4.1 (P0): workers REALS persistits (PID, state, host, shard, round)
+    const ws = j.workers_detail || [];
+    const ex = j.execution || {};
+    box.append(el("div", { class: "dim small mb" }, [
+      `Execution: ${escapeHtml(String(ex.location || "local-server"))} · ` +
+      `certified workers: ${ex.certified_workers ?? 2}`,
+    ]));
+    if (!ws.length) {
+      box.append(el("div", { class: "dim" }, ["No workers spawned yet…"]));
+      return;
+    }
+    for (const w of ws) {
+      const st = String(w.state || "starting").toLowerCase();
+      const stCls = st === "done" || st === "exit-0" ? "badge-pass"
+        : st === "starting" || st === "running" ? "badge-pending"
+        : "badge-fail";
       const card = el("div", { class: "worker-card" }, [
         el("div", { class: "w-head" }, [
-          el("span", { class: "w-id" }, [escapeHtml(wid)]),
-          el("span", { class: "badge badge-pending" }, ["IDLE"]),
+          el("span", { class: "w-id" }, [escapeHtml(w.worker_id)]),
+          el("span", { class: `badge ${stCls}` }, [escapeHtml(String(w.state))]),
         ]),
-        el("div", { class: "w-row" }, [el("span", {}, ["State"]), el("b", {}, ["IDLE"])]),
-        el("div", { class: "w-row" }, [el("span", {}, ["PID"]), el("b", {}, ["—"])]),
-        el("div", { class: "w-row" }, [el("span", {}, ["Shard"]), el("b", {}, [i === 0 ? "A" : String.fromCharCode(66 + (i - 1))])]),
+        el("div", { class: "w-row" }, [el("span", {}, ["PID"]), el("b", {}, [String(w.pid ?? "—")])]),
+        el("div", { class: "w-row" }, [el("span", {}, ["Device"]), el("b", {}, [escapeHtml(String(w.device || "cpu"))])]),
+        el("div", { class: "w-row" }, [el("span", {}, ["Shard"]), el("b", {}, [escapeHtml(String(w.shard || "—"))])]),
+        el("div", { class: "w-row" }, [el("span", {}, ["Round"]), el("b", {}, [escapeHtml(String(w.round || "—"))])]),
+        el("div", { class: "w-row" }, [el("span", {}, ["Host"]), el("b", {}, [escapeHtml(String(w.execution_host || "local-server"))])]),
       ]);
       box.append(card);
     }
@@ -202,15 +317,19 @@ export async function renderMonitor(main, jobId) {
     const pts = losses.map((l, i) => {
       const x = P + (i / Math.max(1, losses.length - 1)) * (W - 2 * P);
       const y = H - P - ((l.value - min) / range) * (H - 2 * P);
-      return `${x},${y}`;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
     });
-    const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Loss trend">
-      <polyline fill="none" stroke="#4da3ff" stroke-width="2"
-                points="${pts.join(" ")}"/>
-      <text x="${P}" y="${H - 8}" fill="#93a0b8" font-size="10">round 0</text>
-      <text x="${W - P - 40}" y="${H - 8}" fill="#93a0b8" font-size="10">round ${losses.length - 1}</text>
-    </svg>`;
-    box.innerHTML = svg;
+    // v1.4.1 (P0 XSS): SVG construït amb DOM API — mai innerHTML
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
+                               "aria-label": "Loss trend" });
+    svg.append(svgEl("polyline", { fill: "none", stroke: "#4da3ff",
+                                   "stroke-width": "2", points: pts.join(" ") }));
+    svg.append(svgEl("text", { x: String(P), y: String(H - 8), fill: "#93a0b8",
+                               "font-size": "10" }, ["round 0"]));
+    svg.append(svgEl("text", { x: String(W - P - 40), y: String(H - 8),
+                               fill: "#93a0b8", "font-size": "10" },
+                     [`round ${losses.length - 1}`]));
+    box.append(svg);
   }
 
   function renderArtifacts(j) {
@@ -288,9 +407,6 @@ export async function renderMonitor(main, jobId) {
     box.scrollTop = box.scrollHeight;
   }
 
-  // càrrega inicial d'events existents (format=json: resincronització)
-  api(`/api/jobs/${jobId}/events?format=json`).then((evs) => {
-    for (const ev of evs) addTimeline(ev);
-  }).catch(() => {});
+  // càrrega inicial d'events + estat (el bootstrap SSE ja omple highestSeq)
   refresh(jobId);
 }

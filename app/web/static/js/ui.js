@@ -6,10 +6,22 @@ export function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (k === "class") node.className = v;
-    else if (k === "html") node.innerHTML = v; // només amb contingut intern controlat
     else if (k.startsWith("on") && typeof v === "function") {
       node.addEventListener(k.slice(2), v);
     } else node.setAttribute(k, v);
+  }
+  for (const c of [].concat(children)) {
+    if (c == null) continue;
+    node.append(c.nodeType ? c : document.createTextNode(String(c)));
+  }
+  return node;
+}
+
+// ── Phase 3 + v1.4.1 (P0 XSS): creació de nodes SVG via DOM API ────────
+export function svgEl(tag, attrs = {}, children = []) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    node.setAttribute(k, String(v));
   }
   for (const c of [].concat(children)) {
     if (c == null) continue;
@@ -41,10 +53,13 @@ export function humanState(status) {
   return HUMAN_STATES[String(status || "").toLowerCase()] || String(status || "?");
 }
 
+// ── v1.4.1 (P0 XSS): retorna un NODE, mai un string HTML ───────────────
 export function statusBadge(status) {
   const s = String(status || "?").toLowerCase();
   const label = humanState(status);
-  return `<span class="badge badge-${s}">${escapeHtml(label)}</span>`;
+  const node = el("span", { class: `badge badge-${s}` });
+  node.textContent = label;   // textContent: el contingut és dades
+  return node;
 }
 
 export function kpi(label, value, sub = "") {

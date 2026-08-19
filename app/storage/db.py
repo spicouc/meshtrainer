@@ -60,7 +60,10 @@ CREATE TABLE IF NOT EXISTS datasets (
     schema_json TEXT DEFAULT '{}',
     created_at TEXT NOT NULL,
     validation_status TEXT DEFAULT 'PENDING',
-    validation_errors TEXT DEFAULT '[]'
+    validation_errors TEXT DEFAULT '[]',
+    scope TEXT DEFAULT 'generic',
+    backend_id TEXT,
+    model_id TEXT
 );
 CREATE TABLE IF NOT EXISTS worker_definitions (
     worker_id TEXT PRIMARY KEY,
@@ -113,6 +116,14 @@ RECONCILE_COLUMNS = {
     "runner_identity": "TEXT DEFAULT ''",
 }
 
+# v1.4.1 (P1 dataset compatibility): migració segura per datasets v1.4.0
+# existents — scope default 'generic', backend_id/model_id NULL.
+DATASET_COLUMNS = {
+    "scope": "TEXT DEFAULT 'generic'",
+    "backend_id": "TEXT",
+    "model_id": "TEXT",
+}
+
 
 class AppDB:
     """Accés SQLite de l'app. Una connexió per thread (check_same_thread=False)
@@ -142,6 +153,13 @@ class AppDB:
             for name, decl in RECONCILE_COLUMNS.items():
                 if name not in cols:
                     self._conn.execute(f"ALTER TABLE jobs ADD COLUMN {name} {decl}")
+            # v1.4.1: migració datasets (scope/backend_id/model_id)
+            dcols = {r["name"] for r in self._conn.execute(
+                "PRAGMA table_info(datasets)").fetchall()}
+            for name, decl in DATASET_COLUMNS.items():
+                if name not in dcols:
+                    self._conn.execute(
+                        f"ALTER TABLE datasets ADD COLUMN {name} {decl}")
             self._conn.commit()
 
     # ── helpers ──────────────────────────────────────────────────────────

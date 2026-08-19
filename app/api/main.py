@@ -285,8 +285,11 @@ def create_app() -> FastAPI:
     # ── v1.4.1 (P0 XSS): Content-Security-Policy mínima ──────────────────
     from starlette.middleware.base import BaseHTTPMiddleware
 
-    CSP = ("default-src 'self'; script-src 'self'; style-src 'self' "
-           "'unsafe-inline'; img-src 'self' data:; connect-src 'self'; "
+    # v1.4.1 R1 (punt 9): style-src 'self' sense 'unsafe-inline' — la UI
+    # NO usa style attributes inline (convertits a classes CSS + <progress>
+    # natiu). Cap estil dinàmic per dades d'usuari.
+    CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; "
+           "img-src 'self' data:; connect-src 'self'; "
            "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; "
            "form-action 'self'")
 

@@ -173,7 +173,35 @@ class MeshTrainerService:
         j["workers_detail"] = list(wmap.values())
         j["execution"] = {"location": "local-server", "certified_workers": 2}
         # v1.4.1 (P1 total progress): contracte monòton, no derivat al client
+        # v1.4.1 R1: si el JobRunner ha emès progress.stage (font
+        # autoritativa), l'últim event mana; altrament càlcul per estat.
+        stage_events = [e for e in evs if e["type"] == "progress.stage"]
         status = j.get("status") or ""
+        rdone = len([e for e in evs if e["type"] == "round.fedavg"])
+        rtot_derived = j.get("rounds") or 0
+        if stage_events:
+            last = stage_events[-1].get("payload") or {}
+            overall = float(last.get("overall_fraction", 0.0) or 0.0)
+            stage = last.get("stage") or "PREPARING"
+            rcur = int(last.get("round_current") or 0)
+            rtot = int(last.get("round_total") or 0)
+            if status == "COMPLETED":
+                overall = 1.0
+                stage = "COMPLETED"
+            elif status in ("CANCELLED", "FAILED"):
+                # v1.4.1 (punt 4): MAI forçar 1.0 artificialment en fallida
+                overall = min(overall, 0.99)
+                stage = "FINALIZING"
+            j["progress"] = {
+                "overall_fraction": round(max(0.0, min(1.0, overall)), 4),
+                "round_current": rcur or rdone,
+                "round_total": rtot or rtot_derived,
+                "stage": stage,
+                "workers_done": sum(1 for w in j["workers_detail"]
+                                    if w.get("state") in ("done", "exit-0")),
+                "workers_total": 2,  # v1.4.1 R1: sempre 2 (certificats)
+            }
+            return j
         stage_map = {
             "DRAFT": "PREPARING", "READY": "PREPARING", "STARTING": "PREPARING",
             "RUNNING": "TRAINING_WORKERS", "CANCELLING": "FINALIZING",

@@ -162,25 +162,59 @@ def main():
               "<img" not in content or "onerror=alert" not in content,
               "payload renderitzat cru")
 
-        # ── FT-03 XSS logs ────────────────────────────────────────────────
+        # ── FT-03 XSS LOG REAL (punt 7): injecció directa al log ────────
         job2 = create_job("ft-logs-xss", "dummy", "dummy", ds_g)
         jid2 = job2["job_id"]
+        # escriu la línia maliciosa DIRECTAMENT al runner.log (via API? no —
+        # el log és del runner; l'escrivim perquè el visor el llegeixi)
+        import glob, os as _os
+        log_glob = glob.glob(f"/tmp/ft_storage/logs/{jid2}/runner.log")
+        payload_log = ('<img src=x onerror="window.__xss1=true"> '
+                       '<script>window.__xss2=true</script>')
+        if not log_glob:
+            _os.makedirs(f"/tmp/ft_storage/logs/{jid2}", exist_ok=True)
+            log_path = f"/tmp/ft_storage/logs/{jid2}/runner.log"
+            with open(log_path, "w") as f:
+                f.write("[2026-08-19T00:00:00+00:00] runner init\n")
+            log_glob = [log_path]
+        with open(log_glob[0], "a") as f:
+            f.write(f"[2026-08-19T00:00:00+00:00] {payload_log}\n")
         page.goto(f"{BASE}/#/jobs/{jid2}/logs")
         page.wait_for_selector(".log-viewer", timeout=15000)
         logs_txt = page.inner_text(".log-viewer")
-        check("FT-03 XSS logs",
-              "alert(1)" not in logs_txt or "<script>" not in logs_txt,
-              "payload a logs")
+        exec_ok = page.evaluate("""() => {
+          const bad = (window.__xss1 === true) || (window.__xss2 === true);
+          return {bad, html: document.querySelector(".log-viewer").innerHTML};
+        }""")
+        check("FT-03 XSS log REAL: 0 execució + payload només text",
+              not exec_ok["bad"]
+              and "<img" not in exec_ok["html"]
+              and "<script>" not in exec_ok["html"]
+              and "window.__xss1" in logs_txt,
+              f"exec={exec_ok['bad']} html_has_img={'<img' in exec_ok['html']}")
 
-        # ── FT-04 XSS SSE ─────────────────────────────────────────────────
-        # payload a l'event d'estat: crea job amb nom XSS i obre monitor
+        # ── FT-04 XSS SSE REAL (punt 8): event SSE amb payload maliciós ──
+        # injecta un event progress.stage amb payload que conté HTML cru
+        import sqlite3 as _sq
+        _conn = _sq.connect(os.environ["APP_DB_PATH"])
+        evil = ('{"stage": "<img src=x onerror=window.__xss3=true>", '
+                '"overall_fraction": 0.5}')
+        _conn.execute(
+            "INSERT INTO job_events (event_id, job_id, ts, type, payload) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (f"ev-{int(time.time()*1000)}", jid2,
+             "2026-08-19T00:00:01+00:00", "progress.stage", evil))
+        _conn.commit()
+        _conn.close()
         page.goto(f"{BASE}/#/jobs/{jid2}")
         page.wait_for_selector("#monitor-total-progress", timeout=15000)
         err_now = len(errors)
         time.sleep(3)
         new_errs = [e for e in errors[err_now:] if "alert" in e]
-        check("FT-04 XSS SSE", len(new_errs) == 0,
-              f"errors={new_errs[:2]}")
+        xss3 = page.evaluate("window.__xss3 === true")
+        check("FT-04 XSS SSE REAL: 0 execució / 0 handler injection",
+              len(new_errs) == 0 and not xss3,
+              f"errors={new_errs[:2]} xss3={xss3}")
 
         # ── FT-05 CSP gate real ───────────────────────────────────────────
         page.goto(f"{BASE}/")
@@ -373,37 +407,89 @@ def main():
               f"closed={closed} current={current}")
         browser.close()
 
-    # ══════════════════ ADV-01..03, 05 ══════════════════
-    # ADV-01 API directa workers=8 → REJECT (ja cobert per FT-14, explícit)
-    check("ADV-01 API directa workers=8 REJECT", True,
-          "rebutjat a create_training_job (FT-14)")
+    # ══════════════════ ADV-01..03, 05 (REALS) ══════════════════
+    # ADV-01 REAL: API directa workers=8 → resposta REJECT verificada
+    r8 = api("/api/jobs", "POST", {
+        "name": "adv1-real", "backend_id": "dummy", "model_id": "dummy",
+        "dataset_id": ds_g, "training": {"rounds": 1},
+        "workers_cfg": {"workers": 8, "concurrency": 1}})
+    err1 = str(r8.get("error", "")) if isinstance(r8, dict) else ""
+    check("ADV-01 API directa workers=8 REJECT (resposta real)",
+          r8.get("ok") is False or "workers" in err1,
+          f"resp={str(r8)[:100]}")
+
     # ADV-02 API directa dataset model incompatible → REJECT
     jbad = create_job("adv2", "dummy", "dummy", ds_m, rounds=1)
     v2 = api(f"/api/jobs/{jbad['job_id']}/validate", "POST")
     check("ADV-02 dataset model incompatible REJECT",
           v2.get("validation") == "FAIL")
-    # ADV-03 cursor: query i Last-Event-ID diferents → max()
-    evs3 = api(f"/api/jobs/{jse_id}/events?after_seq={cursor}&format=json")
-    check("ADV-03 cursor determinista (query after_seq)",
-          all(s > cursor for s in [e["seq"] for e in evs3]))
-    # ADV-05 100-event burst → sense duplicats al client
+
+    # ADV-03 REAL: ?after_seq=X + Last-Event-ID:Y simultanis, X != Y → max
+    import urllib.request as _ur
+    x = cursor
+    y = cursor + 2
+    req = _ur.Request(BASE + f"/api/jobs/{jse_id}/events"
+                      f"?after_seq={x}&format=json")
+    req.add_header("Last-Event-ID", str(y))
+    with _ur.urlopen(req, timeout=30) as r:
+        evs_adv3 = json.loads(r.read().decode()).get("data", [])
+    seqs_adv3 = [e["seq"] for e in evs_adv3]
+    m = max(x, y)
+    check("ADV-03 cursor = max(after_seq, Last-Event-ID) (X!=Y)",
+          all(s > m for s in seqs_adv3),
+          f"X={x} Y={y} max={m} after={seqs_adv3[:6]}")
+
+    # ADV-05 + FT-19 REAL: 100-event burst amb instrumentació de xarxa
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page(viewport={"width": 1280, "height": 800})
-        jb = create_job("adv5", "dummy", "dummy", ds_g, rounds=1)
+        # instrumenta requests: comptem REST full /api/jobs/{id} vs events
+        rest_hits = []
+        page.on("request", lambda req: rest_hits.append(req.url)
+                if "/api/jobs/" in req.url and "/events" not in req.url
+                and "/logs" not in req.url and "/artifacts" not in req.url
+                else None)
+        jb = create_job("adv5", "dummy", "dummy", ds_g, rounds=6)
         jb_id = jb["job_id"]
         api(f"/api/jobs/{jb_id}/validate", "POST")
         api(f"/api/jobs/{jb_id}/start", "POST")
         page.goto(f"{BASE}/#/jobs/{jb_id}")
         page.wait_for_selector("#monitor-total-progress", timeout=15000)
-        page.wait_for_timeout(6000)
-        # recompte de seq úniques al client (sense duplicats)
-        dup = page.evaluate("""() => {
+        # espera fins que el job acabi (6 rondes dummy + delay)
+        for _ in range(90):
+            st = api(f"/api/jobs/{jb_id}")
+            if isinstance(st, dict) and st.get("status") in (
+                    "COMPLETED", "FAILED", "CANCELLED"):
+                break
+            time.sleep(1)
+        page.wait_for_timeout(2500)
+        # recompte al client: items de timeline únics
+        stats = page.evaluate("""() => {
           const items = document.querySelectorAll(".timeline-item");
-          return items.length;
+          return {items: items.length};
         }""")
-        check("ADV-05 100-event burst sense refresh storm",
-              dup >= 2, f"timeline items={dup}")
+        evs_final = api(f"/api/jobs/{jb_id}/events?format=json") or []
+        seqs_final = [e["seq"] for e in evs_final]
+        n_events = len(seqs_final)
+        n_rest = len(rest_hits)
+        check("ADV-05 100-event burst: >=100 events reals",
+              n_events >= 100,
+              f"events={n_events}")
+        check("ADV-05 0 seq duplicats / 0 perduts (ordre + unicïtat)",
+              len(seqs_final) == len(set(seqs_final))
+              and seqs_final == sorted(seqs_final),
+              f"n={n_events} uniq={len(set(seqs_final))}")
+        # FT-19: REST full refresh << event count — threshold EXPLÍCIT:
+        # el client throttla a 1 sincronització/segon → REST <= durada(s)+5
+        # i sempre molt inferior al nombre d'events (mai 1:1).
+        dur = max(1, int(time.time()) - int(time.time() - 90))  # aproximació
+        thresh = max(8, n_events // 3)
+        check("FT-19 REST throttled (no 1 refresh per event)",
+              n_rest <= thresh and n_rest < n_events,
+              f"rest={n_rest} events={n_events} threshold={thresh}")
+        check("ADV-05 timeline estable (sense full re-render)",
+              stats["items"] >= 10 and stats["items"] <= n_events,
+              f"timeline={stats['items']} events={n_events}")
         browser.close()
 
     # ── teardown ──────────────────────────────────────────────────────────

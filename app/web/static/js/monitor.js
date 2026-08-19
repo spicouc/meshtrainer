@@ -32,7 +32,7 @@ export async function renderMonitor(main, jobId) {
   const elapsed = job.started_at
     ? (new Date(job.finished_at || Date.now()) - new Date(job.started_at)) / 1000 : null;
   header.append(el("div", { class: "flex" }, [
-    el("h1", { style: "margin:0" }, [escapeHtml(job.name)]),
+    el("h1", { class: "no-margin" }, [escapeHtml(job.name)]),
     statusBadge(job.status),
   ]));
   header.append(el("div", { class: "dim small mt" }, [
@@ -169,17 +169,25 @@ export async function renderMonitor(main, jobId) {
     const t = setTimeout(() => { wkPending = false; refresh(jobId); }, 250);
     timers.push(t);
   }
-  // bootstrap REST → last_seq (P1)
-  api(`/api/jobs/${jobId}/events?format=json`).then((evs) => {
-    for (const ev of evs) {
-      addTimeline(ev);
-      if (ev.seq) highestSeq = Math.max(highestSeq, Number(ev.seq));
-    }
-  }).catch(() => {});
-  es = connectSSE(jobId, { onEvent, onStatus: onSseStatus, afterSeq: () => highestSeq });
+  // v1.4.1 R1 (punt 2): bootstrap SSE SEQÜENCIAL — primer REST events
+  // (render + highestSeq), i NOMÉS DESPRÉS connectar l'EventSource amb
+  // after_seq=highestSeq. Cap EventSource abans d'acabar el bootstrap
+  // (0 race contractual: cap event perdut ni duplicat a la connexió).
+  window.__monitorES = null;
+  const bootstrap = api(`/api/jobs/${jobId}/events?format=json`)
+    .then((evs) => {
+      for (const ev of evs || []) {
+        addTimeline(ev);
+        if (ev.seq) highestSeq = Math.max(highestSeq, Number(ev.seq));
+      }
+    })
+    .catch(() => {})
+    .finally(() => {
+      es = connectSSE(jobId, { onEvent, onStatus: onSseStatus, afterSeq: () => highestSeq });
+      window.__monitorES = es;
+    });
   // v1.4.1 (P1 route cleanup, FT-20): registra neteja explícita —
   // tanca EventSource + cancel·la timers/throttle pendents de la vista
-  window.__monitorES = es;
   window.__currentCleanup = () => {
     try { es && es.close(); } catch (e) {}
     window.__monitorES = null;
@@ -187,6 +195,7 @@ export async function renderMonitor(main, jobId) {
     timers.length = 0;
     window.__currentCleanup = null;
   };
+  void bootstrap;
 
   let lastJob = null;
   async function refresh(jid) {
@@ -224,8 +233,8 @@ export async function renderMonitor(main, jobId) {
       const done = p.stage === "COMPLETED";
       stageEl.className = "badge " + (done ? "badge-pass" : "badge-pending");
     }
-    if (barEl) barEl.setAttribute("aria-valuenow", String(pct));
-    if (fillEl) fillEl.style.width = `${pct}%`;
+    if (barEl) barEl.setAttribute("value", String(pct));
+    if (fillEl) fillEl.value = String(pct);
   }
 
   function renderHeader(j) {
@@ -240,7 +249,7 @@ export async function renderMonitor(main, jobId) {
       const pct = j.rounds ? Math.max(0, Math.min(100, Math.round((j.rounds_progress || 0) * 100))) : 0;
       pb.setAttribute("aria-valuenow", String(pct));
       const fill = pb.querySelector(".progress-fill");
-      if (fill) fill.style.width = `${pct}%`;
+      if (fill) fill.value = String(pct);
     }
   }
 

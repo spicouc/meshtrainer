@@ -63,7 +63,7 @@ async function renderStepModel(main, body) {
   body.append(grid);
 
   for (const b of bks) {
-    const card = el("div", { class: "card", style: "cursor:pointer",
+    const card = el("div", { class: "card clickable",
                              "data-backend": b.id,
                              onclick: async () => {
                                wiz.backend_id = b.id;
@@ -212,7 +212,8 @@ function renderStepTraining(main, body) {
   ]);
   body.append(preset);
 
-  const custom = el("div", { id: "custom-fields", style: wiz.preset === "custom" ? "" : "display:none" });
+  const custom = el("div", { id: "custom-fields",
+                             class: wiz.preset === "custom" ? "" : "hidden" });
   const fields = [
     ["lora_rank", "LoRA rank", "number", 8],
     ["lora_alpha", "LoRA alpha", "number", 16],
@@ -239,7 +240,7 @@ function renderStepTraining(main, body) {
 
   preset.querySelector("#t-preset").addEventListener("change", (e) => {
     wiz.preset = e.target.value;
-    custom.style.display = e.target.value === "custom" ? "" : "none";
+    custom.classList.toggle("hidden", e.target.value !== "custom");
   });
 
   // resource warning (punt 29)

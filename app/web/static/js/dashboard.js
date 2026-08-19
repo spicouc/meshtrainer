@@ -61,8 +61,8 @@ export async function renderDashboard(main) {
         el("div", { class: "label" }, [escapeHtml(b.display_name || b.id)]),
         el("div", { class: "value" }, [
           b.available
-            ? el("span", { style: "color:var(--ok)" }, ["● available"])
-            : el("span", { style: "color:var(--err)" }, ["● unavailable"]),
+            ? el("span", { class: "ok-text" }, ["● available"])
+            : el("span", { class: "err-text" }, ["● unavailable"]),
         ]),
         el("div", { class: "sub" }, [b.model_constraints?.default_model || b.id]),
       ]);

@@ -72,11 +72,11 @@ export function kpi(label, value, sub = "") {
 
 export function progressBar(fraction, label) {
   const pct = Math.max(0, Math.min(100, Math.round((fraction || 0) * 100)));
-  const bar = el("div", { class: "progress-bar", role: "progressbar",
-                          "aria-valuenow": String(pct), "aria-valuemin": "0",
-                          "aria-valuemax": "100", "aria-label": label || "progress" },
-                 [el("div", { class: `progress-fill${pct >= 100 ? " done" : ""}`,
-                              style: `width:${pct}%` })]);
+  // v1.4.1 R1 (punt 9): <progress> natiu — cap style attr inline,
+  // permet treure 'unsafe-inline' de la CSP sense perdre funcionalitat
+  const bar = el("progress", { class: "progress-bar progress-el",
+                               value: String(pct), max: "100",
+                               "aria-label": label || "progress" });
   return bar;
 }
 

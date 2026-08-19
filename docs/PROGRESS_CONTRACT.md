@@ -16,26 +16,30 @@ representa el valor rebut — mai el deriva ni l'estima.
 }
 ```
 
-## Pes del progrés (fórmula documentada)
+## Pes del progrés (fórmula documentada — v1.4.1 R1)
 
-Per ronda completa (FedAvg fet) = `1 / round_total` de progrés.
+El JobRunner emet events `progress.stage` (capa application) abans/després de
+cada etapa; l'últim event mana (font autoritativa). Pesos deterministes:
 
-| Estat del job | overall_fraction | stage |
+| Stage | Fracció dins la ronda | overall_fraction |
 |---|---|---|
-| DRAFT / READY / STARTING | `0.0` | PREPARING |
-| RUNNING (ronda en curs) | `rounds_done / round_total` | TRAINING_WORKERS |
-| RECOVERING | `rounds_done / round_total` | ROUND_SETUP |
-| CANCELLING | `rounds_done / round_total` | FINALIZING |
-| COMPLETED | **`1.0` exacte** | COMPLETED |
-| FAILED / CANCELLED | `rounds_done / round_total` (mai forçat a 1.0) | FINALIZING |
+| PREPARING | — | `0.0` |
+| ROUND_SETUP | 5% | `(r-1 + 0.05) / R` |
+| TRAINING_WORKERS (inici) | 10% | `(r-1 + 0.10) / R` |
+| WORKERS_DONE | 75% | `(r-1 + 0.75) / R` |
+| VALIDATING | 88% | `(r-1 + 0.88) / R` |
+| FEDAVG | 97% | `(r-1 + 0.97) / R` |
+| FINALIZING | — | `(R + 0.99) / R` (≈1.0) |
+| COMPLETED | — | **`1.0` exacte** |
 
-- `rounds_done` = nombre d'events `round.fedavg` persistits
-- La fracció és **monòtona creixent** dins d'un mateix run (els events
-  `round.fedavg` només s'afegeixen, mai es retiren)
-- MAI disminueix en: browser reload, SSE reconnect, API refresh,
-  application restart/reconciliation (recompte d'events persistent)
+- `r` = ronda actual (1-based), `R` = rounds totals
+- Amb 1 ronda: la barra passa per 0.05, 0.10, 0.75, 0.88, 0.97 abans de
+  COMPLETED=1.0 — **mai un salt directe 0→100**
+- `workers_total` = sempre 2 (workers certificats) en aquesta release
+- MAI disminueix dins d'un mateix run (events persistits, ordre per seq)
+- FAILED/CANCELLED: mai forçat a 1.0 (es manté l'últim valor ≤ 0.99)
 
-## Semàntica
+## Camps derivats (fallback sense progress.stage)
 
 - La barra representa **treball completat** (rounds finalitzats), NO temps
   estimat. No es mostra ETA.

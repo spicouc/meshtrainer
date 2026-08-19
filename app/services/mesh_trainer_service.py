@@ -124,6 +124,13 @@ class MeshTrainerService:
         # ── Phase 2 (additiu, només lectura): camps derivats per a la UI ──
         j = dict(j)
         evs = self.db.list_events(job_id)
+        # v1.4.1: payload de la DB és str JSON — normalitza a dict
+        for e in evs:
+            if isinstance(e.get("payload"), str):
+                try:
+                    e["payload"] = json.loads(e["payload"])
+                except Exception:
+                    e["payload"] = {}
         j["events"] = evs
         # progrés de rondes
         fed_rounds = [e for e in evs if e["type"] == "round.fedavg"]

@@ -232,13 +232,16 @@ class AppDB:
         self._exec(
             "INSERT INTO datasets (dataset_id,name,source_path,format,size,examples,"
             "train_count,validation_count,test_count,schema_json,created_at,"
-            "validation_status,validation_errors) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "validation_status,validation_errors,scope,backend_id,model_id) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (d["dataset_id"], d["name"], d["source_path"], d.get("format", "jsonl"),
              d.get("size", 0), d.get("examples", 0), d.get("train_count", 0),
              d.get("validation_count", 0), d.get("test_count", 0),
              json.dumps(d.get("schema_json", {})), d.get("created_at"),
              d.get("validation_status", "PENDING"),
-             json.dumps(d.get("validation_errors", []))))
+             json.dumps(d.get("validation_errors", [])),
+             d.get("scope", "generic"),
+             d.get("backend_id"), d.get("model_id")))
 
     def update_dataset(self, dataset_id: str, **fields) -> None:
         sets, params = [], []

@@ -63,7 +63,7 @@ async function renderStepModel(main, body) {
   body.append(grid);
 
   for (const b of bks) {
-    const card = el("div", { class: "card", style: "cursor:pointer",
+    const card = el("div", { class: "card clickable",
                              "data-backend": b.id,
                              onclick: async () => {
                                wiz.backend_id = b.id;
@@ -107,9 +107,14 @@ async function renderStepModel(main, body) {
 }
 
 // ── PAS 2: dataset ──────────────────────────────────────────────────────
+// v1.4.1 (P1): el wizard selecciona primer model → filtra datasets per
+// compatibilitat (generic + backend + model) via query params de l'API.
 async function renderStepDataset(main, body) {
   let dss = [];
-  try { dss = await api("/api/datasets"); } catch (e) {
+  const q = new URLSearchParams();
+  if (wiz.backend_id) q.set("backend_id", wiz.backend_id);
+  if (wiz.model_id) q.set("model_id", wiz.model_id);
+  try { dss = await api(`/api/datasets?${q.toString()}`); } catch (e) {
     body.append(alertBox("error", "API offline", e.message)); return;
   }
   body.append(el("h2", {}, ["Select dataset"]));
@@ -165,7 +170,12 @@ async function renderStepDataset(main, body) {
     const f = body.querySelector("#ds-file").files[0];
     if (!f) return toast("Selecciona un fitxer", "error");
     try {
-      const ds = await uploadDataset(f);
+      // v1.4.1 (P1): l'upload del wizard hereda el scope del model triat
+      const ds = await uploadDataset(f, {
+        scope: wiz.model_id ? "model" : (wiz.backend_id ? "backend" : "generic"),
+        backend_id: wiz.backend_id || "",
+        model_id: wiz.model_id || "",
+      });
       wiz.dataset_id = ds.dataset_id;
       toast("Dataset pujat — valida'l abans de continuar", "ok");
       renderStepDataset(main, body);
@@ -202,7 +212,8 @@ function renderStepTraining(main, body) {
   ]);
   body.append(preset);
 
-  const custom = el("div", { id: "custom-fields", style: wiz.preset === "custom" ? "" : "display:none" });
+  const custom = el("div", { id: "custom-fields",
+                             class: wiz.preset === "custom" ? "" : "hidden" });
   const fields = [
     ["lora_rank", "LoRA rank", "number", 8],
     ["lora_alpha", "LoRA alpha", "number", 16],
@@ -229,7 +240,7 @@ function renderStepTraining(main, body) {
 
   preset.querySelector("#t-preset").addEventListener("change", (e) => {
     wiz.preset = e.target.value;
-    custom.style.display = e.target.value === "custom" ? "" : "none";
+    custom.classList.toggle("hidden", e.target.value !== "custom");
   });
 
   // resource warning (punt 29)
@@ -246,24 +257,21 @@ function renderStepTraining(main, body) {
 }
 
 // ── PAS 4: workers ──────────────────────────────────────────────────────
+// v1.4.1 (P0 worker semantics): el core certificat executa EXACTAMENT
+// 2 workers (A+B) al servidor local. No acceptem valors que s'ignoraran:
+// workers = 2 fix, concurrency retirat (sense scheduler real).
 function renderStepWorkers(main, body) {
   body.append(el("h2", {}, ["Workers"]));
-  const w = wiz.workers_cfg;
-  const row = el("div", { class: "form-row" });
-  const f = (key, label, def) => {
-    const val = w[key] ?? def;
-    row.append(el("div", { class: "form-field" }, [
-      el("label", { for: `w-${key}` }, [label]),
-      el("input", { id: `w-${key}`, type: "number", value: String(val),
-                    onchange: (e) => { w[key] = Number(e.target.value); } }),
-    ]));
-  };
-  f("workers", "Workers (participants de la ronda)", 2);
-  f("concurrency", "Concurrency (màxim simultanis)", 1);
-  body.append(row);
-
+  wiz.workers_cfg.workers = 2;
+  wiz.workers_cfg.concurrency = 1;
+  body.append(el("div", { class: "form-field" }, [
+    el("label", {}, ["Workers"]),
+    el("input", { type: "number", value: "2", disabled: true, id: "w-workers" }),
+  ]));
   body.append(el("div", { class: "alert alert-ok small" }, [
-    `Workers: ${w.workers} · Concurrency: ${w.concurrency} — significa ${w.workers} contribucions independents executades com a màxim ${Math.min(w.concurrency, w.workers)} simultàniament.`,
+    "Execució local al servidor · workers certificats: 2 (worker A + B, " +
+    "contribucions independents a cada ronda). Concurrency no aplicable " +
+    "sense scheduler real.",
   ]));
 
   body.append(el("div", { class: "form-actions" }, [
@@ -282,8 +290,8 @@ async function renderStepReview(main, body) {
     ["LoRA alpha", String(t.lora_alpha)], ["LoRA dropout", String(t.lora_dropout)],
     ["Learning rate", String(t.learning_rate)], ["Rounds", String(t.rounds)],
     ["Max seq len", String(t.max_seq_len)], ["Seed", String(t.seed)],
-    ["Workers", String(wiz.workers_cfg.workers)],
-    ["Concurrency", String(wiz.workers_cfg.concurrency)],
+    ["Workers", "2 (certificats: A + B)"],
+    ["Execution", "local-server"],
   ];
   const table = el("table", {}, [el("tbody")]);
   for (const [k, v] of rows) {
@@ -362,7 +370,7 @@ export async function renderJobsList(main) {
     table.querySelector("tbody").append(el("tr", {}, [
       el("td", {}, [el("a", { href: `#/jobs/${j.job_id}` }, [escapeHtml(j.name)])]),
       el("td", {}, [escapeHtml(j.backend_id)]),
-      el("td", { html: statusBadge(j.status) }),
+      el("td", {}, [statusBadge(j.status)]),
       el("td", { class: "dim" }, [String(j.rounds)]),
       el("td", { class: "dim" }, [fmtTime(j.created_at)]),
     ]));

@@ -55,10 +55,18 @@ class DatasetService:
         return rec
 
     def upload_dataset(self, data: bytes, client_filename: str = "",
-                       name: str = "") -> dict:
+                       name: str = "", scope: str = "generic",
+                       backend_id: str = "", model_id: str = "") -> dict:
         """E0-02: upload multipart. El nom intern el genera el SERVIDOR
         (uuid); el nom del client NO determina el path final (anti path
-        traversal). Límit de mida configurable + SHA-256."""
+        traversal). Límit de mida configurable + SHA-256.
+
+        v1.4.1 (P1 dataset compatibility): scope = generic | backend | model.
+        generic: compatible amb qualsevol backend/model.
+        backend: només amb el backend_id indicat.
+        model:   només amb el backend_id + model_id indicats."""
+        if scope not in ("generic", "backend", "model"):
+            raise DatasetValidationError([f"scope no vàlid: {scope}"])
         if len(data) > UPLOAD_MAX_BYTES:
             raise DatasetValidationError(
                 [f"fitxer massa gran: {len(data)} bytes > límit "
@@ -96,6 +104,9 @@ class DatasetService:
             "created_at": _now(),
             "validation_status": "PENDING",
             "validation_errors": [] if parse_ok else ["JSONL no parseja"],
+            "scope": scope,
+            "backend_id": (backend_id or None) if scope in ("backend", "model") else None,
+            "model_id": (model_id or None) if scope == "model" else None,
         }
         self.db.insert_dataset(rec)
         rec["upload_sha256"] = sha
@@ -134,5 +145,22 @@ class DatasetService:
             raise KeyError(f"dataset no trobat: {dataset_id}")
         return ds
 
-    def list_datasets(self) -> list[dict]:
-        return self.db.list_datasets()
+    def list_datasets(self, backend_id: str = "", model_id: str = "") -> list[dict]:
+        """v1.4.1 (P1): filtra per compatibilitat.
+        backend_id/model_id buits → tots els datasets."""
+        dss = self.db.list_datasets()
+        if not backend_id and not model_id:
+            return dss
+        out = []
+        for ds in dss:
+            sc = ds.get("scope") or "generic"
+            if sc == "generic":
+                out.append(ds)
+            elif sc == "backend":
+                if ds.get("backend_id") == backend_id:
+                    out.append(ds)
+            elif sc == "model":
+                if (ds.get("backend_id") == backend_id
+                        and ds.get("model_id") == model_id):
+                    out.append(ds)
+        return out

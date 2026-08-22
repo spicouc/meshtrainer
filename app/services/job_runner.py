@@ -125,6 +125,39 @@ class JobRunner:
     def _event(self, type_: str, payload: dict):
         self.db.add_event(self.job_id, type_, payload)
 
+    # ── v1.4.1 R1 (punt 1): progrés REAL dins la ronda ────────────────────
+    # Pesos documentats (PROGRESS_CONTRACT.md): dins de cada ronda,
+    #   ROUND_SETUP 5% · TRAINING_WORKERS 10-75% · VALIDATING 88% ·
+    #   FEDAVG 97% de la fracció de la ronda. overall_fraction =
+    #   (rondes_completades + fracció_etapa) / round_total — monòton,
+    #   determinista, emès pel JobRunner (capa application, NO core).
+    STAGE_FRACS = {
+        "PREPARING": 0.0,
+        "ROUND_SETUP": 0.05,
+        "TRAINING_WORKERS": 0.10,   # inici dels workers de la ronda
+        "WORKERS_DONE": 0.75,
+        "VALIDATING": 0.88,
+        "FEDAVG": 0.97,
+        "FINALIZING": 0.99,
+        "COMPLETED": 1.0,
+    }
+
+    def _emit_stage(self, stage: str, round_idx: int = 0):
+        """Emet event progress.stage amb overall_fraction calculat."""
+        rtot = max(1, self.rounds)
+        frac = self.STAGE_FRACS.get(stage, 0.0)
+        done = max(0, round_idx - 1) if round_idx else 0
+        overall = min(1.0, (done + frac) / rtot) if stage != "COMPLETED" else 1.0
+        overall = round(max(0.0, overall), 4)
+        self._event("progress.stage", {
+            "stage": stage,
+            "round_current": round_idx or max(1, done + 1),
+            "round_total": rtot,
+            "overall_fraction": overall,
+        })
+        self._log(f"progress.stage {stage} overall={overall} "
+                  f"round={round_idx}/{rtot}")
+
     def _set_status(self, status: str, error: str = ""):
         self.db.update_job(self.job_id, status=status, last_error=error)
         self._event("job.status", {"status": status, "error": error})
@@ -243,6 +276,12 @@ class JobRunner:
         p = subprocess.Popen(cmd, stdout=logf, stderr=subprocess.STDOUT,
                              text=True)
         self._log(f"spawn {worker_id} pid={p.pid}")
+        # ── v1.4.1 (P0 worker semantics): persistir el worker REAL ─────
+        self._event("worker.spawn", {
+            "worker_id": worker_id, "pid": p.pid, "shard": shard,
+            "round": round_id, "device": self.device,
+            "execution_host": "local-server", "state": "starting",
+        })
         self._worker_procs.append(p)
         return p, logf
 
@@ -274,6 +313,12 @@ class JobRunner:
         for wid, p in procs.items():
             rc = p.wait(timeout=3600)
             logfs[wid].close()
+            # v1.4.1 (P0): estat final real del worker
+            self._event("worker.state", {
+                "worker_id": wid, "pid": p.pid,
+                "state": "done" if rc == 0 else f"exit-{rc}",
+                "round": round_id, "execution_host": "local-server",
+            })
             if rc != 0 and self._stop:
                 # cancel·lació en curs: no és un error de codi
                 raise CancelledError(f"worker {wid} aturat per cancel·lació")
@@ -294,6 +339,7 @@ class JobRunner:
     def _run_round(self, client: CoreClient, round_idx: int, run_id: str,
                    round_id: str, adapter_path, adapter_sha, adapter_bytes,
                    base_hash, pre_hash, num_ex) -> dict:
+        self._emit_stage("ROUND_SETUP", round_idx)
         self._event("round.create", {"round": round_id})
         client.round_create(run_id, round_id, self.backend, base_hash,
                             adapter_sha, pre_hash)
@@ -309,8 +355,10 @@ class JobRunner:
                         {"assignment": asg, "shard": shard,
                          "expected_ett": exp})
 
+        self._emit_stage("TRAINING_WORKERS", round_idx)
         evs = self._run_workers_round(round_id, adapter_path, adapter_sha,
                                       num_ex, round_idx)
+        self._emit_stage("WORKERS_DONE", round_idx)
         # checkpoint 1: immediatament després dels workers (E0-01 R1)
         self._check_cancel()
         # E0-01 R1 (test-harness): finestra adversarial — els workers ja han
@@ -330,6 +378,7 @@ class JobRunner:
                          "contribution": ev.get("contribution_id", "")[:12]})
 
         # ADMIN: validate + activate (frontera certificada)
+        self._emit_stage("VALIDATING", round_idx)
         for wid, ev in evs.items():
             cid = ev["contribution_id"]
             # checkpoint 2: abans de cada validate (E0-01 R1)
@@ -344,6 +393,7 @@ class JobRunner:
 
         # checkpoint 4: OBLIGATÒRIAMENT abans de fedavg (E0-01 R1)
         self._check_cancel()
+        self._emit_stage("FEDAVG", round_idx)
         # Quòrum + fedavg
         fed = client.round_fedavg(run_id, round_id,
                                   base64.b64encode(adapter_bytes).decode("ascii"))
@@ -543,7 +593,10 @@ class JobRunner:
             if self._stop:
                 self._set_status("CANCELLED")
             else:
+                # v1.4.1 R1: FINALIZING → COMPLETED (progress fins a 1.0)
+                self._emit_stage("FINALIZING", self.rounds)
                 self._set_status("COMPLETED")
+                self._emit_stage("COMPLETED", self.rounds)
                 # ── Phase 3 (punt 22): training_summary.json ────────────
                 try:
                     self._write_training_summary()

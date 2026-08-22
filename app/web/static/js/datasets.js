@@ -109,7 +109,7 @@ export async function renderDatasets(main) {
       el("td", { class: "dim mono" }, [fmtBytes(ds.size)]),
       el("td", {}, [String(ds.examples)]),
       el("td", { class: "dim" }, [`${ds.train_count}/${ds.validation_count}/${ds.test_count}`]),
-      el("td", { html: statusBadge(ds.validation_status) }),
+      el("td", {}, [statusBadge(ds.validation_status)]),
       el("td", {}, [
         el("button", { class: "btn btn-sm", "data-validate": ds.dataset_id }, ["Validate"]),
       ]),

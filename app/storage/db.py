@@ -60,7 +60,10 @@ CREATE TABLE IF NOT EXISTS datasets (
     schema_json TEXT DEFAULT '{}',
     created_at TEXT NOT NULL,
     validation_status TEXT DEFAULT 'PENDING',
-    validation_errors TEXT DEFAULT '[]'
+    validation_errors TEXT DEFAULT '[]',
+    scope TEXT DEFAULT 'generic',
+    backend_id TEXT,
+    model_id TEXT
 );
 CREATE TABLE IF NOT EXISTS worker_definitions (
     worker_id TEXT PRIMARY KEY,
@@ -113,6 +116,14 @@ RECONCILE_COLUMNS = {
     "runner_identity": "TEXT DEFAULT ''",
 }
 
+# v1.4.1 (P1 dataset compatibility): migració segura per datasets v1.4.0
+# existents — scope default 'generic', backend_id/model_id NULL.
+DATASET_COLUMNS = {
+    "scope": "TEXT DEFAULT 'generic'",
+    "backend_id": "TEXT",
+    "model_id": "TEXT",
+}
+
 
 class AppDB:
     """Accés SQLite de l'app. Una connexió per thread (check_same_thread=False)
@@ -142,6 +153,13 @@ class AppDB:
             for name, decl in RECONCILE_COLUMNS.items():
                 if name not in cols:
                     self._conn.execute(f"ALTER TABLE jobs ADD COLUMN {name} {decl}")
+            # v1.4.1: migració datasets (scope/backend_id/model_id)
+            dcols = {r["name"] for r in self._conn.execute(
+                "PRAGMA table_info(datasets)").fetchall()}
+            for name, decl in DATASET_COLUMNS.items():
+                if name not in dcols:
+                    self._conn.execute(
+                        f"ALTER TABLE datasets ADD COLUMN {name} {decl}")
             self._conn.commit()
 
     # ── helpers ──────────────────────────────────────────────────────────
@@ -214,13 +232,16 @@ class AppDB:
         self._exec(
             "INSERT INTO datasets (dataset_id,name,source_path,format,size,examples,"
             "train_count,validation_count,test_count,schema_json,created_at,"
-            "validation_status,validation_errors) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "validation_status,validation_errors,scope,backend_id,model_id) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (d["dataset_id"], d["name"], d["source_path"], d.get("format", "jsonl"),
              d.get("size", 0), d.get("examples", 0), d.get("train_count", 0),
              d.get("validation_count", 0), d.get("test_count", 0),
              json.dumps(d.get("schema_json", {})), d.get("created_at"),
              d.get("validation_status", "PENDING"),
-             json.dumps(d.get("validation_errors", []))))
+             json.dumps(d.get("validation_errors", [])),
+             d.get("scope", "generic"),
+             d.get("backend_id"), d.get("model_id")))
 
     def update_dataset(self, dataset_id: str, **fields) -> None:
         sets, params = [], []

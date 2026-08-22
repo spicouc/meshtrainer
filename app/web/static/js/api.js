@@ -38,12 +38,20 @@ export function uploadDataset(file) {
 // SSE amb cursor estable (contracte E0-04): id=seq rowid, event, data.
 // Tots els events s'emeten com a "message" (el tipus viatja dins del data)
 // perquè EventSource només dispara onmessage per events sense nom propi.
-// Reconnect automàtic: EventSource ho fa sol; Last-Event-ID el gestiona
-// el navegador (ids = seq rowid estables).
-export function connectSSE(jobId, { onEvent, onStatus, onError } = {}) {
-  const es = new EventSource(`${API_BASE}/api/jobs/${jobId}/events`);
+// v1.4.1 (P1): connecta amb ?after_seq=<highest> (cursor explícit) a més
+// del Last-Event-ID automàtic del navegador; el servidor mai reenvia
+// seq <= highest_seq del client (0 duplicats / 0 perduts en reconnect).
+export function connectSSE(jobId, { onEvent, onStatus, onError, afterSeq } = {}) {
+  let url = `${API_BASE}/api/jobs/${jobId}/events`;
+  const seq = (typeof afterSeq === "function" ? afterSeq() : afterSeq) || 0;
+  if (seq > 0) url += `?after_seq=${seq}`;
+  const es = new EventSource(url);
   es.onmessage = (ev) => {
-    try { onEvent && onEvent(JSON.parse(ev.data)); } catch (e) { /* ignora */ }
+    try {
+      const data = JSON.parse(ev.data);
+      data.seq = Number(ev.lastEventId || data.seq || 0);
+      onEvent && onEvent(data);
+    } catch (e) { /* ignora */ }
   };
   es.onopen = () => onStatus && onStatus("open");
   es.onerror = () => onStatus && onStatus("reconnecting");

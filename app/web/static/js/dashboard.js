@@ -61,8 +61,8 @@ export async function renderDashboard(main) {
         el("div", { class: "label" }, [escapeHtml(b.display_name || b.id)]),
         el("div", { class: "value" }, [
           b.available
-            ? el("span", { style: "color:var(--ok)" }, ["● available"])
-            : el("span", { style: "color:var(--err)" }, ["● unavailable"]),
+            ? el("span", { class: "ok-text" }, ["● available"])
+            : el("span", { class: "err-text" }, ["● unavailable"]),
         ]),
         el("div", { class: "sub" }, [b.model_constraints?.default_model || b.id]),
       ]);
@@ -100,7 +100,7 @@ export async function renderDashboard(main) {
         el("td", {}, [el("a", { href: `#/jobs/${j.job_id}` }, [escapeHtml(j.name)])]),
         el("td", {}, [escapeHtml(j.backend_id)]),
         el("td", { class: "dim" }, [escapeHtml(j.model_id)]),
-        el("td", { html: statusBadge(j.status) }),
+        el("td", {}, [statusBadge(j.status)]),
         el("td", {}, [progressBar(0, "progress")]),
         el("td", { class: "dim" }, [fmtTime(j.started_at)]),
         el("td", { class: "dim" }, [fmtDur(dur)]),

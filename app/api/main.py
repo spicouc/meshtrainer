@@ -15,7 +15,7 @@ if _CORE_DIR not in sys.path:
     sys.path.insert(0, _CORE_DIR)
 
 try:
-    from fastapi import (APIRouter, FastAPI, File, HTTPException, Query,
+    from fastapi import (APIRouter, FastAPI, File, Form, HTTPException, Query,
                          Request, UploadFile)
     from fastapi.responses import FileResponse, StreamingResponse
     from pydantic import BaseModel as PBase
@@ -127,16 +127,24 @@ def dataset_create(body: DatasetCreate):
 
 
 @router.post("/datasets/upload")
-async def dataset_upload(file: UploadFile = File(...)):
+async def dataset_upload(file: UploadFile = File(...),
+                         scope: str = Form("generic"),
+                         backend_id: str = Form(""),
+                         model_id: str = Form("")):
     """E0-02: upload multipart. El nom intern el genera el servidor;
-    el nom del client no determina el path final (anti path traversal)."""
+    el nom del client no determina el path final (anti path traversal).
+
+    v1.4.1 (P1): scope = generic | backend | model (compatibilitat)."""
     data = await file.read()
-    return _wrap(lambda: service.upload_dataset(data, file.filename or ""))
+    return _wrap(lambda: service.upload_dataset(data, file.filename or "",
+                                                "", scope, backend_id,
+                                                model_id))
 
 
 @router.get("/datasets")
-def datasets_list():
-    return _wrap(lambda: service.list_datasets())
+def datasets_list(backend_id: str = Query(""), model_id: str = Query("")):
+    """v1.4.1 (P1): filtra per compatibilitat (generic + backend + model)."""
+    return _wrap(lambda: service.list_datasets(backend_id, model_id))
 
 
 @router.get("/datasets/{dataset_id}")
@@ -219,17 +227,29 @@ def job_artifacts(job_id: str):
 
 @router.get("/jobs/{job_id}/events")
 def job_events(job_id: str, after_seq: int = Query(0, ge=0),
-               format: str = Query("sse")):
-    """SSE: flux d'events en viu del job (E0-04 R1).
+               format: str = Query("sse"), request: Request = None):
+    """SSE: flux d'events en viu del job (E0-04 R1 + v1.4.1 P1).
 
     Contracte: Content-Type text/event-stream; cada esdeveniment amb
     'id:' (seq REAL de SQLite, rowid monotònic i estable), 'event:', 'data:'.
     El cursor és el seq (rowid) — mai el timestamp en segons (evita pèrdua
     d'events al mateix segon). NO s'embolica en l'envelope REST.
 
-    format=json (additiu Phase 2): retorna la llista d'events com a JSON
-    (per a resincronització de la UI — mai substitut del SSE en viu).
+    v1.4.1 (P1 reconnect): el cursor es pren de (en ordre de precedència):
+      1. query ?after_seq=<n> (client explícit)
+      2. header Last-Event-ID (reconnect automàtic d'EventSource)
+    Cursor final = max(after_seq, Last-Event-ID) quan ambdós són vàlids.
+    El servidor MAI reenvia events amb seq <= cursor → 0 duplicats i
+    0 perduts en reconnect (comprovat per FT-17/18).
     """
+    # v1.4.1 (P1): contracte únic — cursor = max(after_seq, Last-Event-ID)
+    lei = 0
+    if request is not None:
+        v = request.headers.get("Last-Event-ID") or request.headers.get(
+            "last-event-id") or ""
+        if v.isdigit():
+            lei = int(v)
+    after_seq = max(after_seq, lei)
     events = service.get_events(job_id, after_seq)
     if format == "json":
         return _ok(events)
@@ -259,8 +279,29 @@ def job_events(job_id: str, after_seq: int = Query(0, ge=0),
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="MeshTrainer App MVP", version="0.1.0")
+    app = FastAPI(title="MeshTrainer App MVP", version="1.4.1")
     app.include_router(router)
+
+    # ── v1.4.1 (P0 XSS): Content-Security-Policy mínima ──────────────────
+    from starlette.middleware.base import BaseHTTPMiddleware
+
+    # v1.4.1 R1 (punt 9): style-src 'self' sense 'unsafe-inline' — la UI
+    # NO usa style attributes inline (convertits a classes CSS + <progress>
+    # natiu). Cap estil dinàmic per dades d'usuari.
+    CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; "
+           "img-src 'self' data:; connect-src 'self'; "
+           "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; "
+           "form-action 'self'")
+
+    class CSPMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            response = await call_next(request)
+            if request.url.path.startswith(("/static", "/jobs", "/datasets",
+                                            "/workers", "/settings", "/")):
+                response.headers["Content-Security-Policy"] = CSP
+            return response
+
+    app.add_middleware(CSPMiddleware)
 
     # ── Phase 2: serveix la Web UI (vanilla, zero toolchain) ─────────────
     web_dir = os.path.join(os.path.dirname(os.path.dirname(

@@ -62,8 +62,11 @@ class MeshTrainerService:
     def add_dataset(self, source_path: str, name: str = "") -> dict:
         return self.datasets.add_dataset(source_path, name)
 
-    def upload_dataset(self, data: bytes, client_filename: str = "") -> dict:
-        return self.datasets.upload_dataset(data, client_filename)
+    def upload_dataset(self, data: bytes, client_filename: str = "",
+                       name: str = "", scope: str = "generic",
+                       backend_id: str = "", model_id: str = "") -> dict:
+        return self.datasets.upload_dataset(data, client_filename, name,
+                                            scope, backend_id, model_id)
 
     def validate_dataset(self, dataset_id: str) -> dict:
         return self.datasets.validate_dataset(dataset_id)
@@ -71,8 +74,8 @@ class MeshTrainerService:
     def get_dataset(self, dataset_id: str) -> dict:
         return self.datasets.get_dataset(dataset_id)
 
-    def list_datasets(self) -> list[dict]:
-        return self.datasets.list_datasets()
+    def list_datasets(self, backend_id: str = "", model_id: str = "") -> list[dict]:
+        return self.datasets.list_datasets(backend_id, model_id)
 
     # ── jobs ─────────────────────────────────────────────────────────────
     def create_training_job(self, name: str, backend_id: str, model_id: str,
@@ -80,12 +83,22 @@ class MeshTrainerService:
                             workers_cfg: dict, local_path: str = "") -> dict:
         if not backend_available(backend_id):
             raise ValueError(f"backend {backend_id} no disponible")
+        # ── v1.4.1 (P0 worker semantics): rebutjar al LÍMIT, no només a la
+        #    UI — qualsevol client (UI, curl, API, CLI) rep el mateix error.
+        w = WorkerConfig(**workers_cfg)
+        if int(w.workers) != 2:
+            raise ValueError(
+                "workers ha de ser 2 (core certificat: worker A + B, execució "
+                "local al servidor) — rebutjat a la creació")
+        if int(w.concurrency or 1) != 1:
+            raise ValueError(
+                "concurrency no disponible (sense scheduler real) — rebutjat "
+                "a la creació")
         ds = self.db.get_dataset(dataset_id)
         if not ds:
             raise KeyError(f"dataset no trobat: {dataset_id}")
         job_id = f"job-{uuid.uuid4().hex[:12]}"
         t = TrainingConfig(**training)
-        w = WorkerConfig(**workers_cfg)
         rec = {
             "job_id": job_id, "name": name, "backend_id": backend_id,
             "model_id": model_id, "local_path": local_path or None,
@@ -111,6 +124,13 @@ class MeshTrainerService:
         # ── Phase 2 (additiu, només lectura): camps derivats per a la UI ──
         j = dict(j)
         evs = self.db.list_events(job_id)
+        # v1.4.1: payload de la DB és str JSON — normalitza a dict
+        for e in evs:
+            if isinstance(e.get("payload"), str):
+                try:
+                    e["payload"] = json.loads(e["payload"])
+                except Exception:
+                    e["payload"] = {}
         j["events"] = evs
         # progrés de rondes
         fed_rounds = [e for e in evs if e["type"] == "round.fedavg"]
@@ -137,6 +157,81 @@ class MeshTrainerService:
             j["workers_cfg_workers"] = (j.get("workers") or 0)
         except Exception:
             pass
+        # v1.4.1 (P0 worker semantics): workers REALS persistits
+        wmap = {}
+        for e in evs:
+            pl = e.get("payload") or {}
+            wid = pl.get("worker_id") or ""
+            if e["type"] == "worker.spawn" and wid:
+                wmap[wid] = {"worker_id": wid, "pid": pl.get("pid"),
+                             "shard": pl.get("shard"), "round": pl.get("round"),
+                             "device": pl.get("device"),
+                             "execution_host": pl.get("execution_host"),
+                             "state": pl.get("state")}
+            elif e["type"] == "worker.state" and wid in wmap:
+                wmap[wid]["state"] = pl.get("state")
+        j["workers_detail"] = list(wmap.values())
+        j["execution"] = {"location": "local-server", "certified_workers": 2}
+        # v1.4.1 (P1 total progress): contracte monòton, no derivat al client
+        # v1.4.1 R1: si el JobRunner ha emès progress.stage (font
+        # autoritativa), l'últim event mana; altrament càlcul per estat.
+        stage_events = [e for e in evs if e["type"] == "progress.stage"]
+        status = j.get("status") or ""
+        rdone = len([e for e in evs if e["type"] == "round.fedavg"])
+        rtot_derived = j.get("rounds") or 0
+        if stage_events:
+            last = stage_events[-1].get("payload") or {}
+            overall = float(last.get("overall_fraction", 0.0) or 0.0)
+            stage = last.get("stage") or "PREPARING"
+            rcur = int(last.get("round_current") or 0)
+            rtot = int(last.get("round_total") or 0)
+            if status == "COMPLETED":
+                overall = 1.0
+                stage = "COMPLETED"
+            elif status in ("CANCELLED", "FAILED"):
+                # v1.4.1 (punt 4): MAI forçar 1.0 artificialment en fallida
+                overall = min(overall, 0.99)
+                stage = "FINALIZING"
+            j["progress"] = {
+                "overall_fraction": round(max(0.0, min(1.0, overall)), 4),
+                "round_current": rcur or rdone,
+                "round_total": rtot or rtot_derived,
+                "stage": stage,
+                "workers_done": sum(1 for w in j["workers_detail"]
+                                    if w.get("state") in ("done", "exit-0")),
+                "workers_total": 2,  # v1.4.1 R1: sempre 2 (certificats)
+            }
+            return j
+        stage_map = {
+            "DRAFT": "PREPARING", "READY": "PREPARING", "STARTING": "PREPARING",
+            "RUNNING": "TRAINING_WORKERS", "CANCELLING": "FINALIZING",
+            "CANCELLED": "COMPLETED", "COMPLETED": "COMPLETED",
+            "FAILED": "FINALIZING", "RECOVERING": "ROUND_SETUP",
+        }
+        stage = stage_map.get(status, "PREPARING")
+        rdone = j.get("rounds_done") or 0
+        rtot = j.get("rounds_total") or 0
+        if status == "COMPLETED":
+            overall = 1.0
+            stage = "COMPLETED"
+        elif status in ("CANCELLED", "FAILED"):
+            # v1.4.1 (punt 4): MAI forçar 1.0 artificialment en fallida —
+            # la barra reflecteix treball completat, no temps.
+            overall = rdone / max(1, rtot) if rtot else 0.0
+            stage = "FINALIZING"
+        elif status in ("DRAFT", "READY", "STARTING"):
+            overall = 0.0
+        else:
+            overall = min(1.0, rdone / max(1, rtot)) if rtot else 0.0
+        j["progress"] = {
+            "overall_fraction": round(max(0.0, min(1.0, overall)), 4),
+            "round_current": rdone + (1 if status == "RUNNING" and rdone < rtot else 0),
+            "round_total": rtot,
+            "stage": stage,
+            "workers_done": sum(1 for w in j["workers_detail"]
+                                if w.get("state") in ("done", "exit-0")),
+            "workers_total": max(1, len(j["workers_detail"]) or 2),
+        }
         return j
 
     def list_jobs(self, status: str = "") -> list[dict]:
@@ -151,6 +246,18 @@ class MeshTrainerService:
             errors.append("dataset no trobat")
         elif ds["validation_status"] != "PASS":
             errors.append(f"dataset no validat (status={ds['validation_status']})")
+        # ── v1.4.1 (P1 dataset compatibility): rebutjar incompatible ─────
+        if ds:
+            sc = ds.get("scope") or "generic"
+            if sc == "backend" and ds.get("backend_id") != job["backend_id"]:
+                errors.append(f"dataset incompatible: específic del backend "
+                              f"'{ds.get('backend_id')}', job demana "
+                              f"'{job['backend_id']}'")
+            elif sc == "model" and (ds.get("backend_id") != job["backend_id"]
+                                    or ds.get("model_id") != job["model_id"]):
+                errors.append(f"dataset incompatible: específic del model "
+                              f"'{ds.get('backend_id')}/{ds.get('model_id')}', "
+                              f"job demana '{job['backend_id']}/{job['model_id']}'")
         # backend disponible?
         if not backend_available(job["backend_id"]):
             errors.append(f"backend {job['backend_id']} no disponible")
@@ -158,6 +265,15 @@ class MeshTrainerService:
         m = self.validate_model(job["backend_id"], job["model_id"])
         if not m.get("valid"):
             errors.append(f"model no vàlid: {m.get('reason', '')}")
+        # ── v1.4.1 (P0 worker semantics): el core certificat executa
+        #    EXACTAMENT 2 workers (A+B) al servidor local. Rebutjar
+        #    qualsevol altre valor — no acceptar allò que s'ignorarà.
+        if int(job.get("workers") or 0) != 2:
+            errors.append("workers ha de ser 2 (core certificat: worker A + B, "
+                          "execució local al servidor)")
+        if int(job.get("concurrency") or 1) > 1:
+            errors.append("concurrency no disponible (sense scheduler real; "
+                          "es desactiva fins a nova arquitectura)")
         status = "PASS" if not errors else "FAIL"
         self.db.update_job(job_id, validation=status,
                            validation_errors=errors)

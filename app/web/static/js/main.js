@@ -1,6 +1,7 @@
 // main.js — router hash lleuger + bootstrap de la UI.
 
 import { api } from "./api.js";
+import { el, clear } from "./ui.js";
 import { renderDashboard } from "./dashboard.js";
 import { renderDatasets } from "./datasets.js";
 import { renderNewJob, renderJobsList } from "./jobs.js";
@@ -23,9 +24,25 @@ function setActiveNav(route) {
   });
 }
 
+// v1.4.1 (P1 route cleanup, FT-20): lifecycle explícit — cada pantalla que
+// creï recursos (EventSource, intervals, timers, listeners) ha de registrar
+// una funció de neteja a window.__currentCleanup. El router la crida
+// SEMPRE abans de renderitzar una ruta nova.
+async function runCleanup() {
+  const fn = window.__currentCleanup;
+  if (typeof fn === "function") {
+    try { fn(); } catch (e) { /* la neteja mai ha de trencar la navegació */ }
+    window.__currentCleanup = null;
+  }
+  // seguretat extra: cap EventSource/intervall orfe d'una vista anterior
+  if (window.__monitorES) {
+    try { window.__monitorES.close(); } catch (e) {}
+    window.__monitorES = null;
+  }
+}
+
 async function route() {
-  if (app.dataset.cleanup) { try { app.dataset.cleanup(); } catch (e) {} delete app.dataset.cleanup; }
-  if (window.__monitorES) { try { window.__monitorES.close(); } catch (e) {} window.__monitorES = null; }
+  await runCleanup();
 
   const hash = location.hash.replace(/^#/, "") || "/";
   setActiveNav(hash);
@@ -50,32 +67,38 @@ async function route() {
     const ma = hash.match(/^\/jobs\/([^/]+)\/artifacts$/);
     if (ma) return renderArtifacts(app, ma[1]);
     if (hash.startsWith("/jobs")) return renderJobsList(app);
-    // 404
-    app.innerHTML = "";
-    app.append(Object.assign(document.createElement("div"), { className: "empty-state" }));
-    app.lastChild.innerHTML =
-      `<div class="big">🧭</div><p>Page not found</p>` +
-      `<a class="btn btn-primary" href="#/">Back to dashboard</a>`;
+    // 404 (v1.4.1 P0 XSS: DOM API, mai innerHTML)
+    clear(app);
+    const empty = el("div", { class: "empty-state" }, [
+      el("div", { class: "big" }, ["🧭"]),
+      el("p", {}, ["Page not found"]),
+      el("a", { class: "btn btn-primary", href: "#/" }, ["Back to dashboard"]),
+    ]);
+    app.append(empty);
   } catch (err) {
-    // mai pantalla blanca (punt 27)
-    app.innerHTML = "";
-    const box = Object.assign(document.createElement("div"), { className: "card" });
-    box.innerHTML = `<h2>Something went wrong</h2>
-      <p class="dim">${String(err.message || err).replace(/[<>&]/g, (c) => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}</p>
-      <a class="btn" href="#/">Back to dashboard</a>`;
+    // mai pantalla blanca (punt 27) — v1.4.1: textContent, no innerHTML
+    clear(app);
+    const box = el("div", { class: "card" }, [
+      el("h2", {}, ["Something went wrong"]),
+      el("p", { class: "dim" }, [String(err.message || err)]),
+      el("a", { class: "btn", href: "#/" }, ["Back to dashboard"]),
+    ]);
     app.append(box);
   }
 }
 
 async function bootstrap() {
-  // estat de l'API (dot a la topbar)
+  // estat de l'API (dot a la topbar) — v1.4.1: DOM API
   const statusEl = document.getElementById("api-status");
   async function ping() {
+    const dot = el("span", { class: "dot" });
     try {
       await api("/api/health");
-      statusEl.innerHTML = '<span class="dot dot-ok"></span> online';
+      dot.className = "dot dot-ok";
+      statusEl.replaceChildren(dot, document.createTextNode(" online"));
     } catch (e) {
-      statusEl.innerHTML = '<span class="dot dot-err"></span> API offline';
+      dot.className = "dot dot-err";
+      statusEl.replaceChildren(dot, document.createTextNode(" API offline"));
     }
   }
   ping();

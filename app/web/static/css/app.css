@@ -270,6 +270,20 @@ summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
 }
 .skip-link:focus { left: 0; }
 
+/* ── v1.4.1 R1 (punt 9): classes per eliminar style attrs inline ──────── */
+.no-margin { margin: 0; }
+.clickable { cursor: pointer; }
+.hidden { display: none !important; }
+.ok-text { color: var(--ok); }
+.err-text { color: var(--err); }
+.progress-el { width: 100%; height: 8px; appearance: none; border: none;
+               border-radius: 6px; background: var(--bg-panel); overflow: hidden; }
+.progress-el::-webkit-progress-bar { background: var(--bg-panel); border-radius: 6px; }
+.progress-el::-webkit-progress-value { background: var(--accent); border-radius: 6px; }
+.progress-el::-moz-progress-bar { background: var(--accent); border-radius: 6px; }
+.progress-el.done::-webkit-progress-value { background: var(--ok); }
+.progress-el.done::-moz-progress-bar { background: var(--ok); }
+
 /* ── responsive ─────────────────────────────────────────────────────── */
 @media (max-width: 720px) {
   .app-main { padding: 14px; }
@@ -279,4 +293,9 @@ summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
   .form-row { grid-template-columns: 1fr; }
   table { display: block; overflow-x: auto; }
   .topbar-status { width: 100%; }
+  /* v1.4.1 (UI-23): les cadenes llargues (paths de models) no poden
+     forçar l'ample mínim del grid → overflow horitzontal en mòbil */
+  .grid { min-width: 0; }
+  .grid > * { min-width: 0; overflow-wrap: anywhere; }
+  .kpi .sub, .kpi .value { overflow-wrap: anywhere; }
 }
